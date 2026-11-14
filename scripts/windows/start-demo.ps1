@@ -1,5 +1,8 @@
 # Windows bring-up helper. Untested on Windows until the live laptop check.
 # Uses the venv's Python directly; does not change PowerShell execution policy.
+# From the repository root (choose one; execution-policy bypass is process-only):
+# powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -SerialPort COM3
+# powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -Headless
 [CmdletBinding()]
 param(
     [string]$SerialPort = '',
