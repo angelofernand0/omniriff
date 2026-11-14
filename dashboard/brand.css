@@ -1,0 +1,147 @@
+/* OmniRiff brand layer: tokens, type and the shared parts (logo, LED, chip, key, slider, label).
+   Source of truth: BRAND_SPEC.md. Page layout lives in style.css. */
+
+@font-face { font-family: 'Silkscreen'; font-weight: 400; font-display: block; src: url('fonts/Silkscreen-400.woff2') format('woff2'); }
+@font-face { font-family: 'Silkscreen'; font-weight: 700; font-display: block; src: url('fonts/Silkscreen-700.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 400 600; font-display: swap; src: url('fonts/JetBrainsMono.woff2') format('woff2'); }
+
+:root {
+  /* surfaces, darkest first */
+  --shadow: #060609;
+  --bg: #0B0B10;
+  --bg-bar: #0F0F15;
+  --panel: #13121A;
+  --panel-2: #1C1A26;
+  --line: #262532;
+  --line-2: #34323F;
+  --off: #24232E;
+  --dim: #4A4858;
+  /* ink */
+  --text: #ECE9F5;
+  --muted: #A6A3B6;
+  --faint: #868399;
+  /* the one brand colour: anything alive (loop playing, hand engaged, coach) */
+  --accent: #FF5CCB;
+  --accent-ink: #0B0B10;
+  --accent-deep: #3B1A4F;
+  --accent-shade: #D63FA6;
+  --accent-low: #B4318A;
+  --accent-dim: #5A2A75;
+  /* signal colours: each has one job */
+  --rec: #FF5340;
+  --warn: #FFB547;
+  --ok: #8FE3A6;
+
+  /* one pixel unit. Every size, gap and offset is a multiple of it; strokes may use half. */
+  --u: 4px;
+  --stroke: 2px;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+
+  /* type. Pixel sizes are multiples of 8 so Silkscreen lands on whole pixels. */
+  --font-pixel: 'Silkscreen', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --p1: 16px; --p2: 24px; --p3: 32px; --p4: 48px; --p5: 72px; --p6: 112px;
+  --t1: 14px; --t2: 16px; --t3: 20px;
+
+  /* motion: the machine moves in steps. Only the coach character moves smoothly. */
+  --tick: 80ms;
+  --beat: 160ms;
+  --bar: 240ms;
+  --step: steps(4, end);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+body { font: var(--t2)/1.4 var(--font-mono); -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; }
+h1, h2, h3, p { margin: 0; font-weight: 400; }
+::selection { background: var(--accent); color: var(--accent-ink); }
+[hidden] { display: none !important; }
+
+/* pixel art: whole-number scaling only, never smoothed */
+[data-icon], [data-logo] { display: inline-block; flex: none; line-height: 0; }
+[data-icon] svg, [data-logo] svg { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+[data-icon] { width: 16px; height: 16px; }
+[data-icon].x3 { width: 24px; height: 24px; }
+[data-icon].x4 { width: 32px; height: 32px; }
+[data-icon].x8 { width: 64px; height: 64px; }
+
+/* logo lockup is 68 x 16 cells; height sets the scale (16 = x1, 32 = x2, 48 = x3 ...) */
+.logo { display: inline-flex; align-items: center; color: inherit; text-decoration: none; }
+.logo [data-logo] { height: 32px; width: 136px; }
+.logo.x3 [data-logo] { height: 48px; width: 204px; }
+.logo.x6 [data-logo] { height: 96px; width: 408px; }
+[data-logo="mark"] { width: 32px; height: 32px; }
+
+/* module label: silk-screened on the faceplate */
+.label { display: flex; align-items: center; gap: var(--s2); font: var(--p1)/1 var(--font-pixel); color: var(--muted); letter-spacing: 0; text-transform: uppercase; }
+.label .n { color: var(--faint); }
+.label .grow { flex: 1; }
+
+.panel { background: var(--panel); border: var(--stroke) solid var(--line); }
+
+/* LED + legend: one per subsystem */
+.led { display: flex; align-items: center; gap: var(--s2); font: var(--p1)/1 var(--font-pixel); white-space: nowrap; }
+.led > i { width: 12px; height: 12px; background: var(--off); flex: none; }
+.led > b { font-weight: 400; color: var(--muted); }
+.led > span { color: var(--faint); }
+.led.on > i { background: var(--ok); box-shadow: 0 0 0 2px rgba(143, 227, 166, 0.22); }
+.led.on > span { color: var(--text); }
+.led.warn > i { background: var(--warn); box-shadow: 0 0 0 2px rgba(255, 181, 71, 0.22); animation: blink 0.8s steps(2) infinite; }
+.led.warn > span { color: var(--warn); }
+.led.hot > i { background: var(--accent); box-shadow: 0 0 0 2px rgba(255, 92, 203, 0.28); animation: blink 0.4s steps(2) infinite; }
+.led.hot > span { color: var(--accent); }
+
+/* chip: a mode that changes what you hear or trust. Filled, never decorative. */
+.chip { display: inline-block; padding: var(--s1) var(--s2); font: var(--p1)/1 var(--font-pixel); background: var(--warn); color: var(--accent-ink); white-space: nowrap; }
+
+/* key: every on-screen button is a keycap. It travels 4px and lands. */
+.key {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+  min-height: 44px; padding: 0 var(--s3); cursor: pointer; user-select: none;
+  font: var(--p1)/1 var(--font-pixel); color: var(--text);
+  background: var(--panel-2); border: var(--stroke) solid var(--line-2);
+  box-shadow: 0 4px 0 var(--shadow);
+  transform: translateY(0);
+  transition: transform var(--tick) steps(2), box-shadow var(--tick) steps(2), border-color var(--tick) steps(1), background var(--tick) steps(1);
+}
+.key kbd { font: inherit; color: var(--accent-ink); background: var(--muted); padding: 2px 4px; min-width: 20px; text-align: center; }
+.key:hover { border-color: var(--muted); }
+.key:active, .key.down { transform: translateY(4px); box-shadow: 0 0 0 var(--shadow); background: var(--panel); }
+.key.sent { border-color: var(--accent); }
+.key.sent kbd { background: var(--accent); }
+.key.fail { border-color: var(--warn); animation: nudge var(--bar) steps(4); }
+.key.fail kbd { background: var(--warn); }
+.key:disabled { cursor: default; color: var(--faint); box-shadow: 0 2px 0 var(--shadow); }
+
+/* slider: a fader with a block cap */
+.fader { display: grid; grid-template-columns: 1fr auto; gap: var(--s1) var(--s2); align-items: center; font: var(--p1)/1 var(--font-pixel); color: var(--muted); }
+.fader output { color: var(--text); font-variant-numeric: tabular-nums; }
+.fader input[type=range] {
+  grid-column: 1 / -1; -webkit-appearance: none; appearance: none; width: 100%; height: 24px; margin: 0; cursor: pointer; background: transparent;
+  --v: 0%;
+}
+.fader input[type=range]::-webkit-slider-runnable-track { height: 8px; background: linear-gradient(to right, var(--accent) var(--v), var(--off) var(--v)); }
+.fader input[type=range]::-moz-range-track { height: 8px; background: var(--off); }
+.fader input[type=range]::-moz-range-progress { height: 8px; background: var(--accent); }
+.fader input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 24px; margin-top: -8px; background: var(--text); border: var(--stroke) solid var(--bg); box-shadow: 0 0 0 var(--stroke) var(--text); }
+.fader input[type=range]::-moz-range-thumb { width: 8px; height: 20px; border-radius: 0; background: var(--text); border: var(--stroke) solid var(--bg); }
+.fader input[type=range]:active::-webkit-slider-thumb { background: var(--accent); box-shadow: 0 0 0 var(--stroke) var(--accent); }
+
+/* stamp: a state change printed over the thing that changed */
+.stamp { font: var(--p4)/1 var(--font-pixel); padding: var(--s2) var(--s4); border: 4px solid currentColor; background: var(--bg); box-shadow: 4px 4px 0 var(--shadow); white-space: nowrap; }
+
+/* empty state: icon, one label, one instruction */
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s2); text-align: center; color: var(--faint); pointer-events: none; }
+.empty b { font: var(--p1)/1 var(--font-pixel); font-weight: 400; color: var(--muted); }
+.empty span { font-size: var(--t1); }
+
+:focus-visible { outline: var(--stroke) solid var(--accent); outline-offset: var(--stroke); }
+
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes popin { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes nudge { 0% { transform: translateX(-4px); } 25% { transform: translateX(4px); } 50% { transform: translateX(-2px); } 75% { transform: translateX(2px); } 100% { transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

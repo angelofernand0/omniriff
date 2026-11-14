@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en" data-riff="portraits">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OmniRiff · Brand sheet</title>
+<link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="brand.css">
+<link rel="stylesheet" href="riff.css">
+<style>
+  body { height: auto; }
+  .sheet { max-width: 1160px; margin: 0 auto; padding: 32px 24px 96px; display: flex; flex-direction: column; gap: 48px; }
+  .sheet-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 24px; border-bottom: 2px solid var(--line); }
+  .sheet-head p { color: var(--muted); max-width: 46ch; }
+  .sheet-head a { color: var(--accent); }
+  section { display: flex; flex-direction: column; gap: 16px; }
+  .note { color: var(--muted); font-size: var(--t1); max-width: 72ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch; }
+  .tile { display: flex; flex-direction: column; gap: 12px; padding: 24px; min-width: 0; }
+  .tile.fill { flex: 1 1 280px; align-items: center; justify-content: center; min-height: 176px; }
+  .tile.light { background: var(--text); border-color: var(--text); }
+  .tile.pink { background: var(--accent); border-color: var(--accent); }
+  .tile img { image-rendering: pixelated; display: block; }
+  .cap { font-size: var(--t1); color: var(--muted); }
+  .light .cap, .pink .cap { color: var(--accent-ink); }
+  .sw { flex: 1 1 152px; padding: 0; }
+  .sw i { display: block; height: 72px; }
+  .sw div { padding: 12px; display: flex; flex-direction: column; gap: 4px; font-size: var(--t1); }
+  .sw b { font: var(--p1)/1 var(--font-pixel); font-weight: 400; }
+  .sw span { color: var(--muted); }
+  .type { display: grid; grid-template-columns: 136px 1fr; gap: 12px 24px; align-items: baseline; padding: 24px; }
+  .type > span { color: var(--muted); font-size: var(--t1); }
+  .px { font-family: var(--font-pixel); line-height: 1; }
+  table { border-collapse: collapse; width: 100%; font-size: var(--t1); }
+  th, td { text-align: left; padding: 10px 12px; border: 2px solid var(--line); vertical-align: top; }
+  th { font: var(--p1)/1 var(--font-pixel); font-weight: 400; color: var(--muted); background: var(--bg-bar); }
+  td.no { color: var(--faint); text-decoration: line-through; }
+  td.yes { color: var(--text); }
+  .parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .parts .tile { justify-content: space-between; }
+  .icons { display: flex; flex-wrap: wrap; gap: 16px; }
+  .icons .tile { align-items: center; width: 120px; padding: 16px; color: var(--text); }
+  .riffs { display: grid; grid-template-columns: repeat(auto-fit, minmax(144px, 1fr)); gap: 16px; }
+  .riffs .tile { align-items: center; text-align: center; padding: 24px 12px 16px; }
+  .riffs b { font: var(--p1)/1 var(--font-pixel); font-weight: 400; }
+  .scale { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+  @media (max-width: 560px) { .type { grid-template-columns: 1fr; } .px.huge { font-size: var(--p5) !important; } }
+</style>
+</head>
+<body>
+<main class="sheet">
+
+  <header class="sheet-head">
+    <div class="logo x3"><span data-logo="lockup"></span></div>
+    <p>Brand sheet. The rules are in <code>BRAND_SPEC.md</code>; this page shows them built. <a href="./">Open the dashboard</a></p>
+  </header>
+
+  <section>
+    <h2 class="label"><span class="n">00</span> LOGO</h2>
+    <div class="row">
+      <div class="panel tile fill"><div class="logo x6"><span data-logo="lockup"></span></div><span class="cap">Lockup, x6. Mark + wordmark.</span></div>
+    </div>
+    <div class="row">
+      <div class="panel tile fill"><div class="scale"><img src="brand/mark.svg" width="128" height="128" alt=""><img src="brand/mark.svg" width="64" height="64" alt=""><img src="brand/mark.svg" width="32" height="32" alt=""><img src="brand/mark.svg" width="16" height="16" alt=""></div><span class="cap">Mark at x8, x4, x2, x1. Whole multiples of 16 only.</span></div>
+      <div class="panel tile fill light"><img src="brand/logo-on-light.svg" width="272" height="64" alt="OmniRiff logo on light"><span class="cap">On light</span></div>
+      <div class="panel tile fill pink"><img src="brand/app-icon.svg" width="96" height="96" alt="OmniRiff app icon"><span class="cap">App icon</span></div>
+    </div>
+    <p class="note">The mark is Riff, the coach, drawn on a 16-cell grid: a ridged knob with eyes. Keep one mark-width of clear space around the lockup. Never stretch it, round it, smooth it, recolour the eyes or set the wordmark in a font.</p>
+  </section>
+
+  <section>
+    <h2 class="label"><span class="n">01</span> COLOUR</h2>
+    <div class="row" id="swatches"></div>
+    <p class="note">Pink is the only brand colour and it means one thing: alive. The loop is playing, the hand has the control, the coach is awake. Red, amber and green are signals with one job each. Nothing else gets a colour.</p>
+  </section>
+
+  <section>
+    <h2 class="label"><span class="n">02</span> TYPE</h2>
+    <div class="panel type">
+      <span>p6 · 112 · value</span><div class="px huge" style="font-size:var(--p6)">79%</div>
+      <span>p4 · 48 · state</span><div class="px" style="font-size:var(--p4);color:var(--accent)">PLAY</div>
+      <span>p3 · 32 · name</span><div class="px" style="font-size:var(--p3)">FILTER</div>
+      <span>p2 · 24</span><div class="px" style="font-size:var(--p2)">LOOP 4.0 S</div>
+      <span>p1 · 16 · label</span><div class="px" style="font-size:var(--p1);color:var(--muted)">01 LOOP · ENGINE LIVE</div>
+      <span>t3 · 20 · coach line</span><div style="font-size:var(--t3);font-weight:600">Bar 2 is late. Looping it.</div>
+      <span>t2 · 16 · hint</span><div>Press pedal to record</div>
+      <span>t1 · 14 · detail</span><div style="font-size:var(--t1);color:var(--muted)">Low-pass 2681 Hz · xruns 0 · clipped 0</div>
+    </div>
+    <p class="note">Silkscreen for anything the machine prints: states, names, numbers, labels. Sizes are multiples of 8 so every stroke lands on a whole pixel. JetBrains Mono for sentences. Both ship in <code>fonts/</code>, so the screen looks the same with no internet.</p>
+  </section>
+
+  <section>
+    <h2 class="label"><span class="n">03</span> VOICE</h2>
+    <table>
+      <tr><th>Where</th><th>Not this</th><th>This</th></tr>
+      <tr><td>Loop hint</td><td class="no">Tap the pedal to start recording!</td><td class="yes">Press pedal to record</td></tr>
+      <tr><td>No engine</td><td class="no">Oops, we lost the connection…</td><td class="yes">NO ENGINE · RETRYING</td></tr>
+      <tr><td>Pedal status</td><td class="no">serial disabled</td><td class="yes">PEDAL · NO PORT</td></tr>
+      <tr><td>Empty loop</td><td class="no">You haven't recorded anything yet</td><td class="yes">NO LOOP · Press pedal. Play. Press again.</td></tr>
+      <tr><td>Coach cue</td><td class="no">Great job! Maybe try keeping your hand moving a bit more?</td><td class="yes">Your hand stops at the change. Keep it swinging.</td></tr>
+      <tr><td>Coach result</td><td class="no">Awesome, you nailed it!!</td><td class="yes">Change landed. 4 of 4.</td></tr>
+    </table>
+    <p class="note">Written like the legend on a pedal: label first, verb first, a number where there is one. No exclamation marks, no apologies, no "please". The coach gets one sentence for the cause and one for the fix.</p>
+  </section>
+
+  <section>
+    <h2 class="label"><span class="n">04</span> PARTS</h2>
+    <div class="parts">
+      <div class="panel tile"><div style="display:flex;flex-direction:column;gap:12px">
+        <span class="led on"><i></i><b>ENGINE</b><span>LIVE</span></span>
+        <span class="led warn"><i></i><b>ENGINE</b><span>STALE</span></span>
+        <span class="led hot"><i></i><b>CAM</b><span>PINCH</span></span>
+        <span class="led"><i></i><b>PEDAL</b><span>OFF</span></span></div><span class="cap">LED: one per subsystem</span></div>
+      <div class="panel tile"><div style="display:flex;gap:8px;flex-wrap:wrap"><span class="chip">BYPASS</span><span class="chip">REPLAY 3/12</span></div><span class="cap">Chip: a mode that changes what you hear or trust</span></div>
+      <div class="panel tile"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="key" type="button"><kbd>L</kbd>LOOP</button><button class="key sent" type="button"><kbd>B</kbd>BYPASS</button><button class="key" type="button" disabled>NO ENGINE</button></div><span class="cap">Key: travels 4 px, lights pink when the engine takes it</span></div>
+      <div class="panel tile"><label class="fader"><span>FILTER</span><output>64%</output><input type="range" min="0" max="1" step="0.01" value="0.64" style="--v:64%"></label><span class="cap">Fader</span></div>
+      <div class="panel tile"><div><span class="stamp" style="color:var(--accent);display:inline-block;font-size:var(--p3)">LOOP 4.0S</span></div><span class="cap">Stamp: printed on the thing that changed</span></div>
+      <div class="panel tile"><div class="empty"><i data-icon="pedal" class="x4"></i><b>NO LOOP</b><span>Press pedal. Play. Press again.</span></div><span class="cap">Empty state: icon, label, one instruction</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="label"><span class="n">05</span> ICONS</h2>
+    <div class="icons" id="icons"></div>
+    <p class="note">Six icons, eight by eight cells, one colour, drawn in <code>brand.js</code>. Shown at x8 and x2. One icon per module or input; no icon without a label beside it.</p>
+  </section>
+
+  <section>
+    <h2 class="label"><span class="n">06</span> RIFF, THE COACH</h2>
+    <div class="riffs" id="riffs"></div>
+    <p class="note">Riff is the only round thing on the screen and the only thing that moves smoothly. The machine is square and moves in steps; the teacher is alive. Riff has eyes and no mouth: what it says is printed beside it. It turns like a knob when it changes a control, and it only moves when the coach is doing something. These are still portraits. <a href="./?coach=preview" style="color:var(--accent)">Watch the scripted preview</a> on the dashboard.</p>
+  </section>
+
+</main>
+<script src="brand.js"></script>
+<script src="riff.js"></script>
+<script>
+  OmniBrand.mount();
+  const css = getComputedStyle(document.documentElement);
+  const SW = [['--accent', 'PINK', 'alive: playing, engaged, coach'], ['--rec', 'RED', 'recording, clipping'], ['--warn', 'AMBER', 'bypass, stale, replay, preview'], ['--ok', 'GREEN', 'connected and current'],
+    ['--text', 'TEXT', 'values, names'], ['--muted', 'MUTED', 'labels, hints'], ['--faint', 'FAINT', 'index numbers, off legends'], ['--dim', 'DIM', 'unplayed loop'],
+    ['--off', 'OFF', 'unlit block'], ['--line-2', 'LINE 2', 'raised border'], ['--panel', 'PANEL', 'module'], ['--bg', 'BG', 'page']];
+  document.getElementById('swatches').innerHTML = SW.map(([v, n, use]) =>
+    `<div class="panel sw"><i style="background:var(${v})"></i><div><b>${n}</b><span>${css.getPropertyValue(v).trim()}</span><span>${use}</span></div></div>`).join('');
+  document.getElementById('icons').innerHTML = Object.keys(OmniBrand.ICONS).map((k) =>
+    `<div class="panel tile"><i data-icon="${k}" class="x8"></i><span style="display:flex;gap:8px;align-items:center"><i data-icon="${k}"></i><span class="cap">${k}</span></span></div>`).join('');
+  OmniBrand.mount(document.getElementById('icons'));
+  const USE = { asleep: 'No coach running', idle: 'Awake, waiting for a take', listening: 'You are playing', thinking: 'Reading the take', speaking: 'Giving one cue', pointing: 'Operating a control', pleased: 'The drill passed' };
+  const riffs = document.getElementById('riffs');
+  for (const s of OmniRiff.states) {
+    const t = document.createElement('div');
+    t.className = 'panel tile';
+    t.appendChild(OmniRiff.portrait(s, 96));
+    t.insertAdjacentHTML('beforeend', `<b>${s.toUpperCase()}</b><span class="cap">${USE[s]}</span>`);
+    riffs.appendChild(t);
+  }
+</script>
+</body>
+</html>

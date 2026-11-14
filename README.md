@@ -2,6 +2,10 @@
 
 **Never put the guitar down.** OmniRiff lets a guitarist shape their sound with a pinch of the hand and a tap of the foot, live, without taking their hands off the strings. HackPrinceton Fall 2026.
 
+![The OmniRiff dashboard: loop, tone, hand and coach modules](docs/img/dashboard.png)
+
+*The dashboard running on the simulator (synthetic guitar and a scripted hand, no hardware). Brand rules: [BRAND_SPEC.md](BRAND_SPEC.md).*
+
 **Team board:** https://github.com/angelofernand0/omniriff/issues/1
 
 ## What it does

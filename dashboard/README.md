@@ -2,7 +2,7 @@
 
 Owner: SM's Claude. An optional browser page. It reads engine state (`protocol/state.schema.json`) from `ws://127.0.0.1:47801` and sends v1 control envelopes back on the same socket as `source: "dashboard"`. It processes no audio. The instrument works with this page closed.
 
-Plain HTML/CSS/JS, no build step. The design language is in [DESIGN.md](DESIGN.md).
+Plain HTML/CSS/JS, no build step, no network requests (fonts are local). The brand rules are in [BRAND_SPEC.md](../BRAND_SPEC.md), the page design in [DESIGN.md](DESIGN.md), and the built brand sheet at `/brand.html`.
 
 ## Run
 
@@ -26,12 +26,13 @@ python -m tools.sim run --demo
 
 ## What it shows
 
-- **Header:** connection (LIVE / STALE / OFFLINE), bypass, input meter in dB with peak hold and clip light, output meter.
-- **Top third:** looper state (READY / REC / PLAY), loop length, and the loop waveform with playhead.
-- **Bottom two thirds:** filter and reverb cards. When the hand camera is actively sending, the moving effect takes over the whole zone.
-- **Hand view (side column, top):** the tracked hand's 21 joints from vision's optional feed (`ws://127.0.0.1:47802`, `protocol/hand.schema.json`), mirrored and zoomed to follow the hand. Pink with the pinch boxed and a value rail while the clutch is engaged; grey "HAND SEEN" otherwise (not "armed": vision may be waiting for an open-hand re-arm); "NO HAND" / "NO FEED". Frames are aged by browser receive time and cleared after 500 ms or on disconnect. `?hand=off` disables it, `?hand=ws://...` overrides it.
-- **Side column:** hand cam and pedal status. "Manual controls" (loop, bypass, two sliders) is collapsed by default.
-- **Footer:** xruns, clipped samples, event counters.
-- **Juice** (`juice.js`): loop stamps and flashes, live filter/reverb graphs, an offline screen, and keys `F` fullscreen / `L` loop / `B` bypass. Display only. `?juice=off` disables it. Details in [DESIGN.md](DESIGN.md#juice-juicejs-juicecss).
+- **Faceplate:** logo, one LED each for ENGINE (LIVE / STALE / OFFLINE), CAM, PEDAL and COACH, the REPLAY and BYPASS chips, and the meter bridge (input over output, dB, peak hold, clip light).
+- **01 LOOP:** state (READY / REC / PLAY), loop length, one hint, and the loop waveform with a playhead and a tick per second.
+- **02 TONE:** filter and reverb cards with each effect's curve. When the hand camera is actively sending, the moving effect takes over the whole zone.
+- **03 HAND:** the tracked hand's 21 joints from vision's optional feed (`ws://127.0.0.1:47802`, `protocol/hand.schema.json`), mirrored and zoomed to follow the hand. Pink with the pinch boxed and a value rail while the clutch is engaged; `SEEN` otherwise (not "armed": vision may be waiting for an open-hand re-arm); `NO HAND` / `NO CAMERA`. Frames are aged by browser receive time and cleared after 500 ms or on disconnect. `?hand=off` disables it, `?hand=ws://...` overrides it.
+- **04 COACH:** the dock for Riff, the coach character. **Design only: there is no AI behind it yet**, so it reads `COACH OFF` with Riff asleep. `?coach=preview` plays a scripted tour of the character's states, labelled `SCRIPTED PREVIEW` on screen. `?coach=off` hides it.
+- **05 MANUAL:** loop and bypass keys and two faders, closed by default.
+- **Footer:** xruns, clipped samples, event counters, and the keys `F` fullscreen / `L` loop / `B` bypass.
+- **Feedback** (`juice.js`): loop stamps, live filter/reverb graphs, the offline screen. Display only. `?juice=off` disables it. Details in [DESIGN.md](DESIGN.md#feedback-layer-juicejs).
 
 Sequence numbers start at the wall clock in ms, so a page reload never repeats one. Run one control dashboard at a time (see `engine/README.md`).
