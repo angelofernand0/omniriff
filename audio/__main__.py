@@ -19,6 +19,7 @@ import time
 from .engine import Engine, EngineConfig
 from .fileio import read_wav, write_test_wav, write_wav
 from .levels import analyze_levels
+from .takes import TakeWriter
 from .offline import render, sweep_value
 
 KEYS = "keys: b=bypass  l=loop  f <0..1>=filter  r <0..1>=reverb  s=status  q=quit"
@@ -97,6 +98,7 @@ def main(argv=None) -> int:
     p.add_argument("--sweep", type=float, metavar="SECONDS", help="automate a filter sweep with this period")
     p.add_argument("--reverb", type=float, default=0.0, help="initial reverb amount 0..1")
     p.add_argument("--loop-at", default="", help="file modes: comma-separated loop toggle times (s)")
+    p.add_argument("--take-dir", metavar="DIR", help="save each finished loop take as WAV + JSON (practice coach input)")
     p.add_argument("--status-every", type=float, default=0.0, help="live modes: print levels every N s")
     a = p.parse_args(argv)
 
@@ -113,7 +115,13 @@ def main(argv=None) -> int:
         data, sr = read_wav(a.input_wav)
         engine = Engine(EngineConfig(samplerate=sr, input_gain_db=a.gain_db, gate_open_db=a.gate_db))
         engine.set_reverb(a.reverb)
-        out = render(engine, data.mean(axis=1), a.blocksize, a.out_channels, a.sweep, _parse_times(a.loop_at))
+        takes = TakeWriter(engine, a.take_dir) if a.take_dir else None
+        if takes:
+            takes.directory.mkdir(parents=True, exist_ok=True)
+        out = render(engine, data.mean(axis=1), a.blocksize, a.out_channels, a.sweep, _parse_times(a.loop_at),
+                     on_block=takes.poll if takes else None)
+        if takes:
+            print(f"saved {len(takes.saved)} take(s) to {takes.directory}", file=sys.stderr)
         write_wav(a.output_wav, out, sr)
         print(json.dumps(engine.snapshot(), indent=1))
         return 0
@@ -165,12 +173,16 @@ def main(argv=None) -> int:
         workers.append(threading.Thread(target=_status, args=(engine, a.status_every, stop), daemon=True))
     for w in workers:
         w.start()
+    takes = TakeWriter(engine, a.take_dir).start() if a.take_dir else None
     try:
         target()
     except KeyboardInterrupt:
         pass
     finally:
         stop.set()
+        if takes:
+            takes.stop()
+            print(f"saved {len(takes.saved)} take(s) to {takes.directory}", flush=True)
     print(json.dumps(engine.snapshot(), indent=1))
     return 0
 
