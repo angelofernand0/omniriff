@@ -107,7 +107,11 @@ def inspect_wav(path, *, duration=None, analysis=False):
     path=Path(path)
     if path.stat().st_size>MAX_AUDIO_BYTES:
         raise ValueError('WAV exceeds 128 MiB')
-    with wave.open(str(path),'rb') as info:
+    try:
+        reader=wave.open(str(path),'rb')
+    except EOFError as exc:
+        raise ValueError('WAV header is truncated') from exc
+    with reader as info:
         frames,rate,channels=info.getnframes(),info.getframerate(),info.getnchannels()
         if (channels not in (1,2) or info.getcomptype()!='NONE' or
             info.getsampwidth() not in (1,2,3,4) or not 8000<=rate<=96000 or frames<1):
@@ -161,7 +165,10 @@ def analyze_capture(take, *, sidecar=None, hand_log=None):
         hands.update(take_id=take_id,started_unix_ms=start,ended_unix_ms=end,
                      duration_s=(end-start)/1000,available=False,coverage=0.,
                      source='vision.eyes/unavailable',summary='No hand log supplied; wrist evidence unavailable.')
-    ears=asdict(analyze_take(take,sidecar))
+    try:
+        ears=asdict(analyze_take(take,sidecar))
+    except EOFError as exc:
+        raise ValueError('WAV became truncated during analysis') from exc
     validate(ears,hands)
     return ears,hands
 
