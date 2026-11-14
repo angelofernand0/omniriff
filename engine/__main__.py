@@ -33,10 +33,21 @@ def main(argv=None):
     p.add_argument('--session-log', metavar='FILE.jsonl', help='log accepted controls + 2 Hz state to a new JSONL file (no audio)')
     p.add_argument('--take-dir', help='save each finished loop take as WAV + JSON for the practice coach (audio/takes.py)')
     p.add_argument('--check', action='store_true', help='preflight: packages, Focusrite, Arduino, free ports; opens no audio')
+    p.add_argument('--open-test', type=float, metavar='SECONDS', help='with --check only: explicitly open selected audio devices, send silence and report input peak/xruns')
     a = p.parse_args(argv)
+    if a.open_test is not None and (not a.check or a.headless):
+        p.error('--open-test requires --check and cannot be combined with --headless')
     if a.check:
-        from .check import main_check
-        return main_check(udp_port=a.udp_port, ws_port=a.ws_port, input_channel=a.input_channel)
+        from .check import OpenTest, main_check
+        options = None
+        if a.open_test is not None:
+            try:
+                options = OpenTest(a.open_test, in_dev=a.in_dev if a.in_dev is not None else 'Focusrite',
+                                   out_dev=a.out_dev if a.out_dev is not None else 'Focusrite', hostapi=a.hostapi,
+                                   samplerate=a.samplerate, blocksize=a.blocksize, input_channel=a.input_channel,
+                                   out_channels=a.out_channels, latency=a.latency, exclusive=a.exclusive)
+            except ValueError as exc: p.error(str(exc))
+        return main_check(udp_port=a.udp_port, ws_port=a.ws_port, input_channel=a.input_channel, open_test=options)
     if min(a.samplerate, a.blocksize, a.input_channel, a.out_channels, a.stale_ms) <= 0:
         p.error('rates, sizes, channels and stale window must be positive')
     if a.duration is not None and a.duration <= 0: p.error('duration must be positive')

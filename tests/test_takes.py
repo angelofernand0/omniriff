@@ -92,6 +92,16 @@ class TakeCaptureTests(unittest.TestCase):
             self.assertAlmostEqual(meta["seconds"], 2.0, delta=0.25)
             self.assertLessEqual(abs(meta["frames"] - meta["seconds"] * meta["samplerate"]), 3)  # seconds is rounded
 
+    def test_write_take_matches_the_takewriter_format(self):
+        from audio.takes import write_take
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_take(Path(tmp) / "rec.wav", sine(220, 0.5), SR, 1000.0)
+            meta = json.loads(path.with_suffix(".json").read_text())
+            self.assertEqual((meta["take_id"], meta["frames"], meta["source"]), ("rec", SR // 2, "record"))
+            self.assertEqual(meta["ended_unix_ms"], 1500)
+            data, sr = read_wav(path)
+            self.assertEqual((len(data), sr), (SR // 2, SR))
+
 
 if __name__ == "__main__":
     unittest.main()

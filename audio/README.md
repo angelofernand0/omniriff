@@ -46,7 +46,13 @@ ASIO: the standard `sounddevice` wheel's PortAudio may not expose ASIO devices. 
 
 ## Take capture (practice coach input)
 
+**Plain recording:** `python -m audio --record takes/strum-1.wav --seconds 20 --in <device> --input-channel <n>` records the input with **no playback** (no feedback howl from a laptop mic) into the same WAV + sidecar format, ready for `python -m tools.ears`. It refuses to overwrite.
+
 `--take-dir DIR` on `python -m audio` or `python -m engine` saves each finished loop recording as `take-<time>-<n>.wav` (16-bit, mono, the **dry post-gain input** the looper recorded, with its 5 ms seam fades) plus `take-<time>-<n>.json`. The sidecar has version 1, take_id, wav, samplerate, frames, seconds, started_unix_ms and ended_unix_ms (wall clock, to line up with vision's hand data), source "loop", signal, input_gain_db, gate_open_db and seam_fade_ms. The audio callback only bumps counters. A background thread copies and writes, and skips (counts as missed) a take whose buffer was already overwritten by a new recording. Headless mode runs slower than real time, so headless takes are shorter than the wall-clock window.
+
+## Recent input for the live layer (coach piece G)
+
+`engine.snapshot_input(seconds=None) -> (mono float32, frames_written, samplerate)` returns a copy of the last `seconds` (up to `EngineConfig.input_history_seconds`, default 2.5) of dry input (post-gain, pre-gate), from any non-audio thread. It's lock-free: the callback only copies its block into a preallocated ring (measured +0.008 ms per 128-frame block on an M1 Pro, within run-to-run noise), and the reader retries if the window was overwritten mid-copy. `frames_written` is the running input-frame count at the end of the copy, for lining snapshots up. Zero-padded at start-up until the ring fills. Polling it at ~10 Hz and running `tools.ears.detect_onsets` on it is engine/'s job (R22).
 
 ## Interface for engine/
 

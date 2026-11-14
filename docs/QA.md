@@ -33,6 +33,20 @@ No. It's pretrained, and we say so. Our work is the real-time control system aro
 **Where's the "agent" in the coach?** *(deepagents track)*
 [If shipped: the deep agent plans a drill, reads take timing ("Ears") and hand-movement reports ("Eyes"), and acts on the rig through the same validated control path as every other source (`source: "coach"`). The instrument never waits on it.] If not shipped, say what exists: take capture, hand-movement analysis and the coach control source are built and tested; the agent core is in progress.
 
+## The coach
+
+**What does a coaching session cost, and how slow is it?**
+[Measured: $ per take and seconds from take end to diagnosis, from coach/workspace/usage.jsonl.] The budget is capped (it refuses new runs above $8 and says it's out of credit). The instrument never waits on it: the coach works between takes, not inside the audio path.
+
+**What happens to my recordings?**
+Takes and the practice journal stay on the laptop (`runs/takes`, `coach/workspace/`; both git-ignored). Only the coach's text analysis requests go to the model API; we don't upload video, and camera frames never leave the machine. [Confirm what the coach actually sends once it ships.]
+
+**Can the AI mess up my sound mid-song?**
+No. It proposes a change, and nothing happens until you tap the pedal or press Y. Its actions go through the same validation gate as every other control (stale, duplicate and malformed actions are dropped), and bypass is always yours.
+
+**How do you know the diagnosis is right?**
+Every claim comes from a measured number: Ears' gaps from the audio, Eyes' stalls from the hand. The coach shows before/after numbers from your own takes. [Report how it did on the planted-mistake take and on real takes.] No number, no claim.
+
 ## Impact
 
 **Who is this for?** *(Amazon / accessibility)*

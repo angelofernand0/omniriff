@@ -92,6 +92,33 @@ class GateTests(unittest.TestCase):
         self.assertTrue(self.audio.snapshot()['bypass'])
         self.assertEqual(self.router.counts['accepted'], 1)
 
+    def test_coach_parameters_share_safety_gate_and_latest_value_delivery(self):
+        for value, reason in [(event(source='coach',timestamp_ms=10251),'future'),
+                              (event(source='coach',value=2),'invalid'),
+                              (event(source='coach',confidence=.1),'low_confidence')]:
+            self.assertFalse(self.send(value))
+            self.assertEqual(self.router.counts[reason],1)
+        self.assertFalse(self.send(event(source='coach')))  # low-confidence identity consumed
+        for seq in range(1,101):
+            self.assertTrue(self.send(event(seq,source='coach',value=seq/200)))
+        process(self.audio)
+        self.assertEqual(self.audio.snapshot()['filter']['target'],.5)
+        self.assertEqual(self.router.sources['coach']['accepted'],100)
+        self.assertEqual(self.router.counts['duplicate'],1)
+
+    def test_coach_action_burst_is_rejected_without_silently_overwriting(self):
+        accepted = []
+        for seq in range(33):
+            accepted.append(self.send(dict(version=1,source='coach',seq=seq,timestamp_ms=self.now,
+                                           type='action',control='bypass' if seq==0 else 'loop')))
+        self.assertEqual(accepted,[True]*32+[False])
+        self.assertEqual(self.router.counts['audio_rejected'],1)
+        process(self.audio,5)
+        self.assertTrue(self.audio.snapshot()['bypass'])  # first queued action survived
+        self.assertTrue(self.audio.toggle_bypass())
+        process(self.audio)
+        self.assertFalse(self.audio.snapshot()['bypass'])
+
     def test_replay_loader_rejects_invalid_scripts_before_startup(self):
         import tempfile
         from engine.replay import Replay
@@ -193,6 +220,70 @@ class NetworkTests(unittest.IsolatedAsyncioTestCase):
                 self.assertGreater(self.audio.snapshot()['blocks'], before)
         finally:
             stop.set(); worker.join(1)
+
+    async def test_coach_process_death_keeps_audio_manual_and_vision_working(self):
+        import sys
+        import threading
+        from websockets.asyncio.client import connect
+        stop = threading.Event()
+        def render():
+            while not stop.wait(.003): process(self.audio)
+        worker = threading.Thread(target=render)
+        worker.start()
+        child = None
+        async def until(predicate):
+            deadline = asyncio.get_running_loop().time()+5
+            while not predicate():
+                if asyncio.get_running_loop().time()>=deadline:
+                    self.fail(str(self.runtime.snapshot()))
+                await asyncio.sleep(.01)
+        # A separate sender models coach failure without an API key or model.
+        script = '''
+import json,socket,sys,time
+sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+seq=0
+while True:
+    event=dict(version=1,source='coach',seq=seq,timestamp_ms=int(time.time()*1000))
+    if seq==0: event.update(type='action',control='loop')
+    else: event.update(type='parameter',control='filter',value=.31,confidence=.9)
+    sock.sendto(json.dumps(event).encode(),('127.0.0.1',int(sys.argv[1])))
+    seq+=1
+    time.sleep(.02)
+'''
+        try:
+            child = await asyncio.create_subprocess_exec(sys.executable,'-c',script,str(self.runtime.udp_port),
+                                                         stdout=asyncio.subprocess.DEVNULL,stderr=asyncio.subprocess.DEVNULL)
+            await until(lambda: self.runtime.router.sources.get('coach',{}).get('accepted',0)>=4
+                        and self.audio.snapshot()['loop']['state']=='recording')
+            child.kill()
+            await asyncio.wait_for(child.wait(),2)
+            await asyncio.sleep(.05)  # let any already-delivered UDP datagrams drain
+            coach_accepted = self.runtime.router.sources['coach']['accepted']
+            before = self.audio.snapshot()['blocks']
+            await asyncio.sleep(.05)
+            self.assertGreater(self.audio.snapshot()['blocks'],before)
+            self.assertEqual(self.runtime.router.sources['coach']['accepted'],coach_accepted)
+            self.assertEqual(self.audio.snapshot()['loop']['state'],'recording')
+            self.assertEqual(self.audio.snapshot()['filter']['target'],.31)
+            async with connect(f'ws://127.0.0.1:{self.runtime.ws_port}',origin='http://localhost:8080') as ws:
+                await ws.send(json.dumps(dict(version=1,source='dashboard',seq=0,timestamp_ms=self.runtime.router.clock(),
+                                              type='action',control='bypass')))
+                await until(lambda: self.audio.snapshot()['bypass'])
+            with socket.socket(socket.AF_INET,socket.SOCK_DGRAM) as vision:
+                vision.sendto(json.dumps(event(timestamp_ms=self.runtime.router.clock(),control='reverb',value=.17)).encode(),
+                              ('127.0.0.1',self.runtime.udp_port))
+            await until(lambda: self.audio.snapshot()['reverb']['target']==.17)
+            state = self.runtime.snapshot()
+            Draft202012Validator(json.loads((ROOT/'protocol/state.schema.json').read_text())).validate(state)
+            self.assertEqual(state['controls']['accepted'],coach_accepted+2)
+            self.assertTrue(all(count==0 for reason,count in state['controls'].items() if reason!='accepted'))
+            self.assertEqual(state['adapters']['udp']['status'],'running')
+            self.assertEqual(state['adapters']['websocket']['status'],'running')
+        finally:
+            if child is not None and child.returncode is None:
+                child.kill()
+                await asyncio.wait_for(child.wait(),2)
+            stop.set(); worker.join(2)
 
     async def test_serial_device_failure_reopens_with_new_session(self):
         import time

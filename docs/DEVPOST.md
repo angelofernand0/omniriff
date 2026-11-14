@@ -1,59 +1,65 @@
 # Devpost draft — OmniRiff
 
-**This is a draft for Angelo to edit.** Bracketed items are placeholders to fill with **measured** results only. Don't paste unmeasured numbers. Facts are from the repo as of 2026-11-14; re-check anything that changed.
+**This is a draft for Angelo to edit.** It follows [ROADMAP.md §1](ROADMAP.md): the coach is the product. Bracketed items are placeholders for **measured** results or ship status only. Don't paste unmeasured numbers. Re-check anything that changed after 2026-11-14.
 
 ## Name and tagline
-**OmniRiff** — Never put the guitar down. Shape your sound with a pinch and a tap, while your hands stay on the strings.
+**OmniRiff** — Never put the guitar down. A guitar teacher that lives in your signal chain.
 
 ## Inspiration
-Every guitar effect asks you to take a hand off the strings or look down at a pedalboard. For players with limited mobility or dexterity, a small knob or a precise stomp can be the barrier between practicing and not. We wanted the instrument to listen to the player's body instead.
+Practising alone, you know you messed up, but not *why*. Apps score your notes against a chart. Only a teacher tells you it's because your strumming hand froze at the chord change, and lessons cost money every week. Every tool you own also makes you stop playing to use it. We wanted a teacher that hears you, sees you, and sets up the fix while your hands stay on the guitar.
 
 ## What it does
-- Guitar → Focusrite Scarlett Solo → laptop audio engine, with a low-pass sweep, reverb, a looper and click-free bypass, safely limited.
-- **Gesture control:** a pretrained hand-landmark model watches one hand. Pinch to engage, and hand height sweeps the filter (or morphs filter + reverb between scenes). Strumming without the clutch does nothing.
-- **Foot control:** an Arduino footswitch toggles the loop and bypass.
-- **Live dashboard:** levels, loop state, effect curves, sensor health and a live hand skeleton, so you can see what the rig hears and sees.
-- [**Practice coach** (if shipped): a LangChain deep agent works between takes, explains what went wrong from what the rig heard and saw, and runs the next drill.]
+- **Hears:** guitar → Focusrite Scarlett Solo → a real-time audio engine with a looper, filter, reverb and a safe limiter. Every loop you record is saved as a take, and **Ears** measures strum timing, gaps and hesitations.
+- **Sees:** a pretrained hand-landmark model watches your hands. **Eyes** spots the strumming hand stalling. The pinch gesture also lets you shape your tone without letting go.
+- **Teaches:** [if shipped] **Riff**, a coach built on a LangChain deep agent, fuses what it heard and saw to name the *cause* ("your strumming hand stops at the change"), plans a drill, and **operates the rig**: it loops the bar, goes dry, and waits for you to tap the pedal before changing anything. Your next take shows the gap shrinking, with numbers, and it remembers you next session.
+- **You stay in control:** an Arduino footswitch answers the coach ("go", "again"). The AI never changes your sound without your tap, and the music keeps playing with every sensor unplugged.
 
 ## How we built it
-- **audio/** (Python, numpy/scipy, sounddevice/PortAudio): streaming engine with a smoothed biquad low-pass, a Freeverb-style reverb (public-domain tunings), a looper, a crossfaded bypass and a peak limiter. The audio callback does no I/O, logging or blocking. Controls arrive through a non-blocking mailbox.
-- **engine/**: UDP control input, serial (Arduino) input and a WebSocket state feed. It validates every control against a versioned JSON schema and drops stale, duplicate, low-confidence and malformed events before they reach audio. The audio keeps running if any input dies. Labeled replay mode for backups.
-- **vision/**: MediaPipe Hand Landmarker (pretrained, not trained by us), a pinch clutch with hysteresis, two-hand tracking, smoothing/deadband and a rate-bounded event stream. [Scene Morph, setlists, StrumGuard/DualAxis if merged.]
-- **dashboard/**: a browser UI on WebSocket state, with STALE/OFFLINE handling and the hand view.
+- **audio/** (Python, numpy/scipy, sounddevice/PortAudio): streaming engine with a smoothed biquad low-pass, a Freeverb-style reverb (public-domain tunings), a looper, crossfaded bypass, optional noise gate and a peak limiter. The callback does no I/O, locks or logging. Take capture writes each finished loop to WAV + JSON off the real-time path.
+- **tools/ears**: offline strum-onset detection (3 kHz high-pass, log-energy rise, beat-safe peak picking) → TakeReport (onsets, intervals, hesitation/late/early findings).
+- **vision/**: MediaPipe Hand Landmarker (pretrained, not trained by us), a pinch clutch with hysteresis, hand tracking, smoothing/deadband, a rate-bounded control stream, a live hand view, and Eyes (hand-movement analysis → HandReport).
+- **engine/**: UDP/serial/WebSocket adapters. Every control from vision, pedal, dashboard or coach is validated against a versioned JSON schema, and stale, duplicate, low-confidence and malformed events are dropped. Includes a preflight check, a one-command launcher (dashboard + vision + coach), a session log and a labeled replay mode.
+- **coach/** [if shipped]: a deep agent (deepagents) with a visible todo plan, Ears/Eyes subagents, drills as skills, a practice journal and player memory on the filesystem, and human-in-the-loop approval via the pedal. Rig changes go through the same validated control path as `source: "coach"`.
+- **dashboard/**: browser UI with Riff, the loop, effect curves, sensor health and the hand skeleton, all built to one brand spec.
 - **firmware/arduino/**: a debounced footswitch sending compact JSON lines over serial.
-- **tools/**: a simulator, a virtual guitar (Karplus-Strong physical model), latency measurement, an acceptance test suite and [Tone Match].
-- Built by a four-person team, each directing AI coding agents (Claude Code, Codex, Gemini) that coordinated through a GitHub-issue message board, with owner-scoped branches and PR review.
+- Built by a four-person team, each directing AI coding agents (Claude Code, Codex, Gemini) that coordinated through a GitHub-issue message board, with owner-scoped folders, versioned contracts and CI-gated PRs.
 
 ## Measured results (fill in on the Windows laptop)
 - Guitar-to-output latency: [median ± spread ms] at [block size / host API], via `tools.latency` loopback, [N] clicks
 - Dropouts over a 5-minute play test: [xruns]
+- Ears on real takes: [strums detected / actual; the stumble found at the right time?]
+- Coach: [diagnosis on the planted-mistake take; before/after gap ms; cost per take]
 - Gesture control update rate: [Hz measured]
 - Engine CPU per 128-frame block: ~0.25 ms mean on an Apple M1 Pro (≈9% of the real-time budget), [Windows number]
 
 ## Challenges
-Keeping audio real-time in Python (preallocated buffers, no work in the callback). Making gesture control safe: the strumming hand must never sweep the filter, so we added a clutch, confidence gating and stale-event rejection. Coordinating many agents in parallel without colliding.
+Real-time audio in Python (preallocated buffers, nothing slow in the callback). Detecting strums on a ringing guitar: our first detector missed soft upstrokes and counted a sustained chord's overtone beating as strums, so we rebuilt it around the pick attack. Keeping an AI agent safe on a live instrument: it proposes, the player approves with a foot tap, and every action goes through the same validation gate as the pedal. Coordinating many agents in parallel without colliding.
 
 ## Accomplishments
-[Fill in after the hardware run.] The whole control path is verified in a real browser: gesture/pedal/dashboard controls → engine → audio state → dashboard. Every input can fail without stopping the music.
+[Fill in after the hardware run.] Every input can fail without stopping the music. The full control path is verified in a real browser, and the whole pipeline (take → Ears → report) runs end to end.
 
 ## What we learned / What's next
-[Fill in.] Next: more expressive gestures mapped to real DSP (e.g. an audio-rate LFO for vibrato rather than control-rate wobble), user studies with players with limited mobility, and a standalone low-latency build.
+[Fill in.] Next: run it with guitar teachers and their students, add audio-rate expression (vibrato as real DSP), and a standalone low-latency build.
 
 ## Built with
-python, numpy, scipy, sounddevice, portaudio, mediapipe, opencv, websockets, pyserial, jsonschema, javascript, html/css, arduino, focusrite-scarlett-solo, [langchain deepagents], [model provider if the coach ships]
+python, numpy, scipy, sounddevice, portaudio, mediapipe, opencv, websockets, pyserial, jsonschema, javascript, html/css, arduino, focusrite-scarlett-solo, [langchain deepagents], [anthropic claude, if the coach ships]
 
 ## Track angles (20 seconds each, on top of the shared demo)
-- **Entertainment & Media (main):** a new way to *perform* — the body becomes part of the instrument, live, with a loop and gesture-shaped effects.
-- **Best Physical AI:** a pretrained hand-landmark model in a real-time physical control loop with a guitar rig. AI perception drives sound safely (clutch, confidence gate, staleness rejection, manual override). The camera is the sensor, the guitar rig is the actuator.
-- **Best Hardware:** an Arduino footswitch, webcam and audio interface integrated with a real-time engine. Unplug any device mid-song and the music keeps playing.
-- **LangChain deepagents:** [if shipped] the coach is a deep agent with tools over the rig: it plans a drill, triggers loops/effects through the same validated control path, and reasons from take data. The instrument never waits on it.
-- **Amazon Practical AI:** an accessibility tool using gesture + vision. **Target user:** guitarists with limited mobility or dexterity, and any player whose hands are busy. **Use case:** control effects and looping without knobs or precise stomps. Docs: README.md, audio/README.md, engine/README.md, vision/README.md, docs/DEMO.md. **We haven't done user studies; don't claim them.**
+- **Entertainment & Media (main; see SUBMISSION.md for the Education switch rule):** practice becomes a duet with a teacher who plays the rig for you. Loop, tone and drill, hands on the strings.
+- **Education (if the team switches):** "interactive, accessible, personalized", literally. It hears and sees *you*, finds the cause, runs the drill and remembers your progress.
+- **LangChain deepagents:** [if shipped] the plan is on screen, Ears and Eyes are subagents, drills are skills, the journal and player memory live on the filesystem, and the pedal is the human-in-the-loop approval.
+- **Amazon Practical AI:** agentic (acts on the rig), adaptive (remembers you between sessions), real-world (your own takes), simple (no typing; a foot tap answers). Docs: README.md, audio/, engine/, vision/, docs/DEMO.md, docs/COACH.md.
+- **Best Physical AI:** the AI perceives through a camera and the guitar cable, then **acts** on a physical rig: looper, effects, recording. It always waits for the player's tap.
+- **Best Hardware:** footswitch + webcam + audio interface + guitar on one real-time engine. Unplug anything mid-song and the music keeps playing.
+
+## Charity (be honest)
+A teacher for players between lessons or who can't afford them, and hands-free control for players with limited dexterity. [Quote the 2–3 guitarist conversations from the venue as conversations, never as a study.] **We haven't done user studies.** If citing beginners quitting, say it's Fender's claim with no published method.
 
 ## Disclosures
-- Pretrained models: MediaPipe Hand Landmarker (Google). [Coach model/provider if used.]
-- Reused/adapted: the board helper adapted from azizu06/hackathon-agent-board. Freeverb public-domain tunings. Open-source libraries listed above.
+- Pretrained models: MediaPipe Hand Landmarker (Google). [Coach: Anthropic Claude via deepagents, if shipped.]
+- Reused/adapted: the board helper adapted from azizu06/hackathon-agent-board. Freeverb public-domain tunings. Open-source libraries listed above. Fonts under SIL OFL.
 - AI coding agents (Claude Code, Codex, Gemini) wrote much of the code under the team's direction and review.
-- Any demo audio not from the live guitar is labeled as replay/synthesis.
+- Any demo audio not from the live guitar is labeled as replay/simulation (SIM GUITAR / REPLAY on screen).
 
 ## Team (Discord)
 Angelo, SM, Joey, Aditya: handles go straight into the Devpost form (Angelo has SM's and Joey's). Kept out of this public repo.

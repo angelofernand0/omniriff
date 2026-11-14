@@ -7,6 +7,19 @@ Windows 11 laptop + charger, power strip. Scarlett Solo (3rd gen) + USB cable. G
 
 ## 1. Audio path (≈5 min)
 Once per laptop: follow the [Windows quickstart](../engine/README.md#windows-11-quickstart--scarlett-solo-3rd-gen) with **Python 3.12** (what CI tests; MediaPipe may not ship wheels for newer Pythons), then `python -m pip install -r engine/requirements.txt -r vision/requirements.txt`.
+
+Windows helpers: [setup.ps1](../scripts/windows/setup.ps1) creates/checks the Python 3.12 venv, installs engine + vision requirements and prints preflight results. [start-demo.ps1](../scripts/windows/start-demo.ps1) launches the local dashboard and rig. Both use `.venv\Scripts\python.exe` directly and leave PowerShell execution policy unchanged. **Untested on Windows; PowerShell syntax/execution has not been verified here (`pwsh` unavailable).** Run from the clone in PowerShell:
+
+Windows blocks `.ps1` files by default ("running scripts is disabled"), so start them with a **one-run bypass** that changes no system setting:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\setup.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -SerialPort COM3  # use the port --check printed; omit if no pedal
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -Headless         # alternative: silence processing, no Focusrite output
+```
+
+Run only one demo at a time. Download the hand model as described in §2 before the camera check; if it is missing, the launcher warns and starts without vision. `-Headless` skips the audio interface but still starts vision if the model is present and still opens any explicitly supplied serial port. Setup returns the preflight exit code: a device/port FAIL can mean dependencies installed successfully but the rig is not ready. Complete the live checks below before claiming hardware operation.
+
 0. `python -m engine --check`. Fix every FAIL first (it also prints the Arduino's `--serial-port`).
 1. Solo: guitar in **input 2**, **INST on**, **Direct Monitor off**, speaker or headphone volume low.
 2. `python -m audio --list-devices`. Find the Focusrite entries (WASAPI first).
@@ -34,16 +47,19 @@ Engine keys: `b` bypass, `l` loop, `f 0.3` filter, `r 0.3` reverb, `s` status, `
 - [ ] Unplug the pedal / close vision → audio keeps playing, dashboard shows it offline
 
 ## 3. The 2-minute demo (rehearse to time)
+From [ROADMAP.md §7](ROADMAP.md). The coach is the centrepiece; pedal and pinch are how player and coach share the rig.
+
 | Time | Beat |
 |---|---|
-| 0:00–0:15 | **"Never put the guitar down."** Guitarists' hands are busy; knobs and pedalboards make you stop, look down or bend over. That's harder still with limited mobility. |
-| 0:15–0:40 | **Dry guitar**, then a pedal press to start a loop. Play over it. |
-| 0:40–1:10 | **Gesture**: pinch and raise the hand, and the filter sweeps over the loop. Second control on reverb (or Scene Morph). Point at the HAND panel. |
-| 1:10–1:25 | **Dashboard**: what the rig hears and sees. Mention the coach if it's built: it listens between takes and sets the next drill. |
-| 1:25–1:50 | **Why it's reliable**: audio never waits on the camera or AI, unsafe or stale controls are dropped, and manual bypass always works. Quote the measured latency. |
-| 1:50–2:00 | One honest limitation + what's next. |
+| 0:00–0:15 | **Problem.** "Practising alone, you know you messed up but not why, and every tool makes you stop playing. Never put the guitar down." |
+| 0:15–0:35 | **The rig.** The pedal starts a loop; the pinch sweeps the filter over it. Hands never leave the guitar. |
+| 0:35–1:20 | **The teacher (the ah-ha).** Play the take with the stumble. Riff thinks (plan on screen; Ears and Eyes run), then: *"Your strumming hand stops at the change."* Riff flies to the loop, sets up the drill and waits. Tap the pedal. Play the drill. Before/after numbers appear. |
+| 1:20–1:40 | **It remembers.** Show the journal entry and its "Last time…" opening line. |
+| 1:40–2:00 | **Safe by design.** Unplug the camera: the music keeps playing; the AI never touches the sound without your tap. One honest limitation. |
 
-Keep the two-minute story to **one gesture (pinch) + one pedal + the coach**. Scene Morph, setlists, DualAxis, the gesture looper and Tone Match are for Q&A or track-specific visits. Track-specific 20-second angles are in [DEVPOST.md](DEVPOST.md). Likely judge questions with honest answers are in [QA.md](QA.md).
+If the coach isn't working on the real rig by the midnight gate, fall back to the instrument story: dry guitar → pedal loop → pinch sweep → dashboard → reliability. Show the coach only on the simulator, **labeled**. Track-specific 20-second angles are in [DEVPOST.md](DEVPOST.md). Likely judge questions with honest answers are in [QA.md](QA.md).
+
+Coach launch, once `coach/` is on main: add `--coach --hand-log runs/hand.jsonl` to the `engine.demo` command in §2 (the coach then watches the engine's takes in `runs/takes`).
 
 ## 4. If something fails at the table
 | Failure | Do this | Say this |

@@ -85,3 +85,20 @@ class TakeWriter:
         (self.directory / f"{take_id}.json").write_text(json.dumps(meta, indent=1) + "\n")
         self.saved.append(wav)
         return wav
+
+
+def write_take(path, audio, samplerate: int, started_unix_ms: float, *, source: str = "record",
+               input_gain_db: float = 0.0) -> Path:
+    """Write a standalone take (e.g. a plain recording) in the same WAV + sidecar format as TakeWriter."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_wav(path, audio, samplerate)
+    meta = {
+        "version": 1, "take_id": path.stem, "wav": path.name, "samplerate": samplerate,
+        "frames": int(len(audio)), "seconds": round(len(audio) / samplerate, 4),
+        "started_unix_ms": int(started_unix_ms), "ended_unix_ms": int(started_unix_ms + 1000.0 * len(audio) / samplerate),
+        "source": source, "signal": "dry input (recorded, no effects)", "input_gain_db": input_gain_db,
+        "gate_open_db": None, "seam_fade_ms": 0.0,
+    }
+    path.with_suffix(".json").write_text(json.dumps(meta, indent=1) + "\n")
+    return path

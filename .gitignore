@@ -13,8 +13,10 @@ build/
 .claude/settings.local.json
 .codex/
 recordings/
+coach/fixtures/generated/
 *.wav
 *.aiff
 *.mp3
 models/
 *.task
+runs/

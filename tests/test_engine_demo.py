@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import engine.demo as demo  # noqa: E402
-from engine.demo import _ws_port, main, start_vision, stop_process, vision_command  # noqa: E402
+from engine.demo import _ws_port, coach_command, main, start_vision, stop_process, vision_command  # noqa: E402
 
 
 def free_port(kind=socket.SOCK_STREAM):
@@ -86,6 +86,40 @@ class DemoLauncherTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         cmd = seen["cmd"]
         self.assertEqual(cmd[cmd.index("--port") + 1], str(udp))
+
+    def test_coach_command_shares_the_take_dir_and_hand_log(self):
+        cmd = coach_command(["--sim"], "runs/takes", "runs/hand.jsonl")
+        self.assertEqual(cmd[1:], ["-m", "coach", "--take-dir", "runs/takes", "--hand-log", "runs/hand.jsonl", "--sim"])
+        self.assertNotIn("--hand-log", coach_command([], "t", None))
+
+    def test_launcher_starts_coach_on_the_engines_take_dir(self):
+        import importlib.util
+        import tempfile
+        seen = {}
+        orig_vision, orig_coach, orig_find = demo.start_vision, demo.start_coach, importlib.util.find_spec
+        demo.start_vision = lambda cmd: seen.setdefault("vision", cmd) and None
+        demo.start_coach = lambda cmd: seen.setdefault("coach", cmd) and None
+        importlib.util.find_spec = (lambda name, *a: object() if name in ("vision.__main__", "coach.__main__")
+                                    else orig_find(name, *a))
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                takes = str(Path(tmp) / "takes")
+                ws, udp = free_port(), free_port(socket.SOCK_DGRAM)
+                rc = main(["--http-port", "0", "--coach", "--vision", "--hand-log", "h.jsonl", "--headless",
+                           "--no-keyboard", "--duration", "0.5", "--ws-port", str(ws), "--udp-port", str(udp),
+                           "--take-dir", takes])
+        finally:
+            demo.start_vision, demo.start_coach, importlib.util.find_spec = orig_vision, orig_coach, orig_find
+        self.assertEqual(rc, 0)
+        coach = seen["coach"]
+        self.assertEqual(coach[coach.index("--take-dir") + 1], takes)
+        self.assertEqual(coach[coach.index("--hand-log") + 1], "h.jsonl")
+        self.assertEqual(seen["vision"][seen["vision"].index("--hand-log") + 1], "h.jsonl")
+
+    def test_coach_without_take_dir_gets_the_default(self):
+        from engine.demo import DEFAULT_TAKE_DIR, _take_dir
+        self.assertIsNone(_take_dir(["--headless"]))
+        self.assertEqual(DEFAULT_TAKE_DIR, "runs/takes")
 
 
 if __name__ == "__main__":

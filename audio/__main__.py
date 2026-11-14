@@ -15,11 +15,12 @@ import json
 import sys
 import threading
 import time
+from pathlib import Path
 
 from .engine import Engine, EngineConfig
 from .fileio import read_wav, write_test_wav, write_wav
 from .levels import analyze_levels
-from .takes import TakeWriter
+from .takes import TakeWriter, write_take
 from .offline import render, sweep_value
 
 KEYS = "keys: b=bypass  l=loop  f <0..1>=filter  r <0..1>=reverb  s=status  q=quit"
@@ -98,6 +99,8 @@ def main(argv=None) -> int:
     p.add_argument("--sweep", type=float, metavar="SECONDS", help="automate a filter sweep with this period")
     p.add_argument("--reverb", type=float, default=0.0, help="initial reverb amount 0..1")
     p.add_argument("--loop-at", default="", help="file modes: comma-separated loop toggle times (s)")
+    p.add_argument("--record", metavar="TAKE.wav", help="record the input to a take WAV + JSON sidecar (no playback) and exit")
+    p.add_argument("--seconds", type=float, default=20.0, help="with --record: length in seconds")
     p.add_argument("--take-dir", metavar="DIR", help="save each finished loop take as WAV + JSON (practice coach input)")
     p.add_argument("--status-every", type=float, default=0.0, help="live modes: print levels every N s")
     a = p.parse_args(argv)
@@ -130,6 +133,18 @@ def main(argv=None) -> int:
 
     if a.list_devices:
         print(stream.list_devices())
+        return 0
+
+    if a.record:
+        in_dev = stream.resolve_device(a.in_dev, a.hostapi, "input")
+        path = Path(a.record)
+        if path.exists() or path.with_suffix(".json").exists():
+            raise SystemExit(f"refusing to overwrite {path}")
+        print(f"Recording {a.seconds:.0f} s from input channel {a.input_channel} (no playback)...", flush=True)
+        started = time.time() * 1000.0
+        mono = stream.record_input(in_dev, a.input_channel, a.seconds, a.samplerate)
+        write_take(path, mono, a.samplerate, started, source="record", input_gain_db=a.gain_db)
+        print(json.dumps({"saved": str(path), **analyze_levels(mono)}, indent=1))
         return 0
 
     if a.level_check is not None:
