@@ -87,6 +87,7 @@
     if (!s || s.version !== 1) return;
     state = s;
     lastFrameAt = performance.now();
+    window.dispatchEvent(new CustomEvent('omniriff:frame', { detail: s }));  // for juice.js
     const now = performance.now();
 
     // looper: build the waveform from input peaks while recording
