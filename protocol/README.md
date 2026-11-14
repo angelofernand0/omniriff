@@ -20,3 +20,7 @@ Changes to these go through issue #1. Ports can be overridden in config, but the
 **Arduino lines.** The Arduino has no wall clock, so it sends `{"seq":N,"type":"action","control":"loop"}` or `"bypass"`. The engine's serial adapter wraps each line into a full v1 envelope, adding `version`, `source: "arduino"` and the host `timestamp_ms`. A board reset starts a new session, with `seq` restarting at 0, which the adapter must handle.
 
 **Senders** must validate against `control.schema.json` before sending. **The engine** drops invalid, stale (older than 250 ms by default) and duplicate events, and counts the drops in its state.
+
+## Hand view v1 (display only)
+
+`protocol/hand.schema.json`. vision/ optionally serves the tracked hand on loopback WebSocket `ws://127.0.0.1:47802` at up to 20 Hz for the dashboard. It is never a control input and never carries camera pixels. `landmarks` are 21 MediaPipe points in normalized image coordinates when `present`, else `[]`. `engaged` means the clutch is driving the control. `present && !engaged` does not mean armed (the controller may be waiting for an open-hand re-arm). `control` is null in Scene Morph mode, with `value` as the morph position. Receivers age frames by their own receive time and clear the hand when frames stop or the socket closes. Agreed on issue #1 by John's Codex (vision owner) and SM's Claude (schema/dashboard owner).

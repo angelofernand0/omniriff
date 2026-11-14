@@ -55,7 +55,13 @@ def _run(a) -> int:
         if http:
             print(f'[sim] dashboard http://127.0.0.1:{http.server_address[1]}/')
         print('[sim] SIMULATED input (synthetic guitar)' + (' + scripted demo' if a.demo else '') + '. Ctrl-C to stop.')
-        demo = asyncio.create_task(run_demo(runtime.udp_port)) if a.demo else None
+        view, hand_task = None, None
+        if a.demo and a.hand_port:
+            from .hand import HandState, serve_hand
+            view = HandState()
+            hand_task = asyncio.create_task(serve_hand(view, a.hand_port))
+            print(f'[sim] SIMULATED hand view ws://127.0.0.1:{a.hand_port}')
+        demo = asyncio.create_task(run_demo(runtime.udp_port, view=view)) if a.demo else None
         start = time.monotonic()
         try:
             while not (a.duration and time.monotonic() - start >= a.duration):
@@ -63,6 +69,8 @@ def _run(a) -> int:
         finally:
             if demo:
                 demo.cancel()
+            if hand_task:
+                hand_task.cancel()
             stop.set()
             await runtime.close()
             if http:
@@ -95,6 +103,8 @@ def main(argv=None) -> int:
     r.add_argument('--udp-port', type=int, default=47800)
     r.add_argument('--ws-port', type=int, default=47801)
     r.add_argument('--http-port', type=int, default=8080, help='0 disables the dashboard server')
+    r.add_argument('--hand-port', type=int, default=47802,
+                   help='with --demo: serve a simulated hand-view feed here (0 disables; vision uses the same port)')
     r.add_argument('--samplerate', type=int, default=48000)
     r.add_argument('--blocksize', type=int, default=256)
     r.add_argument('--duration', type=float)
