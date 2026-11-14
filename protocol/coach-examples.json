@@ -138,7 +138,31 @@
     "status": "waiting"
    }
   ],
-  "scripted": false
+  "scripted": false,
+  "session": {
+   "goal": "Clean G to C change",
+   "drill": {
+    "title": "Keep the hand moving",
+    "skill": "keep-the-hand-moving",
+    "step": 1,
+    "of": 2
+   },
+   "attempt": {
+    "n": 1,
+    "of": 3
+   },
+   "metric": {
+    "name": "longest gap",
+    "unit": "ms",
+    "target": 150,
+    "lower_is_better": true,
+    "history": [
+     430
+    ]
+   },
+   "next": "Full pattern at tempo",
+   "last_time": null
+  }
  },
  {
   "version": 1,

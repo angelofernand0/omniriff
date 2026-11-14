@@ -460,7 +460,9 @@
 
     // position the box; draw the pixels
     // size: grows into the spotlight and shrinks back to the perch on a spring (a little overshoot)
-    const pxGoal = stagePoint() && !curTarget() ? PX_STAGE : curTarget() ? PX_CONTROL : PX_HOME;
+    // at home Riff fills its booth (the coach column sizes it); at a control it is a little smaller
+    const homePx = socket && socket.getBoundingClientRect().width ? socket.getBoundingClientRect().width / 24 : PX_HOME;
+    const pxGoal = curTarget() ? PX_CONTROL : stagePoint() ? homePx * 1.12 : homePx;
     if (motion) [cssPx, cssPxV] = spring(cssPx, cssPxV, pxGoal, 90, 13, dt); else cssPx = pxGoal;
     if (Math.abs(cssPxV) > 4 && Math.abs(pxGoal - cssPx) > 0.5 && def.vv * cssPxV >= 0) def.vv += 0.02 * cssPxV;  // grows with a stretch
     const B = box();

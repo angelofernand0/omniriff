@@ -140,6 +140,8 @@ class ScriptedSession:
         self.awaiting = None
         self.takes = 0
         self.quiet_at = 0.0       # loop time when the current line (plus a pause) is done
+        self.history: list[float] = []   # scripted 'longest gap' per take, oldest first
+        self.drill_step = 1
         self.cue_at = 0.0
 
     async def wait(self, seconds: float) -> None:
@@ -216,6 +218,16 @@ class ScriptedSession:
                      drill_card=None, activity=_act(self.feed, 'coach', 'rig_control bypass', 'failed'))
 
     # ---- script ---------------------------------------------------------
+    def session(self, attempt: int) -> dict:
+        """The practice session as the player sees it (coach.schema.json `session`). Scripted numbers."""
+        drills = [('Keep the hand moving', SKILL), ('Full pattern at tempo', 'slow-then-speed-up')]
+        title, skill = drills[min(self.drill_step, 2) - 1]
+        nxt = 'Full pattern at tempo' if self.drill_step == 1 else 'Nudge the tempo up to 100 bpm'
+        return dict(goal='Clean G to C change', drill=dict(title=title, skill=skill, step=min(self.drill_step, 2), of=2),
+                    attempt=dict(n=attempt, of=3),
+                    metric=dict(name='longest gap', unit='ms', target=150, lower_is_better=True, history=self.history[-12:]),
+                    next=nxt, last_time=None)
+
     async def diagnose(self) -> None:
         f = self.feed
         self.say(state='thinking', mood='curious', target='loop', cue=None, before_after=None, drill_card=None,
@@ -230,7 +242,9 @@ class ScriptedSession:
         card = dict(skill=SKILL, title='Keep the hand moving', passage='G to C change, bars 2-3', reps=4,
                     pass_rule='longest gap under 150 ms', rig=dict(bypass=True),
                     journal_path=f'/journal/scripted/{self.take_id()}.md')
+        self.history.append(430.0)
         self.say(state='speaking', mood='concerned', target='player', cue=TAKE_CUE, drill_card=card, todos=_todos(3),
+                 session=self.session(0),
                  activity=_act(f, 'coach', f'open skill {SKILL}', 'done') + [dict(who='coach', what='write_drill_card', status='done')])
         await self.until_quiet()
         self.awaiting = f'a{self.takes}'
@@ -253,10 +267,10 @@ class ScriptedSession:
             self.sender.send('bypass')
             self.we_bypassed = True
             await self.wait(0.7)                   # let the player see Riff press it before moving on
-        self.say(state='listening', mood='concentrating', target='loop', awaiting_approval=None,
-                 todos=_todos(4), activity=_act(self.feed, 'coach', 'rig_control bypass', 'done'))
-        await self.until_quiet()
-        self.say(cue=DRILL_CUE)
+        self.say(awaiting_approval=None, todos=_todos(4), activity=_act(self.feed, 'coach', 'rig_control bypass', 'done'),
+                 session=self.session(1))
+        await self.until_quiet()                   # never walk away mid-sentence
+        self.say(state='listening', mood='concentrating', target='loop', cue=DRILL_CUE)
 
     async def compare(self) -> None:
         f = self.feed
@@ -268,7 +282,10 @@ class ScriptedSession:
         if self.we_bypassed and self.sender is not None:
             self.sender.send('bypass')             # give the player their sound back
             self.we_bypassed = False
+        self.history.append(120.0)
+        self.drill_step += 1
         self.say(state='pleased', mood='proud', target='player', cue=PASS_CUE, drill_card=None,
+                 session=self.session(0),
                  todos=_todos(4, [dict(text='Compare with last take', status='completed')]),
                  before_after=dict(before_take_id=f'take-scripted-{self.takes - 1}', after_take_id=self.take_id(),
                                    hesitations=[3, 0], worst_gap_ms=[430, 120], tempo_stability=[0.71, 0.93],
