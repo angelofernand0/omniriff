@@ -43,7 +43,7 @@ Engine keys: `b` bypass, `l` loop, `f 0.3` filter, `r 0.3` reverb, `s` status, `
 | 1:25–1:50 | **Why it's reliable**: audio never waits on the camera or AI, unsafe or stale controls are dropped, and manual bypass always works. Quote the measured latency. |
 | 1:50–2:00 | One honest limitation + what's next. |
 
-Track-specific 20-second angles are in [DEVPOST.md](DEVPOST.md).
+Track-specific 20-second angles are in [DEVPOST.md](DEVPOST.md). Likely judge questions with honest answers are in [QA.md](QA.md).
 
 ## 4. If something fails at the table
 | Failure | Do this | Say this |
