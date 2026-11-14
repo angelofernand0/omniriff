@@ -1,13 +1,15 @@
 """Preflight check for the demo laptop: python -m engine --check.
 
-It opens no audio stream and sends nothing. It checks packages, the Focusrite
+By default it opens no audio stream and sends nothing. It checks packages, the Focusrite
 device, the Arduino serial port and that the local ports are free, then
 prints PASS/WARN/FAIL rows with fix hints. The exit code is 1 if any row FAILs.
 """
 from __future__ import annotations
 
 import importlib.util
+import math
 import socket
+import time
 from dataclasses import dataclass
 
 PASS, WARN, FAIL = "PASS", "WARN", "FAIL"
@@ -27,6 +29,75 @@ class Row:
     status: str
     detail: str
     fix: str = ""
+
+
+@dataclass
+class OpenTest:
+    seconds: float
+    in_dev: str = 'Focusrite'
+    out_dev: str = 'Focusrite'
+    hostapi: str | None = None
+    samplerate: int = 48000
+    blocksize: int = 128
+    input_channel: int = 2
+    out_channels: int = 2
+    latency: str = 'low'
+    exclusive: bool = False
+
+    def __post_init__(self):
+        if not math.isfinite(self.seconds) or self.seconds <= 0:
+            raise ValueError('--open-test seconds must be finite and positive')
+        if min(self.samplerate, self.blocksize, self.input_channel, self.out_channels) <= 0:
+            raise ValueError('sample rate, block size and channel counts must be positive')
+        if not self.in_dev.strip() or not self.out_dev.strip():
+            raise ValueError('device names/indexes must not be empty; default is Focusrite')
+
+
+def check_stream(options: OpenTest) -> list[Row]:
+    """Explicit opt-in: duplex stream with silent output, no DSP or recording."""
+    try:
+        import sounddevice as sd
+        from audio import stream
+        source = stream.resolve_device(options.in_dev, options.hostapi, 'input')
+        target = stream.resolve_device(options.out_dev, options.hostapi, 'output')
+        extra_in = stream._extra_settings(source, options.exclusive)
+        extra_out = stream._extra_settings(target, options.exclusive)
+        extra = (extra_in, extra_out) if extra_in or extra_out else None
+        try: latency = float(options.latency)
+        except ValueError: latency = options.latency
+        probe = dict(frames=0, peak=0.0, xruns=0, nonfinite=False)
+        channel = options.input_channel - 1
+
+        def callback(indata, outdata, frames, timing, status):
+            outdata.fill(0)
+            if status.input_overflow or status.output_underflow:
+                probe['xruns'] += 1
+            if frames:
+                # Scalar reductions avoid copying or storing the input buffer.
+                low, high = float(indata[:, channel].min()), float(indata[:, channel].max())
+                if math.isfinite(low) and math.isfinite(high):
+                    probe['peak'] = max(probe['peak'], abs(low), abs(high))
+                else:
+                    probe['nonfinite'] = True
+                probe['frames'] += frames
+
+        with sd.Stream(device=(source, target), samplerate=options.samplerate,
+                       blocksize=options.blocksize, channels=(options.input_channel, options.out_channels),
+                       dtype='float32', latency=latency, extra_settings=extra, callback=callback) as opened:
+            time.sleep(options.seconds)
+            active = opened.active
+        if not active or not probe['frames'] or probe['nonfinite']:
+            raise RuntimeError('stream stopped, delivered no frames, or supplied nonfinite samples')
+        peak_db = 20 * math.log10(max(probe['peak'], 1e-9))
+        quiet, hot = peak_db < -60, peak_db > -6
+        return [Row('audio open-test', PASS, f"{options.seconds:g}s; {probe['frames']} frames; output was silence"),
+                Row('audio open-test xruns', FAIL if probe['xruns'] else PASS, str(probe['xruns']),
+                    'try a larger --blocksize and close other audio apps' if probe['xruns'] else ''),
+                Row('audio open-test input peak', WARN if quiet or hot else PASS, f'{peak_db:.1f} dBFS (raw input)',
+                    'play normally; check cable, input channel and gain' if quiet else 'turn input gain down' if hot else '')]
+    except (Exception, SystemExit) as exc:
+        return [Row('audio open-test', FAIL, f'{type(exc).__name__}: {exc}'[:240],
+                    'check --in/--out, --hostapi, channel counts and driver; python -m audio --list-devices')]
 
 
 def check_packages(find_spec=importlib.util.find_spec) -> list[Row]:
@@ -138,7 +209,7 @@ def run_checks(udp_port=47800, ws_port=47801, hand_port=47802, http_port=8080, i
     return rows
 
 
-def format_rows(rows: list[Row]) -> str:
+def format_rows(rows: list[Row], *, open_test_requested=False) -> str:
     width = max(len(r.check) for r in rows)
     lines = []
     for r in rows:
@@ -148,11 +219,15 @@ def format_rows(rows: list[Row]) -> str:
         lines.append(line)
     fails = sum(r.status == FAIL for r in rows)
     warns = sum(r.status == WARN for r in rows)
-    lines.append(f"\n{'READY' if not fails else 'NOT READY'}: {fails} fail, {warns} warn. No audio was opened.")
+    note = 'Device-open test requested; see rows above. Not round-trip latency.' if open_test_requested else 'No audio was opened.'
+    lines.append(f"\n{'READY' if not fails else 'NOT READY'}: {fails} fail, {warns} warn. {note}")
     return "\n".join(lines)
 
 
-def main_check(udp_port=47800, ws_port=47801, input_channel=2) -> int:
+def main_check(udp_port=47800, ws_port=47801, input_channel=2, open_test: OpenTest | None = None) -> int:
     rows = run_checks(udp_port=udp_port, ws_port=ws_port, input_channel=input_channel)
-    print(format_rows(rows))
+    if open_test is not None:
+        print(f'OPEN TEST requested: {open_test.seconds:g}s, output silence. Play to check raw input peak.', flush=True)
+        rows += check_stream(open_test)
+    print(format_rows(rows, open_test_requested=open_test is not None))
     return 1 if any(r.status == FAIL for r in rows) else 0
