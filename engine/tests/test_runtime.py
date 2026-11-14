@@ -107,6 +107,22 @@ class GateTests(unittest.TestCase):
             replay = Replay.load(path)
             self.assertEqual([row[0] for row in replay.entries], [0,10])
 
+    def test_serial_reader_waits_for_one_byte_then_drains_available(self):
+        from engine.runtime import read_serial_chunk
+        class Port:
+            in_waiting = 0
+            requests = []
+            def read(self, size):
+                self.requests.append(size)
+                return b'x' * size
+        port = Port()
+        self.assertEqual(len(read_serial_chunk(port)), 1)
+        port.in_waiting = 54
+        self.assertEqual(len(read_serial_chunk(port)), 54)
+        port.in_waiting = 1000
+        self.assertEqual(len(read_serial_chunk(port)), 256)
+        self.assertEqual(port.requests, [1,54,256])
+
     def test_serial_partial_lines_duplicate_reset_and_reconnect(self):
         decoder = SerialDecoder(self.router)
         decoder.connect()
@@ -183,6 +199,7 @@ class NetworkTests(unittest.IsolatedAsyncioTestCase):
         from unittest.mock import patch
         ports = []
         class FakePort:
+            in_waiting = 0
             def __init__(self, *args, **kwargs):
                 self.number = len(ports)
                 self.reads = 0
