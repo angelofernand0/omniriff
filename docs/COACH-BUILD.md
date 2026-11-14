@@ -12,7 +12,7 @@ Goal: **"Best use of deepagents."** Judges should *see* every harness feature do
 2. It changes the rig **only** through `rig_control`, which sends normal control messages with `source: "coach"` over UDP, and only after approval (§6).
 3. Every claim it makes comes from a number in a TakeReport or HandReport. No number, no claim. The system prompt says so.
 4. Budget: the key has about $10. Log `usage` per take to `coach/workspace/usage.jsonl`. Refuse new runs above $8 total, publish `cue: "Coach is out of credit."` and go to sleep.
-5. The key comes from the environment: load `.env` at the repo root, then `~/.config/omniriff/.env`, with `python-dotenv` (`load_dotenv(); load_dotenv(Path.home()/".config/omniriff/.env")`). Never print it, log it or commit it.
+5. The key comes from the environment: load `.env` at the repo root, then `~/.config/omniriff/.env`, with `python-dotenv` (`load_dotenv(); load_dotenv(Path.home()/".config/omniriff/.env")`). Never print it, log it or commit it. The same files hold `ELEVENLABS_API_KEY` (voice, R4) and, once SM adds them, `LANGSMITH_TRACING`, `LANGSMITH_API_KEY` and `LANGSMITH_PROJECT` (tracing, R6c). Load the `.env` **before** importing deepagents so LangSmith tracing picks the variables up.
 
 ## 1. Install and verify first (30 minutes, before any feature code)
 
@@ -93,6 +93,10 @@ backend = FilesystemBackend(root_dir="coach/workspace", virtual_mode=True)   # v
 ## 5. Tools (`coach/tools.py`)
 
 Plain Python functions with type hints and a clear docstring (the docstring is what the model reads). Each one that the dashboard should show **publishes a coach frame itself** through `feed.publish(...)`. Don't rely on event streaming for the dashboard: tool-side publishing is deterministic.
+
+Every tool call also appends to the frame's `activity` list (keep the last 8): `{"who": "coach"|"ears"|"eyes", "what": "<tool name + short arg>", "status": "running"}` on entry, then `"done"` or `"failed"` on exit. A small decorator in `tools.py` does this for all tools; `who` comes from which agent's tool list the tool was given to (pass it in when you build the subagent tools). Skill opens and `write_file`/`edit_file` on `/journal/` or `/memories/` are the agent's built-in tools, so add them to `activity` from `result["messages"]` after each `invoke` (tool-call names and args are on the AI messages).
+
+`say` also calls `coach.voice.speak(text)` (written by SM's Claude, R4). It renders the cue with ElevenLabs, caches it, and publishes `coach.audio`. It returns immediately; voice failures never fail the tool.
 
 | Tool | Signature | Does | Publishes |
 |---|---|---|---|

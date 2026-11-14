@@ -54,6 +54,19 @@ From the packet. We may enter **one** main track and any number of special track
 | Photon (Best Voice Agent) | $300 | Uses Photon 2.0 | Coach texts the drill card after the session | Stretch only: needs a beta signup |
 | CoStar, Arlequin, Capital One | — | — | No fit. Skip. | — |
 
+### 2.0 How we stand out in "Best use of deepagents"
+
+Most deepagents entries will be research or report agents in a terminal. Ours runs on a physical instrument, reads sound *and* sight, and acts on the world, and every harness feature has a job the judges can watch:
+- **Planning:** the todo list is the checklist on screen.
+- **Subagents:** Ears and Eyes run in parallel with their own context and a cheaper model; the activity strip shows them working.
+- **Skills:** the drill library, opened by name only when needed; optionally growing per player (R7b).
+- **Filesystem:** a practice journal the judges can open.
+- **Memory:** "Last time…" in the next session.
+- **Human-in-the-loop:** approval is a pedal tap, so the guitar stays in your hands.
+- **Observability:** the LangSmith trace of the take we just played (R6c).
+
+The biggest risk is not the idea but a flaky live run. Reliability beats one more feature: cached voice, budget stop, a coach that sleeps instead of crashing, and a labelled fixture replay if the room's Wi-Fi dies.
+
 ### 2.1 Main track: Education recommended; the team decides together in person
 
 The product is now a teacher. "Interactive, accessible, personalized" is our pitch word for word, and a hardware coach will stand out among Education entries, which tend to be chat tutors. Entertainment judges may read a practice coach as off-track. **Proposed rule for the huddle:** if the coach runs end to end on the real rig by the midnight gate (§4), enter Education; if not, stay on Entertainment & Media and pitch the instrument. This is SM's Claude's recommendation for the team's in-person discussion. No agent changes the track.
@@ -111,9 +124,9 @@ SM's two agents split the coach evenly (about 8–9 agent-hours each): **Codex b
 |---|---|---|---|---|
 | R1 | **Coach feed contract** (piece E, first, by 12:30). WebSocket `127.0.0.1:47803`, served by the coach. Coach → dashboard: `coach.frame {state, mood, target, cue, todos[{text,status}], drill_card, before_after, awaiting_approval, journal_path}`. Dashboard → coach: `coach.approve` and `coach.reject`. Post it on issue #1 | `protocol/coach.schema.json`, `protocol/examples.json`, test | 45 min | Schema + examples + a validating test |
 | R2 | **Fake coach feed** in the simulator, scripted from the schema (one full session: listen → think → cause → drill → approve → pleased), so the dashboard is built before the brain exists | `tools/sim/coach.py` | 1 h | `python -m tools.sim run --demo --coach-sim` drives Riff end to end |
-| R3 | **Dashboard coach layer** (piece F): connect to 47803; map frames to `OmniRiff.coach.set`; plan checklist, cue line, drill card with skill name and journal path, before/after strip (worst gap ms, hesitations, tempo stability), "Tap the pedal to start" prompt with `Y`/`N` keys sending `coach.approve`/`coach.reject`; `COACH OFF` when the socket is down | `dashboard/` | 2.5 h | Headless Chrome screenshots of every state at 1080p and 720p; 0 page errors |
+| R3 | **Dashboard coach layer** (piece F): connect to 47803; map frames to `OmniRiff.coach.set`; plan checklist, cue line, drill card with skill name and journal path, before/after strip (worst gap ms, hesitations, tempo stability), "Tap the pedal to start" prompt with `Y`/`N` keys sending `coach.approve`/`coach.reject`; an **activity strip** (the frame's `activity`: `EARS get_take_report ✓`, `EYES get_hand_report …`, `COACH open skill keep-the-hand-moving ✓`) so the harness is visibly at work; `COACH OFF` when the socket is down | `dashboard/` | 2.5 h | Headless Chrome screenshots of every state at 1080p and 720p; 0 page errors |
 | R3b | **Riff's expressions** (SM asked: "really feels good"). Riff already blinks, glances and squashes. Add an expression system driven by a new `mood` field: **independent lids** (wink: one-eye blink when asking for approval or after a pass), **lid shapes** (happy arcs = proud, flat squint = concentrating while listening, wide = "aha" when a finding lands, inner-corner tilt = concerned when it names a mistake, heavy = sleepy), **saccades** (quick eye darts with a small overshoot and settle, not smooth slides), **pupil size** (dilate on aha, contract when concentrating), **double blinks** and blink-on-turn (blink when the gaze jumps far, as people do), **look at the player** (eyes straight out, toward the camera) when speaking, and small **reactions to real signals** (an eye pop on a big input peak, a widen on loop record). Ease everything with springs. Idle life (blinks, glances) is fine; anything larger must come from a real event (BRAND_SPEC §8). Update `?coach=preview` and `/brand.html` with every mood. Study 2–3 references first (e.g. Anki's Vector/Cozmo eyes, Eilik desk robot, Pixar's Wall-E eye acting) and post a one-paragraph direction before polishing | `dashboard/riff.js`, `riff.css`, `brand.html` | 2.5 h | SM watches `?coach=preview` and approves the feel |
-| R4 | **Voice out** (piece H): Riff speaks each new cue. Default: the browser's `speechSynthesis` (free, offline, zero setup), with a chosen voice and a slightly higher pitch; mouth-less "talking" = a gentle squash pulse in time with speech (`onboundary` events). Mute toggle. Then, if SM gets a key, **ElevenLabs** as an upgrade: the coach process (not the browser) calls their TTS so the key stays server-side, sends audio to the dashboard, and falls back to the browser voice on any error. See §6 for the decision | `dashboard/`, `coach/voice.py` (agree with Codex) | 1.5 h | Cues spoken in Chrome; silent when muted; works with Wi-Fi off |
+| R4 | **Riff's voice** (piece H), **ElevenLabs by default** (SM's call: the browser voice is too robotic). `coach/voice.py` (mine; SM's Codex calls `voice.speak(text)` from the `say` tool): ElevenLabs `eleven_flash_v2_5` (about 0.27 s per cue, measured), the voice SM picks from the samples in `omniriff-notes/riff-voices/`, key `ELEVENLABS_API_KEY` from the same `.env` as the Anthropic key, **cache every cue's MP3 by text hash** on disk (rehearsals repeat cues, and the free plan has a monthly character quota we can't read with this key), sent as `coach.audio` (PR #71). Dashboard: play it when its text matches the cue; Riff "talks" with a squash pulse driven by the audio's real loudness (Web Audio analyser), not a fake loop. Fallback: the browser voice, if audio doesn't arrive within 1.5 s or there's no network. Mute toggle. Free plan facts: only ElevenLabs' default voices work through the API, and the free tier asks for attribution (Devpost disclosure) | `coach/voice.py`, `dashboard/` | 1.5 h | Cues spoken in the chosen voice; second time from cache; fallback works with Wi-Fi off |
 | R4b | *Stretch, after 20:00 only if everything above works:* voice **in**: hold the bypass pedal (or press `V`) to talk; the browser's speech recognition sends the text as a user message to the coach. Kept out of scope by default because a loud guitar confuses it, Chrome's recognition needs internet, and the pedal already answers yes/no | `dashboard/` | 1 h | — |
 
 ### SM's Codex (`sm/codex/`): the coach's brain (piece D)
@@ -125,7 +138,9 @@ SM's two agents split the coach evenly (about 8–9 agent-hours each): **Codex b
 | R5 | **Fixtures first:** render takes with planted mistakes (a 400 ms hesitation at each chord change; a clean take; the same pattern "after the drill" with a 120 ms gap), each with a take sidecar and a matching hand log with a stall at the same times | `tools/virtual_guitar/`, `coach/fixtures/` | 1 h | `python -m tools.ears` and `vision.eyes` flag the planted spots |
 | R6 | **Smoke test, then coach core** per COACH-BUILD §1–§8: model, six tools, Ears/Eyes subagents, workspace backend, `interrupt_on` for `rig_control`, feed publishing per R1, runner watching `--take-dir` | `coach/` | 4 h | Slice 1 (15:00 gate) on `--fixtures`; cost and seconds per take posted |
 | R6b | **Four drill skills** as `SKILL.md` folders (COACH-BUILD §4) | `coach/workspace/skills/` | 45 min | Smoke test lists them; the agent opens the right one for the planted hesitation |
+| R6c | **LangSmith tracing** (LangChain's own observability; free tier). Set `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT=omniriff-coach` in the local `.env`; deepagents runs on LangGraph, so traces appear with no code change (**verify** one run shows the coach → ears/eyes subagent tree). For the LangChain judges: open the trace of the take we just played. Needs SM's LangSmith key (§6). Never on in CI | `.env` only, a README line | 15 min | One trace link posted on issue #1 |
 | R7 | **Memory:** `player.md` loaded with `memory=`, updated by the agent; second session opens with "Last time…" | `coach/` | 45 min | Two consecutive runs show it |
+| R7b | *Stretch, after slice 2:* **skills that learn.** When a drill works for this player, the agent writes a short "what worked for you" note into a player-specific copy of that skill (`/skills/<name>-for-you/SKILL.md`), so the drill library grows from the player's own takes | `coach/` | 45 min | Second session picks the personal skill |
 | R8 | **Before/after:** `compare_takes` + `before_after` frame + `pleased` when it improved | `coach/` | 45 min | Numbers match `tools.ears` output |
 | R8b | **Tests without network** (COACH-BUILD §10) and the budget guard ($8 stop) | `tests/`, `coach/budget.py` | 45 min | CI green |
 
@@ -148,6 +163,16 @@ SM's two agents split the coach evenly (about 8–9 agent-hours each): **Codex b
 |---|---|---|---|
 | R13 | W1 Windows scripts (already queued): `setup.ps1`, `start-demo.ps1` with `-Coach` switch once R10 lands | `scripts/windows/` | Syntax-checked, linked from DEMO.md §1 |
 | R14 | Engine-side check that `source:"coach"` controls respect the same rate and safety gates; add a coach-disconnect test (coach dies mid-drill → engine unaffected) | `engine/` | Tests |
+
+### Coach piece G, the live layer (approved by SM 11:55; start now)
+
+Feedback *while* you play, not only between takes, and real events for Riff to react to. Conditions: the state field is **optional and additive**, its exact shape is agreed on issue #1 before code depends on it; the **audio callback does no new work**; the coach brain doesn't depend on G; **ships by the 20:00 freeze or is dropped**.
+
+| # | Owner | Task | Files | Done when |
+|---|---|---|---|---|
+| R21 | Angelo's Claude | Lock-free snapshot of the last ~2 s of **dry** input, copied outside the audio callback (the callback only advances a write index, as take capture does) | `audio/` | Unit test; callback timing unchanged |
+| R22 | Angelo's Codex (after R13) | Run `tools.ears` onset detection on that snapshot at ~10 Hz off the audio thread; add optional state `live: {strums_last_s, last_strum_ms, steady}` (shape agreed on the board first) | `engine/`, `protocol/state.schema.json` | Schema test; sim shows strums |
+| R23 | SM's Claude | STRUM / STEADY LEDs on the faceplate; Riff reacts to real strums (small eye pop) and squints while it listens | `dashboard/` | Visible on `tools.sim run --demo`; 30–60 min |
 
 ### Joey's Codex (`john/codex/`): the pinch
 
@@ -180,7 +205,10 @@ SM's two agents split the coach evenly (about 8–9 agent-hours each): **Codex b
 | Who | Task | By |
 |---|---|---|
 | ~~SM~~ | ~~Sign off; coach go-ahead; API key; confirm report fields~~ | **Done 11:45.** TakeReport v1 confirmed as is. HandReport needs the additive amendment in R17(c) |
-| SM | Optional: an ElevenLabs account and API key if we want Riff's voice upgraded (R4). Free tier first; check that it allows API use | 17:00 |
+| ~~SM~~ | ~~ElevenLabs key~~ | **Done 11:55**, tested (default voices work on the free plan) |
+| SM | Pick Riff's voice: four samples in `omniriff-notes/riff-voices/` (outside the repo) | 14:00 |
+| SM | A free LangSmith account and API key for R6c (smith.langchain.com), into the local `.env` | 15:00 |
+| SM, in person | If R15 (pinch slider) is still unclaimed by **17:00**, raise it with Joey | 17:00 |
 | **Whole team, in person** | **Who plays guitar at the table** (and rehearses the stumble take), and **Education vs Entertainment** (§2.1). Discussed together, not decided by any agent | Next team huddle, before 20:00 |
 | Angelo | Merge this; Discord usernames on Devpost; record the main-track choice from the huddle at the midnight gate | 00:00 |
 | Anyone free | **Charity + Peri:** talk to 2–3 guitarists and, ideally, one guitar teacher or campus music club officer. One question: "What do you do when a passage keeps going wrong and you don't know why?" Get name, role, and a quote or photo with permission. That satisfies Peri's evidence rule and gives Charity real voices | 18:00 |
