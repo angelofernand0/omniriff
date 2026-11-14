@@ -30,6 +30,7 @@ def main(argv=None):
     p.add_argument('--latency', default='low')
     p.add_argument('--gain-db', type=float, default=0)
     p.add_argument('--no-keyboard', action='store_true')
+    p.add_argument('--session-log', metavar='FILE.jsonl', help='log accepted controls + 2 Hz state to a new JSONL file (no audio)')
     p.add_argument('--take-dir', help='save each finished loop take as WAV + JSON for the practice coach (audio/takes.py)')
     p.add_argument('--check', action='store_true', help='preflight: packages, Focusrite, Arduino, free ports; opens no audio')
     a = p.parse_args(argv)
@@ -88,9 +89,15 @@ def main(argv=None):
         from audio.__main__ import _keyboard
         threading.Thread(target=_keyboard, args=(audio, stop), daemon=True).start()
     runtime = Runtime(audio, udp_port=None if replay else a.udp_port, ws_port=a.ws_port, serial_port=a.serial_port, hz=a.state_hz, stale_ms=a.stale_ms, replay=replay)
+    session = None
+    if a.session_log:
+        from .session_log import SessionLog
+        try: session = SessionLog(a.session_log).attach(runtime, argv)
+        except OSError as exc: p.error(str(exc))
     async def run():
         worker.start()
         await runtime.start()
+        session_task = asyncio.create_task(session.run()) if session else None
         start = time.monotonic()
         try:
             while not stop.is_set():
@@ -98,12 +105,18 @@ def main(argv=None):
                 await asyncio.sleep(0.05)
         finally:
             stop.set()
+            if session_task:
+                session_task.cancel()
+                await asyncio.gather(session_task, return_exceptions=True)
             await runtime.close()
             await asyncio.to_thread(worker.join, 2)
         print(json.dumps(runtime.snapshot(), allow_nan=False))
     try: asyncio.run(run())
     except KeyboardInterrupt: stop.set(); worker.join(2)
     finally:
+        if session:
+            session.close()
+            print(f'session log: {session.lines} lines in {session.path}', flush=True)
         if takes:
             takes.stop()
             print(f'saved {len(takes.saved)} take(s) to {takes.directory}', flush=True)
