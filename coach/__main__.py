@@ -46,13 +46,15 @@ def main(argv: list[str] | None = None) -> int:
                  if args.fixtures else prepare_workspace(WORKSPACE))
     budget = BudgetGuard(WORKSPACE / "usage.jsonl")
     session_id = uuid.uuid4().hex
-    feed = CoachFeed(session_id, port=args.feed_port, scripted=args.fixtures)
+    # Fixtures change the input/rig, not whether a live model is behind this feed.
+    feed = CoachFeed(session_id, port=args.feed_port, scripted=False)
     state = RigStateReader(port=args.state_port)
     rig = RigClient(fixture_mode=args.fixtures, port=args.control_port)
     if args.fixtures:
         state.observe({"source": "synthetic_fixture", "loop": {"state": "idle"},
                        "bypass": False, "filter": {"value": 1.0}, "reverb": {"value": 0.0}})
     service = CoachTools(workspace, feed, rig, state)
+    feed.publish(session=service.session.snapshot())
     feed.start()
     if not args.fixtures:
         state.start()
