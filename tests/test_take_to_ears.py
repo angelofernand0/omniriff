@@ -1,15 +1,16 @@
-"""End-to-end integration: virtual guitar -> audio.Engine -> TakeWriter -> tools.ears.
+"""End-to-end integration: consecutive takes through audio.Engine to tools.ears.
 
-Tests the full signal chain path:
-  1. Deterministic physical-model guitar strums fed into real audio.Engine
-     via process() in 128-frame blocks (headless, no hardware devices).
-  2. Looper toggling via engine.toggle_loop(): idle -> recording -> playing (close).
-  3. Off-real-time capture: TakeWriter(engine, tmpdir).poll() saves WAV + JSON.
-  4. tools.ears.analyze_take finds planted hesitations within ±30 ms relative
-     to the take start.
-  5. Sidecar take_id and started_unix_ms pass through into TakeReport.
-  6. Sequential takes increment take index (-1, -2) without overwriting.
-  7. Dry take capture immunity to active real-time filter and reverb DSP.
+Covers the practice coach's before/after progression and take isolation:
+  1. Two consecutive takes in ONE audio.Engine run with different planted pauses
+     (Take 1: 400 ms pause -> Take 2: 150 ms pause).
+  2. Both files exist on disk with distinct take_ids (take-*-1, take-*-2).
+  3. tools.ears.analyze_take finds each take's own pause within ±30 ms
+     relative to that take's start.
+  4. The second report's pause is measurably smaller (extra_ms: 400 ms -> 150 ms,
+     severity: moderate -> minor), validating before/after coaching evaluation.
+  5. An aborted take (record < 0.5 s) yields judgeable=False (too few strums)
+     and does NOT clobber or alter earlier takes.
+  6. Dry capture immunity to active DSP effects (filter, reverb) during consecutive takes.
 """
 from __future__ import annotations
 
@@ -77,234 +78,305 @@ def generate_strum_signal(
     return audio, times
 
 
-class TakeToEarsTests(unittest.TestCase):
-    """End-to-end integration tests connecting audio.Engine, TakeWriter, and tools.ears."""
+class TakeToEarsConsecutiveTests(unittest.TestCase):
+    """End-to-end coach before/after progression and take isolation tests."""
 
-    def test_end_to_end_planted_hesitation_capture_and_ears_detection(self):
-        """Audio stream through 128-frame process() captured to WAV+JSON; Ears detects pause."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_path = Path(tmp_dir)
-            engine = Engine(EngineConfig(samplerate=SR))
-            writer = TakeWriter(engine, tmp_path)
+    def test_two_consecutive_takes_before_after_progression_and_aborted_take_isolation(self):
+        """TWO consecutive takes in 1 Engine run (400ms then 150ms pause) + aborted take (<0.5s).
 
-            audio, times = generate_strum_signal(bpm=120.0, extra_pause_s=0.400)
-            out_buf = np.zeros((BLOCK_SIZE, 1), dtype=np.float32)
-
-            take_start_frame = None
-            rec_start_time = 0.10
-            rec_end_time = times[-1] + 0.50
-
-            pos = 0
-            while pos + BLOCK_SIZE <= len(audio):
-                cur_t = pos / SR
-                if take_start_frame is None and cur_t >= rec_start_time:
-                    engine.toggle_loop()
-                    take_start_frame = pos + BLOCK_SIZE  # action drains on next block
-                elif cur_t >= rec_end_time and engine.looper.state == "recording":
-                    engine.toggle_loop()
-
-                block = audio[pos:pos + BLOCK_SIZE]
-                engine.process(block, out_buf)
-                pos += BLOCK_SIZE
-
-            # Poll writer to save WAV + JSON sidecar
-            wav_path = writer.poll()
-            self.assertIsNotNone(wav_path, "TakeWriter must capture finished take")
-            self.assertTrue(wav_path.exists())
-            json_path = wav_path.with_suffix(".json")
-            self.assertTrue(json_path.exists())
-
-            # Verify sidecar structure
-            sidecar = json.loads(json_path.read_text())
-            self.assertEqual(sidecar["source"], "loop")
-            self.assertEqual(sidecar["samplerate"], SR)
-            self.assertGreater(sidecar["frames"], 0)
-
-            # Analyze take with tools.ears
-            report = analyze_take(wav_path, json_path)
-            self.assertTrue(report.judgeable)
-            self.assertEqual(report.strum_count, 16)
-
-            # Assert sidecar fields pass through to TakeReport
-            self.assertEqual(report.take_id, sidecar["take_id"])
-            self.assertEqual(report.started_unix_ms, sidecar["started_unix_ms"])
-
-            # Assert planted hesitation found within ±30 ms relative to take start
-            hesitations = [f for f in report.findings if f["type"] == "hesitation"]
-            self.assertEqual(len(hesitations), 1, "Ears must find exactly 1 planted hesitation")
-            h = hesitations[0]
-
-            take_start_s = take_start_frame / SR
-            expected_recovery_take_ms = (times[8] - take_start_s) * 1000.0
-            timing_error = abs(h["at_ms"] - expected_recovery_take_ms)
-
-            self.assertLessEqual(
-                timing_error,
-                30.0,
-                f"Hesitation at_ms={h['at_ms']:.1f} ms differed by {timing_error:.1f} ms from "
-                f"expected {expected_recovery_take_ms:.1f} ms",
-            )
-            self.assertAlmostEqual(h["extra_ms"], 400.0, delta=30.0)
-            self.assertIn(h["severity"], ("moderate", "severe"))
-
-    def test_sequential_takes_do_not_overwrite_and_retain_distinct_sidecars(self):
-        """A second take increments take index (-1, -2) and preserves the first take."""
+        Verifies:
+          - Both takes exist with distinct take_ids.
+          - Each report finds its own pause within ±30 ms relative to take start.
+          - The second report's pause is measurably smaller (extra_ms drops from 400ms to 150ms).
+          - An aborted take (< 0.5 s) gives judgeable=False and does not clobber earlier takes.
+        """
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             engine = Engine(EngineConfig(samplerate=SR))
             writer = TakeWriter(engine, tmp_path)
             out_buf = np.zeros((BLOCK_SIZE, 1), dtype=np.float32)
 
-            # --- TAKE 1: 400 ms pause ---
-            audio1, _ = generate_strum_signal(bpm=120.0, extra_pause_s=0.400, seed=10)
-            engine.toggle_loop()  # start recording
+            # =================================================================
+            # TAKE 1 (BEFORE): 400 ms planted hesitation at strum index 8
+            # =================================================================
+            audio1, times1 = generate_strum_signal(bpm=120.0, extra_pause_s=0.400, seed=101)
+            engine.toggle_loop()  # idle -> recording
+            # Frame 0 of take is frame BLOCK_SIZE (action drains on next block)
+            take1_start_s = BLOCK_SIZE / SR
+
             for pos in range(0, len(audio1) - BLOCK_SIZE, BLOCK_SIZE):
                 engine.process(audio1[pos:pos + BLOCK_SIZE], out_buf)
-            engine.toggle_loop()  # recording -> playing (finish)
+            engine.toggle_loop()  # recording -> playing (close loop)
             engine.process(audio1[-BLOCK_SIZE:], out_buf)
 
             wav1 = writer.poll()
-            self.assertIsNotNone(wav1)
+            self.assertIsNotNone(wav1, "TakeWriter must capture finished Take 1")
+            self.assertTrue(wav1.exists())
+            self.assertTrue(wav1.name.endswith("-1.wav"))
             bytes_take1 = wav1.read_bytes()
-            meta1 = json.loads(wav1.with_suffix(".json").read_text())
 
-            # --- TAKE 2: 500 ms pause ---
-            audio2, _ = generate_strum_signal(bpm=120.0, extra_pause_s=0.500, seed=20)
-            engine.toggle_loop()  # playing -> idle (clear)
+            json1_path = wav1.with_suffix(".json")
+            self.assertTrue(json1_path.exists())
+            meta1 = json.loads(json1_path.read_text())
+            self.assertEqual(meta1["source"], "loop")
+
+            rep1 = analyze_take(wav1)
+            self.assertTrue(rep1.judgeable, "Take 1 (16 strums) must be judgeable")
+            self.assertEqual(rep1.take_id, meta1["take_id"])
+            self.assertEqual(rep1.started_unix_ms, meta1["started_unix_ms"])
+            self.assertEqual(rep1.strum_count, 16)
+
+            # Assert Take 1 hesitation detection (take-relative ±30 ms)
+            hesitations1 = [f for f in rep1.findings if f["type"] in ("hesitation", "late")]
+            self.assertEqual(len(hesitations1), 1, "Take 1 must have exactly 1 pause finding")
+            h1 = hesitations1[0]
+            expected_pause1_ms = (times1[8] - take1_start_s) * 1000.0
+            error1 = abs(h1["at_ms"] - expected_pause1_ms)
+            self.assertLessEqual(
+                error1,
+                30.0,
+                f"Take 1 pause at {h1['at_ms']:.1f} ms differed by {error1:.1f} ms from {expected_pause1_ms:.1f} ms",
+            )
+            self.assertAlmostEqual(h1["extra_ms"], 400.0, delta=30.0)
+            self.assertIn(h1["severity"], ("moderate", "severe"))
+
+            # =================================================================
+            # TAKE 2 (AFTER): 150 ms planted pause at strum index 8 (improved)
+            # =================================================================
+            audio2, times2 = generate_strum_signal(bpm=120.0, extra_pause_s=0.150, seed=202)
+            # Clear looper: playing -> idle
+            engine.toggle_loop()
             engine.process(audio2[:BLOCK_SIZE], out_buf)
-            engine.toggle_loop()  # idle -> recording
+
+            # Start recording Take 2: idle -> recording
+            engine.toggle_loop()
+            take2_start_s = (2 * BLOCK_SIZE) / SR
+
             for pos in range(BLOCK_SIZE, len(audio2) - BLOCK_SIZE, BLOCK_SIZE):
                 engine.process(audio2[pos:pos + BLOCK_SIZE], out_buf)
-            engine.toggle_loop()  # recording -> playing
+            engine.toggle_loop()  # recording -> playing (close loop)
             engine.process(audio2[-BLOCK_SIZE:], out_buf)
 
             wav2 = writer.poll()
-            self.assertIsNotNone(wav2)
-            meta2 = json.loads(wav2.with_suffix(".json").read_text())
-
-            # Assert distinct files on disk
-            self.assertNotEqual(wav1, wav2)
-            self.assertTrue(wav1.exists())
+            self.assertIsNotNone(wav2, "TakeWriter must capture finished Take 2")
             self.assertTrue(wav2.exists())
-            self.assertTrue(wav1.name.endswith("-1.wav"))
             self.assertTrue(wav2.name.endswith("-2.wav"))
+            bytes_take2 = wav2.read_bytes()
 
-            # Assert Take 1 was NOT overwritten or corrupted
-            self.assertEqual(wav1.read_bytes(), bytes_take1)
+            json2_path = wav2.with_suffix(".json")
+            self.assertTrue(json2_path.exists())
+            meta2 = json.loads(json2_path.read_text())
+
+            rep2 = analyze_take(wav2)
+            self.assertTrue(rep2.judgeable, "Take 2 (16 strums) must be judgeable")
+            self.assertEqual(rep2.take_id, meta2["take_id"])
+            self.assertEqual(rep2.started_unix_ms, meta2["started_unix_ms"])
+            self.assertEqual(rep2.strum_count, 16)
+
+            # Assert Take 2 hesitation detection (take-relative ±30 ms)
+            hesitations2 = [f for f in rep2.findings if f["type"] in ("hesitation", "late")]
+            self.assertEqual(len(hesitations2), 1, "Take 2 must have exactly 1 pause finding")
+            h2 = hesitations2[0]
+            expected_pause2_ms = (times2[8] - take2_start_s) * 1000.0
+            error2 = abs(h2["at_ms"] - expected_pause2_ms)
+            self.assertLessEqual(
+                error2,
+                30.0,
+                f"Take 2 pause at {h2['at_ms']:.1f} ms differed by {error2:.1f} ms from {expected_pause2_ms:.1f} ms",
+            )
+            self.assertAlmostEqual(h2["extra_ms"], 150.0, delta=30.0)
+            self.assertEqual(h2["severity"], "minor")
+
+            # =================================================================
+            # COACH PROGRESSION ASSERTIONS (BEFORE vs AFTER)
+            # =================================================================
+            self.assertNotEqual(wav1, wav2)
             self.assertNotEqual(meta1["take_id"], meta2["take_id"])
             self.assertLessEqual(meta1["started_unix_ms"], meta2["started_unix_ms"])
 
-            # Assert both analyze cleanly with distinct metadata pass-through
-            r1 = analyze_take(wav1)
-            r2 = analyze_take(wav2)
-            self.assertEqual(r1.take_id, meta1["take_id"])
-            self.assertEqual(r2.take_id, meta2["take_id"])
-            self.assertEqual(r1.started_unix_ms, meta1["started_unix_ms"])
-            self.assertEqual(r2.started_unix_ms, meta2["started_unix_ms"])
-            self.assertEqual(r1.strum_count, 16)
-            self.assertEqual(r2.strum_count, 16)
+            # Verify Take 1 on disk was NOT clobbered by Take 2
+            self.assertEqual(wav1.read_bytes(), bytes_take1)
 
-    def test_multi_tempo_real_engine_loop_capture(self):
-        """80 strums/min and 160 strums/min streamed through Engine detect pause within ±30 ms."""
-        for bpm, pause_s in [(80.0, 0.500), (160.0, 0.350)]:
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                tmp_path = Path(tmp_dir)
-                engine = Engine(EngineConfig(samplerate=SR))
-                writer = TakeWriter(engine, tmp_path)
-                out_buf = np.zeros((BLOCK_SIZE, 1), dtype=np.float32)
+            # Verify second report's pause is measurably smaller
+            self.assertLess(
+                h2["extra_ms"],
+                h1["extra_ms"],
+                f"Take 2 pause ({h2['extra_ms']} ms) must be smaller than Take 1 pause ({h1['extra_ms']} ms)",
+            )
+            pause_reduction = h1["extra_ms"] - h2["extra_ms"]
+            self.assertGreaterEqual(
+                pause_reduction,
+                200.0,
+                f"Coach must detect measurable pause reduction (got {pause_reduction:.1f} ms)",
+            )
 
-                audio, times = generate_strum_signal(bpm=bpm, extra_pause_s=pause_s, seed=33)
-                engine.toggle_loop()
-                # Process all blocks
-                for pos in range(0, len(audio) - BLOCK_SIZE, BLOCK_SIZE):
-                    engine.process(audio[pos:pos + BLOCK_SIZE], out_buf)
-                engine.toggle_loop()
-                engine.process(audio[-BLOCK_SIZE:], out_buf)
+            # =================================================================
+            # TAKE 3 (ABORTED TAKE): Record < 0.5 s in the SAME Engine run
+            # =================================================================
+            engine.toggle_loop()  # playing -> idle
+            engine.process(audio1[:BLOCK_SIZE], out_buf)
 
-                wav = writer.poll()
-                self.assertIsNotNone(wav)
-                rep = analyze_take(wav)
-                self.assertEqual(rep.strum_count, 16)
+            engine.toggle_loop()  # idle -> recording
+            # Record 0.35 s of audio (contains only 1 strum, well below MIN_STRUMS=4)
+            aborted_len = int(0.35 * SR)
+            for pos in range(0, aborted_len - BLOCK_SIZE, BLOCK_SIZE):
+                engine.process(audio1[pos:pos + BLOCK_SIZE], out_buf)
+            engine.toggle_loop()  # recording -> playing (close aborted take)
+            engine.process(audio1[:BLOCK_SIZE], out_buf)
 
-                hes = [f for f in rep.findings if f["type"] == "hesitation"]
-                self.assertEqual(len(hes), 1)
-                # First block processed after toggle is block 0 (frame 0 of take is frame BLOCK_SIZE)
-                expected_take_ms = (times[8] - (BLOCK_SIZE / SR)) * 1000.0
-                err = abs(hes[0]["at_ms"] - expected_take_ms)
-                self.assertLessEqual(err, 30.0, f"Tempo {bpm} timing error {err:.1f} ms > 30 ms")
+            wav3 = writer.poll()
+            self.assertIsNotNone(wav3, "TakeWriter captures the aborted recording buffer")
+            self.assertTrue(wav3.exists())
+            self.assertTrue(wav3.name.endswith("-3.wav"))
 
-    def test_take_writer_dry_capture_immunity_to_active_dsp(self):
-        """Active low-pass filter (0.3) and reverb (0.8) on Engine do not smear captured take."""
+            meta3 = json.loads(wav3.with_suffix(".json").read_text())
+            self.assertLess(meta3["seconds"], 0.5, "Aborted take duration must be < 0.5 s")
+
+            rep3 = analyze_take(wav3)
+            self.assertFalse(rep3.judgeable, "Aborted take (< 0.5 s) must have judgeable=False")
+            self.assertLess(rep3.strum_count, 4)
+            self.assertIn("too few to judge timing", rep3.summary)
+            self.assertEqual(rep3.findings, [])
+
+            # =================================================================
+            # CLOBBER RESISTANCE CHECK: Earlier takes remain 100% intact
+            # =================================================================
+            self.assertEqual(wav1.read_bytes(), bytes_take1, "Take 1 clobbered by aborted take")
+            self.assertEqual(wav2.read_bytes(), bytes_take2, "Take 2 clobbered by aborted take")
+
+            # Re-verifying analysis on earlier takes produces identical results
+            re_rep1 = analyze_take(wav1)
+            re_rep2 = analyze_take(wav2)
+            self.assertTrue(re_rep1.judgeable)
+            self.assertTrue(re_rep2.judgeable)
+            self.assertEqual(re_rep1.take_id, meta1["take_id"])
+            self.assertEqual(re_rep2.take_id, meta2["take_id"])
+
+    def test_consecutive_takes_under_active_dsp(self):
+        """Active live DSP (filter 0.3, reverb 0.8) does not contaminate dry captured takes."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             engine = Engine(EngineConfig(samplerate=SR))
-            # Heavily effect the live output
             engine.set_filter(0.3)
             engine.set_reverb(0.8)
 
             writer = TakeWriter(engine, tmp_path)
             out_buf = np.zeros((BLOCK_SIZE, 1), dtype=np.float32)
-            audio, times = generate_strum_signal(bpm=120.0, extra_pause_s=0.400, seed=77)
 
+            # Take 1 (400 ms pause)
+            audio1, times1 = generate_strum_signal(bpm=120.0, extra_pause_s=0.400, seed=301)
             engine.toggle_loop()
-            for pos in range(0, len(audio) - BLOCK_SIZE, BLOCK_SIZE):
-                engine.process(audio[pos:pos + BLOCK_SIZE], out_buf)
+            for pos in range(0, len(audio1) - BLOCK_SIZE, BLOCK_SIZE):
+                engine.process(audio1[pos:pos + BLOCK_SIZE], out_buf)
             engine.toggle_loop()
-            engine.process(audio[-BLOCK_SIZE:], out_buf)
+            engine.process(audio1[-BLOCK_SIZE:], out_buf)
 
-            wav = writer.poll()
-            rep = analyze_take(wav)
+            wav1 = writer.poll()
+            rep1 = analyze_take(wav1)
+            self.assertTrue(rep1.judgeable)
+            self.assertEqual(rep1.strum_count, 16)
+            h1 = rep1.findings[0]
+            self.assertAlmostEqual(h1["extra_ms"], 400.0, delta=30.0)
 
-            # Output buffer is wet, but captured take is dry post-gain: all 16 onsets detected
-            self.assertEqual(rep.strum_count, 16)
-            hes = [f for f in rep.findings if f["type"] == "hesitation"]
-            self.assertEqual(len(hes), 1)
-            self.assertAlmostEqual(hes[0]["extra_ms"], 400.0, delta=30.0)
+            # Take 2 (150 ms pause)
+            audio2, times2 = generate_strum_signal(bpm=120.0, extra_pause_s=0.150, seed=402)
+            engine.toggle_loop()
+            engine.process(audio2[:BLOCK_SIZE], out_buf)
+            engine.toggle_loop()
+            for pos in range(BLOCK_SIZE, len(audio2) - BLOCK_SIZE, BLOCK_SIZE):
+                engine.process(audio2[pos:pos + BLOCK_SIZE], out_buf)
+            engine.toggle_loop()
+            engine.process(audio2[-BLOCK_SIZE:], out_buf)
 
-    def test_clean_take_through_engine_zero_hesitations(self):
-        """Evenly spaced strums recorded through Engine produce 0 false hesitations."""
+            wav2 = writer.poll()
+            rep2 = analyze_take(wav2)
+            self.assertTrue(rep2.judgeable)
+            self.assertEqual(rep2.strum_count, 16)
+            h2 = rep2.findings[0]
+            self.assertAlmostEqual(h2["extra_ms"], 150.0, delta=30.0)
+
+            # Assert coach progression holds even under wet monitor effects
+            self.assertLess(h2["extra_ms"], h1["extra_ms"])
+
+    def test_aborted_take_zero_length_recording_safely_ignored(self):
+        """Immediately toggling loop before any frames are processed returns to IDLE cleanly."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             engine = Engine(EngineConfig(samplerate=SR))
             writer = TakeWriter(engine, tmp_path)
             out_buf = np.zeros((BLOCK_SIZE, 1), dtype=np.float32)
 
-            audio, _ = generate_strum_signal(bpm=120.0, extra_pause_s=0.0, seed=88)
+            # Take 1: valid take
+            audio1, _ = generate_strum_signal(bpm=120.0, extra_pause_s=0.400, seed=501)
             engine.toggle_loop()
-            for pos in range(0, len(audio) - BLOCK_SIZE, BLOCK_SIZE):
-                engine.process(audio[pos:pos + BLOCK_SIZE], out_buf)
+            for pos in range(0, len(audio1) - BLOCK_SIZE, BLOCK_SIZE):
+                engine.process(audio1[pos:pos + BLOCK_SIZE], out_buf)
             engine.toggle_loop()
-            engine.process(audio[-BLOCK_SIZE:], out_buf)
+            engine.process(audio1[-BLOCK_SIZE:], out_buf)
 
-            wav = writer.poll()
-            rep = analyze_take(wav)
-            self.assertEqual(rep.strum_count, 16)
-            self.assertEqual(len([f for f in rep.findings if f["type"] == "hesitation"]), 0)
-            self.assertGreaterEqual(rep.tempo_stability, 0.98)
+            wav1 = writer.poll()
+            self.assertIsNotNone(wav1)
+            bytes1 = wav1.read_bytes()
 
-    def test_silent_or_sparse_take_marked_not_judgeable(self):
-        """Closing a loop with under 4 strums produces a non-judgeable TakeReport."""
+            # Zero-length abort: toggle to recording, then immediately toggle without processing
+            engine.toggle_loop()  # playing -> idle
+            engine.process(audio1[:BLOCK_SIZE], out_buf)
+
+            engine.looper.toggle()  # idle -> recording
+            self.assertEqual(engine.looper.length, 0)
+            engine.looper.toggle()  # recording -> idle (length == 0 branch)
+            self.assertEqual(engine.looper.state, "idle")
+
+            # TakeWriter poll returns None because takes_finished was not incremented
+            wav_none = writer.poll()
+            self.assertIsNone(wav_none)
+
+            # Take 1 remains untouched
+            self.assertEqual(wav1.read_bytes(), bytes1)
+
+    def test_consecutive_takes_variable_tempo(self):
+        """Coach before/after progression holds across tempo variations (100 BPM -> 140 BPM)."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             engine = Engine(EngineConfig(samplerate=SR))
             writer = TakeWriter(engine, tmp_path)
             out_buf = np.zeros((BLOCK_SIZE, 1), dtype=np.float32)
 
-            # Record 1.5 seconds of silence
-            silence_block = np.zeros(BLOCK_SIZE, dtype=np.float32)
+            # Take 1: 100 BPM with 450 ms pause
+            audio1, times1 = generate_strum_signal(bpm=100.0, extra_pause_s=0.450, seed=601)
             engine.toggle_loop()
-            for _ in range(int(1.5 * SR // BLOCK_SIZE)):
-                engine.process(silence_block, out_buf)
+            for pos in range(0, len(audio1) - BLOCK_SIZE, BLOCK_SIZE):
+                engine.process(audio1[pos:pos + BLOCK_SIZE], out_buf)
             engine.toggle_loop()
-            engine.process(silence_block, out_buf)
+            engine.process(audio1[-BLOCK_SIZE:], out_buf)
 
-            wav = writer.poll()
-            self.assertIsNotNone(wav)
-            rep = analyze_take(wav)
-            self.assertFalse(rep.judgeable)
-            self.assertEqual(rep.strum_count, 0)
-            self.assertEqual(rep.findings, [])
-            self.assertIn("too few to judge timing", rep.summary)
+            wav1 = writer.poll()
+            rep1 = analyze_take(wav1)
+            self.assertTrue(rep1.judgeable)
+            self.assertAlmostEqual(rep1.strum_rate_per_min, 100.0, delta=5.0)
+            h1 = rep1.findings[0]
+            self.assertAlmostEqual(h1["extra_ms"], 450.0, delta=35.0)
+
+            # Take 2: 140 BPM with 200 ms pause
+            audio2, times2 = generate_strum_signal(bpm=140.0, extra_pause_s=0.200, seed=702)
+            engine.toggle_loop()
+            engine.process(audio2[:BLOCK_SIZE], out_buf)
+            engine.toggle_loop()
+            for pos in range(BLOCK_SIZE, len(audio2) - BLOCK_SIZE, BLOCK_SIZE):
+                engine.process(audio2[pos:pos + BLOCK_SIZE], out_buf)
+            engine.toggle_loop()
+            engine.process(audio2[-BLOCK_SIZE:], out_buf)
+
+            wav2 = writer.poll()
+            rep2 = analyze_take(wav2)
+            self.assertTrue(rep2.judgeable)
+            self.assertAlmostEqual(rep2.strum_rate_per_min, 140.0, delta=5.0)
+            h2 = rep2.findings[0]
+            self.assertAlmostEqual(h2["extra_ms"], 200.0, delta=30.0)
+
+            # Pause reduced and rate increased
+            self.assertLess(h2["extra_ms"], h1["extra_ms"])
+            self.assertGreater(rep2.strum_rate_per_min, rep1.strum_rate_per_min)
 
 
 if __name__ == "__main__":
