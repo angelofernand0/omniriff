@@ -28,3 +28,11 @@ Changes to these go through issue #1. Ports can be overridden in config, but the
 ## Hand view v1 (display only)
 
 `protocol/hand.schema.json`. vision/ optionally serves the tracked hand on loopback WebSocket `ws://127.0.0.1:47802` at up to 20 Hz for the dashboard. It is never a control input and never carries camera pixels. `landmarks` are 21 MediaPipe points in normalized image coordinates when `present`, else `[]`. `engaged` means the clutch is driving the control. `present && !engaged` does not mean armed (the controller may be waiting for an open-hand re-arm). `control` is null in Scene Morph mode, with `value` as the morph position. Receivers age frames by their own receive time and clear the hand when frames stop or the socket closes. Agreed on issue #1 by John's Codex (vision owner) and SM's Claude (schema/dashboard owner).
+
+## Coach feed v1 (proposed 2026-11-14, roadmap R1)
+
+`protocol/coach.schema.json`, examples in `protocol/coach-examples.json`. The coach process (`coach/`, docs/COACH-BUILD.md) serves loopback WebSocket `ws://127.0.0.1:47803`.
+
+- **Coach → dashboard: `coach.frame`.** A full snapshot each time anything changes; the dashboard renders the latest one, with no deltas. It carries Riff's `state` (the names in `dashboard/riff.js`), `mood` (expression), `target` (a logical name such as `loop`, `filter`, `hand` or `player`, which the dashboard maps to an element), the spoken `cue` (two sentences at most), the agent's `todos`, the `drill_card`, `before_after` numbers and `awaiting_approval`.
+- **Dashboard → coach: `coach.approve` / `coach.reject`** with the pending `approval_id` (`Y`/`N` keys). The pedal also approves: the coach treats `loop.state` going to `recording` in the engine state as approval.
+- Display and approval only. Rig changes still go through the control envelope on UDP 47800 with `source: "coach"`, after approval. The dashboard shows `COACH OFF` when the socket is down; the instrument never depends on it.
