@@ -33,6 +33,16 @@ class Controller:
         self.pickup_y = None
         self.pickup_value = None
 
+    def rearm(self):
+        """Hold output and require a new open/pinch cycle after a scene switch.
+
+        Keep transport sequence and rate history; the next scene must emit even
+        when its morph amount equals the previous scene's last amount.
+        """
+        self.active = self.armed = False
+        self.value = self.previous = self.sent_value = None
+        self.pickup_y = self.pickup_value = None
+
     def update(self, y, pinch, confidence, now, timestamp_ms):
         if y is None or pinch is None or not all(math.isfinite(v) for v in (y, pinch, confidence, now)) or not 0 <= confidence <= 1 or confidence < self.confidence:
             self.active = self.armed = False

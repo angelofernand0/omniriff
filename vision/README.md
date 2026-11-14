@@ -92,3 +92,44 @@ audio comparison page, and a scripted morph audition/replay. Run
 `python -m tools.tone_match.demo --output /tmp/tone-demo` for a clearly labeled
 synthetic guitar demonstration without hardware. It does not clone amps or match
 arbitrary song mixes; inspect the fit diagnostics and listen before performing.
+
+## Performance setlists
+
+Keep several scenes loaded for a set without restarting camera tracking:
+
+```bash
+python -m vision --model /path/to/hand_landmarker.task --setlist vision/setlist-demo.json
+```
+
+With the camera window focused, use **1–9** to select a slot, **n** for next,
+**p** for previous, and **q** to quit. Next/previous wrap around. The overlay
+shows the selected scene and slot. A setlist is a JSON object with a `scenes`
+array of 1–9 ordinary scene definitions; copy a Tone Match `scene.json` object
+into that array to include your fitted tone. Every entry is validated before
+camera startup. The included three-scene example is an expression demo, not
+a loudness-matched set of patches.
+
+Build a custom setlist from named presets and exported scene files in the order
+you want to perform them:
+
+```bash
+python -m vision.setlist bloom /tmp/velvet-space/scene.json rise --output my-show.json
+python -m vision --model /path/to/hand_landmarker.task --setlist my-show.json
+```
+
+The builder needs no camera packages and refuses to overwrite an existing file.
+
+Selection itself sends no controls: the engine holds its last settings. Open
+your hand, then pinch again to start controlling the newly selected scene.
+A held pinch cannot activate it accidentally. Selecting the current slot is
+a no-op. The next engagement uses your calibrated absolute hand position, so
+it can change the sound; engine smoothing applies, but this is not automatic
+cross-scene pickup or a loudness-preserving transition. Stop/release and choose
+your hand position deliberately before engaging.
+
+Output sequence numbers stay increasing across switches, including when
+revisiting an earlier scene, so UDP deduplication and Gesture Take replay keep
+working. Takes record parameter events, not scene-name markers. Setlists need
+the overlay keyboard and cannot be combined with `--no-overlay`, calibration,
+relative mode, or another scene-selection option. No new dashboard or wire
+protocol fields are introduced.

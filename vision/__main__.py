@@ -10,6 +10,7 @@ from .tracking import HandSelector
 from .scenes import SceneMorph, SCENES
 from .hand_view import HandView
 from .take import TakeRecorder
+from .setlist import Setlist
 
 
 def main():
@@ -29,6 +30,7 @@ def main():
     scene_options = p.add_mutually_exclusive_group()
     scene_options.add_argument('--scene', choices=sorted(SCENES), help='morph two effects with one gesture')
     scene_options.add_argument('--scene-file', type=Path, help='custom named from/to filter+reverb JSON')
+    scene_options.add_argument('--setlist', type=Path, help='1..9 scenes; keys 1-9 select, n/p cycle')
     p.add_argument('--relative', action='store_true', help='pick up from current output value at pinch; move wrist to change it')
     p.add_argument('--calibration', type=Path, default=Path('vision-calibration.json'))
     p.add_argument('--calibrate', action='store_true')
@@ -39,7 +41,17 @@ def main():
         p.error('calibration requires overlay')
     if not math.isfinite(args.max_hand_jump) or not 0 < args.max_hand_jump <= 1:
         p.error('--max-hand-jump must be finite and in (0, 1]')
-    scene = SceneMorph(json.loads(args.scene_file.read_text()) if args.scene_file else SCENES[args.scene]) if args.scene or args.scene_file else None
+    if args.setlist and (args.no_overlay or args.calibrate):
+        p.error('setlist switching requires the camera overlay and cannot be used during calibration')
+    try:
+        setlist = Setlist(json.loads(args.setlist.read_text())) if args.setlist else None
+        scene = None
+        if setlist:
+            scene = setlist.current
+        elif args.scene or args.scene_file:
+            scene = SceneMorph(json.loads(args.scene_file.read_text()) if args.scene_file else SCENES[args.scene])
+    except (ValueError, OSError) as exc:
+        p.error(str(exc))
     if scene and args.relative:
         p.error('scene mode uses calibrated absolute position; omit --relative')
     if scene and args.control != 'filter':
@@ -142,10 +154,16 @@ def main():
                 if not args.no_overlay:
                     label = 'CALIBRATE: l low, h high, s save' if args.calibrate else f'{scene.name if scene else args.control}: {controller.value} active={controller.active} events={count}'
                     cv2.putText(frame, label, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 255, 255), 1)
+                    if setlist:
+                        cue = f'SCENE {setlist.index + 1}/{len(setlist.scenes)} | 1-9 select, n/p cycle | open hand then pinch'
+                        cv2.putText(frame, cue, (10, 48), cv2.FONT_HERSHEY_SIMPLEX, .45, (0, 255, 255), 1)
                     cv2.imshow('OmniRiff - q quits; open hand then pinch to engage', frame)
                     key = cv2.waitKey(1) & 0xff
                     if key == ord('q'):
                         break
+                    if setlist and setlist.key(key):
+                        scene = setlist.current
+                        controller.rearm()
                     if args.calibrate and y is not None and confidence >= .6:
                         if key in (ord('l'), ord('h')):
                             pending['low' if key == ord('l') else 'high'] = y

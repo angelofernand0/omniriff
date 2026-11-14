@@ -1,0 +1,7 @@
+{
+  "scenes": [
+    {"name": "Clear to Cosmos", "from": {"filter": 1.0, "reverb": 0.0}, "to": {"filter": 0.4, "reverb": 0.75}},
+    {"name": "Underwater to Spotlight", "from": {"filter": 0.12, "reverb": 0.55}, "to": {"filter": 1.0, "reverb": 0.08}},
+    {"name": "Dark Room", "from": {"filter": 1.0, "reverb": 0.0}, "to": {"filter": 0.2, "reverb": 0.35}}
+  ]
+}
