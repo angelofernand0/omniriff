@@ -255,7 +255,8 @@ async def run_live(args, mono, samplerate, label):
     runtime = Runtime(audio, udp_port=args.udp_port, ws_port=args.ws_port)
     from .browser_vision import BrowserVision
     camera = BrowserVision(Path(args.model), udp_port=args.udp_port,
-                           hand_port=args.hand_port, scene=args.scene)
+                           hand_port=args.hand_port, scene=args.scene,
+                           read_filter=lambda: audio.snapshot()['filter']['target'])
     demo = Demo(source, audio, runtime, label=label, headless=args.headless,
                 camera=camera, hand_port=args.hand_port)
     http = make_server(demo, args.http_port)

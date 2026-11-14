@@ -49,6 +49,7 @@
       text('mute', state.volume > 0 ? 'Mute' : 'Unmute');
       $('position').textContent = `${clock(state.position)} / ${clock(state.seconds)}`;
       const camera = state.camera;
+      text('cameraHint', camera.control === 'scene' ? 'Advanced Scene Morph: open hand, then pinch and move vertically to blend filter and reverb. Release holds the sound. Light the hand from the front.' : 'Open hand, then pinch to grab the current filter. Drag up for brighter, down for darker; release holds. At 100%, move down first. Light the hand from the front.');
       text('cameraButton', webcamStream ? 'Stop webcam' : 'Start webcam');
       $('cameraButton').disabled = cameraOpening || !camera.model_ready || camera.status === 'stopping';
       text('cameraStatus', !camera.model_ready ? 'Hand model missing · see setup' : cameraOpening ? 'Waiting for webcam permission…' :

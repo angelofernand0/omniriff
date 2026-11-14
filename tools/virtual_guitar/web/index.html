@@ -27,7 +27,7 @@
         <span class="eyebrow">CAM · LIVE HAND TRACKING</span>
         <div class="camera-row"><button id="cameraButton" disabled>Start webcam</button><span id="cameraStatus" role="status">Camera off</span></div>
         <video id="webcam" autoplay muted playsinline hidden aria-label="Live webcam preview"></video>
-        <p>Start webcam, show an open hand, then pinch thumb and index finger. Move your hand up and down to morph filter and reverb. Open your hand to release. The dashboard below shows the tracked joints. Camera frames stay on this computer and are never saved.</p>
+        <p id="cameraHint">Start webcam in good front lighting. Open your hand, then pinch to grab the current filter setting. Drag up for brighter, down for darker; open your hand to hold. At 100%, move down first. Camera frames stay on this computer and are never saved.</p>
       </div>
       <p id="error" role="alert"></p>
     </section>

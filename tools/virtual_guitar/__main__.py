@@ -51,7 +51,7 @@ def main(argv=None) -> int:
     parser.add_argument("--udp-port", type=int, default=47800)
     parser.add_argument("--hand-port", type=int, default=47802, help="real hand-view WebSocket")
     parser.add_argument("--model", default="models/hand_landmarker.task", help="MediaPipe hand model for browser webcam")
-    parser.add_argument("--scene", choices=("bloom", "rise"), default="bloom", help="Joey's live Scene Morph preset")
+    parser.add_argument("--scene", choices=("bloom", "rise"), default=None, help="opt into advanced Scene Morph; default is pinch/drag filter slider")
     parser.add_argument("--volume", type=float, default=0.35, help="live listening level, 0..1; after DSP")
     parser.add_argument("--duration", type=float, help="stop live demo after this many seconds")
     parser.add_argument("--open", action="store_true", help="open the live demo in the default browser")
