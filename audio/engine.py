@@ -23,6 +23,7 @@ import numpy as np
 
 from .dsp import LowPass, Smoother, db_to_gain, filter_cutoff_hz, gain_to_db
 from .looper import Looper
+from .reverb import Reverb
 
 PARAMETERS = ("filter", "reverb")
 ACTIONS = ("loop", "bypass")
@@ -42,6 +43,9 @@ class EngineConfig:
     loop_level: float = 1.0
     bypass_fade_ms: float = 10.0
     loop_fade_ms: float = 5.0
+    reverb_room: float = 0.84
+    reverb_damp: float = 0.5
+    reverb_wet_scale: float = 2.0
     subblock: int = 32
     max_block: int = 4096
     meter_decay: float = 0.9
@@ -74,6 +78,10 @@ class Engine:
         self._lp = LowPass(sr, c.filter_q)
         self._lp.set_cutoff(filter_cutoff_hz(1.0, c.filter_min_hz, c.filter_max_hz, sr))
         self.looper = Looper(int(c.max_loop_seconds * sr), int(c.loop_fade_ms / 1000 * sr))
+        self._reverb = Reverb(sr, c.subblock, c.reverb_room, c.reverb_damp)
+        if c.subblock > self._reverb.min_delay:
+            raise ValueError("subblock must not exceed the shortest reverb delay")
+        self._rv = np.zeros(c.subblock, np.float32)
 
         self._bypass = False
         self._bmix = 0.0  # 0 = effected, 1 = dry
@@ -144,6 +152,9 @@ class Engine:
     def set_filter(self, value: float) -> bool:
         return self.submit({"type": "parameter", "control": "filter", "value": value, "confidence": 1.0})
 
+    def set_reverb(self, value: float) -> bool:
+        return self.submit({"type": "parameter", "control": "reverb", "value": value, "confidence": 1.0})
+
     def note_xrun(self) -> None:
         """Called by the stream wrapper when PortAudio reports an under/overflow."""
         self._xruns += 1
@@ -177,9 +188,15 @@ class Engine:
         for s in range(0, n, sb):
             e = min(n, s + sb)
             v = self._filter_s.step(self._target_filter)
-            self._reverb_s.step(self._target_reverb)  # placeholder: tracked, no DSP yet
             self._lp.set_cutoff(filter_cutoff_hz(v, c.filter_min_hz, c.filter_max_hz, c.samplerate))
             self._lp.process(mix[s:e], wet[s:e])
+            # Reverb always runs so its tail stays continuous when the amount changes.
+            rv_amount = self._reverb_s.step(self._target_reverb)
+            rv = self._rv[:e - s]
+            self._reverb.process(wet[s:e], rv)
+            if rv_amount > 0.0:
+                rv *= rv_amount * c.reverb_wet_scale
+                wet[s:e] += rv
 
         # Click-free bypass: per-sample ramp between wet and dry.
         target = 1.0 if self._bypass else 0.0
@@ -243,7 +260,7 @@ class Engine:
             "reverb": {
                 "target": self._target_reverb,
                 "value": self._reverb_s.value,
-                "dsp": False,
+                "dsp": True,
             },
             "input_peak_dbfs": gain_to_db(self._in_peak),
             "output_peak_dbfs": gain_to_db(self._out_peak),

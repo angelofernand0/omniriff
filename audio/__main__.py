@@ -19,7 +19,7 @@ from .engine import Engine, EngineConfig
 from .fileio import read_wav, write_test_wav, write_wav
 from .offline import render, sweep_value
 
-KEYS = "keys: b=bypass  l=loop  f <0..1>=filter  s=status  q=quit"
+KEYS = "keys: b=bypass  l=loop  f <0..1>=filter  r <0..1>=reverb  s=status  q=quit"
 
 
 def _parse_times(text: str) -> tuple[float, ...]:
@@ -38,13 +38,14 @@ def _keyboard(engine: Engine, stop: threading.Event) -> None:
             engine.toggle_bypass()
         elif cmd[0] == "l":
             engine.toggle_loop()
-        elif cmd[0] == "f" and len(cmd) == 2:
+        elif cmd[0] in ("f", "r") and len(cmd) == 2:
+            setter = engine.set_filter if cmd[0] == "f" else engine.set_reverb
             try:
-                ok = engine.set_filter(float(cmd[1]))
+                ok = setter(float(cmd[1]))
             except ValueError:
                 ok = False
             if not ok:
-                print("filter needs a number in [0, 1]", flush=True)
+                print("value needs a number in [0, 1]", flush=True)
         elif cmd[0] == "s":
             print(json.dumps(engine.snapshot(), indent=1), flush=True)
         else:
@@ -88,6 +89,7 @@ def main(argv=None) -> int:
     p.add_argument("--exclusive", action="store_true", help="WASAPI exclusive mode")
     p.add_argument("--gain-db", type=float, default=0.0, help="input gain in dB")
     p.add_argument("--sweep", type=float, metavar="SECONDS", help="automate a filter sweep with this period")
+    p.add_argument("--reverb", type=float, default=0.0, help="initial reverb amount 0..1")
     p.add_argument("--loop-at", default="", help="file modes: comma-separated loop toggle times (s)")
     p.add_argument("--status-every", type=float, default=0.0, help="live modes: print levels every N s")
     a = p.parse_args(argv)
@@ -99,6 +101,7 @@ def main(argv=None) -> int:
     if a.input_wav and a.output_wav:
         data, sr = read_wav(a.input_wav)
         engine = Engine(EngineConfig(samplerate=sr, input_gain_db=a.gain_db))
+        engine.set_reverb(a.reverb)
         out = render(engine, data.mean(axis=1), a.blocksize, a.out_channels, a.sweep, _parse_times(a.loop_at))
         write_wav(a.output_wav, out, sr)
         print(json.dumps(engine.snapshot(), indent=1))
@@ -135,6 +138,8 @@ def main(argv=None) -> int:
                                    a.blocksize, latency, a.exclusive, stop)
             print(f"stream closed: {info}", flush=True)
 
+    if not engine.set_reverb(a.reverb):
+        raise SystemExit("--reverb needs a number in [0, 1]")
     workers.append(threading.Thread(target=_keyboard, args=(engine, stop), daemon=True))
     if a.sweep:
         workers.append(threading.Thread(target=_sweeper, args=(engine, a.sweep, stop), daemon=True))

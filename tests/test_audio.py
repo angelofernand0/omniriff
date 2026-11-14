@@ -184,5 +184,46 @@ class FileModeTests(unittest.TestCase):
         self.assertEqual(e.snapshot()["loop"]["state"], "playing")
 
 
+def set_reverb(engine, value):
+    return engine.submit({"type": "parameter", "control": "reverb", "value": value, "confidence": 1.0})
+
+
+class ReverbTests(unittest.TestCase):
+    def _impulse_response(self, value, seconds=3.5):
+        e = Engine(EngineConfig(samplerate=SR))
+        set_reverb(e, value)
+        run(e, np.zeros(SR // 2, np.float32))  # let the amount settle
+        x = np.zeros(int(seconds * SR), np.float32)
+        x[0] = 0.5
+        return run(e, x)[:, 0]
+
+    def test_reverb_adds_a_decaying_tail(self):
+        y = self._impulse_response(1.0)
+
+        def energy(t):
+            seg = y[int(t * SR):int(t * SR) + 2400]
+            return float(np.mean(np.square(seg)))
+
+        self.assertGreater(energy(0.5), 1e-8, "tail should still be audible at 0.5 s")
+        self.assertLess(energy(3.0), energy(0.5) * 1e-4, "tail should decay by >40 dB")
+        self.assertTrue(np.all(np.isfinite(y)))
+
+    def test_zero_reverb_adds_nothing(self):
+        y = self._impulse_response(0.0, seconds=0.5)
+        self.assertLess(float(np.max(np.abs(y[BLOCK * 2:]))), 1e-4)
+
+    def test_reverb_stays_bounded_on_loud_input(self):
+        e = Engine(EngineConfig(samplerate=SR, input_gain_db=6))
+        set_reverb(e, 1.0)
+        out = run(e, make_test_signal(seconds=2.0, samplerate=SR))
+        self.assertTrue(np.all(np.isfinite(out)))
+        self.assertLessEqual(float(np.max(np.abs(out))), 10 ** (-1 / 20) + 1e-6)
+        self.assertTrue(e.snapshot()["reverb"]["dsp"])
+
+    def test_subblock_longer_than_reverb_delay_is_rejected(self):
+        with self.assertRaises(ValueError):
+            Engine(EngineConfig(samplerate=SR, subblock=1024))
+
+
 if __name__ == "__main__":
     unittest.main()
