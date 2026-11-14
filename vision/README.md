@@ -209,3 +209,60 @@ python -m vision.spatial --model models/hand_landmarker.task
    - Synchronized filter/reverb pairs are emitted at 10 pairs/s (strictly bounded to $\le 20$ events/s).
 4. **Dashboard Hand View**: Normalized 21-point hand skeleton streams simultaneously to `ws://127.0.0.1:47802` for the dashboard live HAND panel.
 
+## Gesture Vocabulary Engine (`vision/gestures.py`)
+
+Provides a comprehensive vocabulary of natural, guitar-friendly hand poses recognized directly from 21 MediaPipe hand landmarks. Rather than restricting guitarists to a single pinch clutch, the vocabulary engine detects intuitive physical archetypes with configurable dwell confirmation (default 400 ms) and fire cooldowns:
+
+| Gesture Pose | Hand Landmarks | Target Control / Action |
+|---|---|---|
+| **Fist** | All fingers curled, thumb tucked | `action: "bypass"` toggle |
+| **Thumbs Up** | Thumb extended upward, fingers curled | `action: "loop"` (start / punch-in) |
+| **Thumbs Down** | Thumb extended downward, fingers curled | `action: "loop"` (stop / clear) |
+| **Peace Sign (V)** | Index + Middle extended and spread apart | Scene Morph mode toggle |
+| **One Finger** | Index extended, others curled | Scene Preset 1 |
+| **Two Fingers** | Index + Middle extended (parallel) | Scene Preset 2 |
+| **Three Fingers** | Index + Middle + Ring extended | Scene Preset 3 |
+| **Four Fingers** | All fingers extended except thumb | Scene Preset 4 |
+| **Open Palm (Five)** | All 5 fingers extended | Scene Preset 5 / Master Expression |
+
+### Verification & Demo
+```bash
+python -m vision.gestures --demo
+```
+All emitted envelopes comply with `protocol/control.schema.json` v1.
+
+## Performance Scoring & Technique Analytics (`vision/scoring.py`)
+
+Evaluates guitarist gesture execution across four quantitative biomechanical dimensions to provide actionable feedback and grade performance quality:
+
+1. **Smoothness (35% weight)**: Second-order acceleration differences (jerk); rewards graceful continuous sweeps and penalizes nervous hand twitches.
+2. **Dynamic Range Coverage (30% weight)**: Quantifies utilization of the full `[0.0, 1.0]` parameter gamut; flags shallow or constricted motion.
+3. **Stability & Cadence (20% weight)**: Timing variance across repeated filter sweeps or sustained holds.
+4. **Physical Efficiency (15% weight)**: Parameter travel achieved relative to physical hand displacement in space.
+
+### Output Report
+Outputs a standardized `GestureScoreReport` JSON object:
+- **Overall Score** (0–100 integer) & Letter Grade (`S` $\ge 93$, `A` $\ge 85$, `B` $\ge 75$, `C` $\ge 65$, `D` $< 65$).
+- **Dimensional Breakdown**: Individual 0–100 scores for Smoothness, Range, Stability, and Efficiency.
+- **Actionable Coaching Tips**: Concrete suggestions to improve gestural control (e.g. *"Smooth out hand acceleration: detected rapid twitches or reversals. Move like a cello bow — continuous, controlled strokes"*).
+
+### Verification & Demo
+```bash
+python -m vision.scoring --demo
+```
+
+## Adaptive Difficulty & Assistive Accessibility (`vision/adaptive.py`)
+
+A physical AI assistive controller designed for the **Amazon Practical AI** accessibility track, ensuring musicians with limited mobility, arthritis, or physiological tremors can perform with full expressive control:
+
+1. **Auto-Gamut Mapping**: Continuously learns the performer's physical range of motion (even if restricted to a 5–10 cm vertical window) and dynamically expands it to span the entire `[0.0, 1.0]` parameter range.
+2. **Tremor Dampening**: Detects rapid physiological tremor oscillations (4–8 Hz sign reversals) and dynamically elevates filter time constant $\tau$ ($0.12 \rightarrow 0.35$ s) during tremors while keeping intentional sweeps responsive.
+3. **Magnetic Landmark Snapping**: Subtly attracts parameter values to critical musical targets (`0.0`, `0.5`, `1.0`) when hovering nearby, removing the need for sub-millimeter physical precision.
+4. **Assistive Profiles**: Configurable profiles (`assistive`, `standard`, `pro`) with deadbands and confidence gates.
+
+### Verification & Demo
+```bash
+python -m vision.adaptive --demo
+```
+
+
