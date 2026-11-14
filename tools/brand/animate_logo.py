@@ -343,7 +343,7 @@ def write_svg(body, letters, name, theme):
 
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W * 4}" height="{H * 4}" '
              'shape-rendering="crispEdges" role="img" aria-label="OmniRiff"><style>' + style + "</style>",
-             f'<rect class="bg" width="{W}" height="{H}"/>']
+             ]   # no background rect: the SVGs are transparent so they sit on any page
     # Riff body in logo coordinates, then shifted into the canvas by the outer group
     sh = lambda cells: {(x + ML, y + HEAD): c for (x, y), c in cells.items()}   # into canvas cells
     parts.append('<g id="riff">')
