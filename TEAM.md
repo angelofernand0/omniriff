@@ -11,14 +11,17 @@ Angelo, SM and Joey do the software. Aditya does the hardware: wiring, flashing,
 
 | Agent | Owns | Branch prefix |
 |---|---|---|
-| Angelo's Claude | `audio/`: real-time engine, effects, loop, bypass, control mailbox | `angelo/claude/` |
-| Angelo's Codex | `engine/`: control bus, UDP/serial adapters, state publisher, `protocol/state.schema.json`, launcher, integration | `angelo/codex/` |
-| SM's Claude | `tools/sim/` event simulator first, then `dashboard/` browser status and manual-control UI | `sm/claude/` |
-| SM's Codex | Helps SM's Claude on `dashboard/` or takes overflow; SM decides and posts a claim on issue #1 | `sm/codex/` |
-| Joey's Codex | `vision/`: gesture control (webcam hand tracking, gesture → `filter`/`reverb` parameter events) | `john/codex/` |
-| Angelo's Claude | `tools/latency/` round-trip latency measurement and `tests/acceptance/` end-to-end and disconnect checks (claimed on issue #1) | `angelo/claude/` |
-| Aditya's Codex | `firmware/arduino/` and `docs/HARDWARE.md`: footswitch firmware draft and wiring/mapping sheet | `aditya/codex/` |
-| Aditya | Hardware bring-up, flashing, pin and gesture mapping; `firmware/sensecap/` is stretch | `aditya/` |
+| Angelo's Claude | `audio/`, `tools/latency/`, `tests/acceptance/`, `engine/check.py`, `engine/demo.py`, `engine/session_log.py`, docs (DEMO, DEVPOST, QA, BACKLOG, SUBMISSION); overnight coordination and merges; coach pieces A (take capture) and I (coach control source) | `angelo/claude/` |
+| Angelo's Codex | `engine/` runtime/router/replay, `protocol/state.schema.json` | `angelo/codex/` |
+| SM's Claude | `dashboard/`, `tools/sim/`, BRAND_SPEC.md; coach pieces D (core/deep agent), E (feed), F (dashboard layer + Riff), H (voice) | `sm/claude/` |
+| SM's Codex | `tools/virtual_guitar/` (virtual guitar, playable demo / play room), B16 backup video | `sm/codex/` |
+| Joey's Codex | `vision/` gesture control (control, tracking, scenes, setlists, takes, hand view), `tools/tone_match/` | `john/codex/` |
+| John's Claude (Joey) | `vision/eyes.py`, `vision/looper.py`; coach pieces C (Eyes) and B (Ears, `tools/ears/`, in progress) | `john/claude/` |
+| John's Gemini (Joey) | `vision/zones.py`, `vision/expressive.py`, `vision/stage.py`, `vision/spatial.py` | `john/gemini/` |
+| Aditya's Codex | `firmware/arduino/` and `docs/HARDWARE.md` (draft merged in #5; compile/flash pending) | `aditya/codex/` |
+| Aditya | Hardware bring-up from 8 PM Saturday: wiring, flashing, Grove button polarity (backlog B3), pin and gesture mapping; `firmware/sensecap/` is stretch | `aditya/` |
+
+Up-to-date work queue: [docs/BACKLOG.md](docs/BACKLOG.md). Coach plan and piece status: [docs/COACH.md](docs/COACH.md).
 
 Shared files (`protocol/`, `README.md`, `AGENTS.md`, `TEAM.md`, `requirements*.txt`, `.github/`) need a heads-up on issue #1. Angelo merges changes to them. Any change to a contract needs a board post before dependent code merges.
 
