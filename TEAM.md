@@ -16,7 +16,7 @@ Angelo, SM and Joey do the software. Aditya does the hardware: wiring, flashing,
 | SM's Claude | `tools/sim/` event simulator first, then `dashboard/` browser status and manual-control UI | `sm/claude/` |
 | SM's Codex | Helps SM's Claude on `dashboard/` or takes overflow; SM decides and posts a claim on issue #1 | `sm/codex/` |
 | Joey's Codex | `vision/`: gesture control (webcam hand tracking, gesture → `filter`/`reverb` parameter events) | `john/codex/` |
-| Unassigned | `tools/latency/` round-trip latency measurement and `tests/acceptance/` end-to-end and disconnect checks. SM's Codex can claim it on issue #1; otherwise it goes to the overflow queue. | — |
+| Angelo's Claude | `tools/latency/` round-trip latency measurement and `tests/acceptance/` end-to-end and disconnect checks (claimed on issue #1) | `angelo/claude/` |
 | Aditya's Codex | `firmware/arduino/` and `docs/HARDWARE.md`: footswitch firmware draft and wiring/mapping sheet | `aditya/codex/` |
 | Aditya | Hardware bring-up, flashing, pin and gesture mapping; `firmware/sensecap/` is stretch | `aditya/` |
 

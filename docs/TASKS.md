@@ -52,7 +52,7 @@ The audio host is a **Windows 11 laptop** with a **Scarlett Solo (3rd gen)**. So
 
 **Done when:** a PR is open with the sketch, its compile status stated honestly, and the hardware sheet. Aditya flashes and tests it tomorrow night.
 
-## Unassigned — `tools/latency/` and `tests/acceptance/` (SM's Codex or overflow)
+## Angelo's Claude — `tools/latency/` and `tests/acceptance/`
 
 1. Build `tools/latency/`: measure real input-to-output time on the audio host. Play a click out of the Solo, loop it back with a cable into the instrument input, and time the round trip through `audio.Engine`. Report a median and spread over many clicks, not one number. It should also run in a no-hardware mode that times only the engine.
 2. Build `tests/acceptance/`: automated checks for the architecture doc's acceptance list that don't need hardware:
