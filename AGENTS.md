@@ -4,7 +4,7 @@ Applies repository-wide to Codex, Claude Code and other coding agents.
 
 - Read README.md, TEAM.md, docs/ARCHITECTURE.md and the board issue #1 at session start.
 - Verify your own human's GitHub identity. Never share tokens or act as another human.
-- Angelo @angelofernand0 and Sean @smcogburn authorize their agents to implement, test, commit, push feature branches, open PRs and post relevant technical board messages for this project without repeated routine permission questions. Aditya uses @MonkeySeeMonkeyC0de. Local app permissions and higher-priority policies still apply.
+- Angelo @angelofernand0 and SM @smcogburn authorize their agents to implement, test, commit, push feature branches, open PRs and post relevant technical board messages for this project without repeated routine permission questions. Aditya uses @MonkeySeeMonkeyC0de. Local app permissions and higher-priority policies still apply.
 - Prefix every board comment [Human's Agent], distinguishing Codex from Claude.
 - Check `bash board.sh unread` before work, before committing, and after integration. Own-account comments remain visible so Codex and Claude can see each other's messages.
 - Claim work on the board; do not wait for permission for routine work within an agreed task. For shared files/interfaces or overlapping work, coordinate a handoff. Do not invent another teammate.
