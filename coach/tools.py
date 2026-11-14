@@ -68,6 +68,8 @@ class CoachTools:
         after = self._report(after_id, "take.json")
         if not before.get("available", True) or not after.get("available", True):
             raise ValueError("both TakeReports are required for comparison")
+        if before.get("judgeable") is not True or after.get("judgeable") is not True:
+            raise ValueError("both TakeReports must have enough strums to judge timing")
         bh, bg, bs = _numbers(before)
         ah, ag, ass = _numbers(after)
         result = {
@@ -138,8 +140,37 @@ class CoachTools:
         return text
 
     def rig_control(self, control: str, value: float | None = None) -> str:
-        """After the human approves this tool call, send one schema-valid rig event."""
+        """After approval, set a parameter or safely start dry bypass/recording."""
+        from .rig import control_message
+
+        control_message(control, value, 0, 0)
+        if control in {"bypass", "loop"}:
+            snapshot = self.state.snapshot()
+            if snapshot.get("available") is False:
+                self.feed.publish_activity("coach", f"rig_control {control}", "failed")
+                return "Rig state unavailable; no toggle sent."
+            if control == "bypass":
+                current = snapshot.get("bypass")
+                desired = True
+            else:
+                loop = snapshot.get("loop")
+                current = loop.get("state") if isinstance(loop, dict) else None
+                desired = "recording"
+            if current is None or not isinstance(current, bool if control == "bypass" else str):
+                self.feed.publish_activity("coach", f"rig_control {control}", "failed")
+                return "Rig state incomplete; no toggle sent."
+            if current == desired:
+                self.feed.publish_activity("coach", f"rig_control {control}", "done")
+                return f"{control} already active; no toggle sent."
+            if control == "loop" and current != "idle":
+                self.feed.publish_activity("coach", f"rig_control {control}", "failed")
+                return "Loop is not idle; no toggle sent."
+            if self.state.action_pending(control):
+                self.feed.publish_activity("coach", f"rig_control {control}", "waiting")
+                return f"Awaiting {control} state confirmation; no duplicate toggle sent."
         message = self.rig.send(control, value)
+        if control in {"bypass", "loop"}:
+            self.state.mark_action_pending(control, desired)
         self.feed.publish(state="pointing", mood="encouraging", target=control)
         self.feed.publish_activity("coach", f"rig_control {control}", "done")
         return f"{'Fixture logged' if self.rig.fixture_mode else 'Sent'} {message['type']} {control}"
@@ -181,7 +212,7 @@ def build_langchain_tools(service: CoachTools) -> dict:
 
     @tool
     def rig_control(control: str, value: float | None = None) -> str:
-        """Request one rig change. This tool is interrupted for human approval."""
+        """Request an approved change: filter/reverb value, dry bypass on, or loop start from idle."""
         return service.rig_control(control, value)
 
     return {item.name: item for item in (

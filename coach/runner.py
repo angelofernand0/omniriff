@@ -49,6 +49,8 @@ def _pending_actions(result: dict) -> list[dict]:
         control = args.get("control")
         if control not in {"bypass", "filter", "reverb", "loop"}:
             raise ValueError("invalid rig action")
+        if control in {"bypass", "loop"} and any(item["control"] == control for item in actions):
+            raise ValueError("duplicate toggle action in one approval batch")
         action = {"control": control}
         if "value" in args and args["value"] is not None:
             action["value"] = args["value"]
@@ -221,6 +223,11 @@ class CoachRunner:
         self.service.current_take_id = take_id
         self.feed.publish(state="thinking", mood="aha" if ear.findings else "curious", target="coach")
         print(f"Take {take_id}: {ear.summary}; hand: {hand.get('summary', 'unavailable')}")
+        if not ear.judgeable:
+            self.feed.publish(state="idle", mood="neutral", target="player",
+                              cue=f"{ear.summary} Play at least {ear.min_strums} strums and try again.")
+            self.feed.publish_activity("coach", "judge take", "failed")
+            return {"skipped": "unjudgeable", "take_id": take_id}
         before = self.previous_take_id
         prompt = f"New take {take_id}. Diagnose from reports, choose one drill, set up the rig."
         comparison = None
