@@ -25,7 +25,7 @@ Run this before the demo and after any change to audio/ or engine/. Write down t
 - [ ] Unplug the Arduino, close vision and close the dashboard, one at a time: audio keeps playing every time and keyboard bypass still works.
 - [ ] Plug them back in: each reconnects without restarting the engine.
 
-## Live hand view on dashboard
+## Live hand view on dashboard (vision side needs PR #13 merged; the dashboard panel is on main)
 - [ ] Start engine and serve dashboard (`http://localhost:8080`).
 - [ ] Start vision (`ws://127.0.0.1:47802`). The dashboard HAND panel lights up.
 - [ ] No hand in frame: panel reads `NO HAND`.
@@ -33,7 +33,7 @@ Run this before the demo and after any change to audio/ or engine/. Write down t
 - [ ] Pinch thumb and index: panel turns pink, boxes the pinch, displays engaged %, and draws the value rail.
 - [ ] Stop vision: panel ages out within 500 ms and displays `NO FEED`. Engine remains LIVE and unaffected.
 
-## Scene Morph & Tone Match auditions
+## Scene Morph & Tone Match auditions (needs PR #13 merged)
 - [ ] Start vision with `--scene bloom` (Clear to Cosmos).
 - [ ] Pinch at bottom: audio is bright and dry (filter 1.0, reverb 0.0).
 - [ ] Sweep upward: continuous, smooth transition into ambient wash (filter 0.40, reverb 0.75).
@@ -41,13 +41,13 @@ Run this before the demo and after any change to audio/ or engine/. Write down t
 - [ ] Re-pinch: requires open hand first (open-then-pinch clutching).
 - [ ] Repeat with `--scene rise` (Underwater to Spotlight) and confirm inverted dark-to-bright trajectory.
 
-## Performance setlists
+## Performance setlists (needs PR #13 merged)
 - [ ] Start vision with `--setlist vision/setlist-demo.json`. Camera overlay displays `SCENE 1/3`.
 - [ ] With camera window focused, press `2` (or `n` for next): scene switches immediately without restarting camera capture.
 - [ ] Verify sound holds previous scene parameters; new scene does not emit until hand opens and pinches again.
 - [ ] Press `p`: wraps backward to previous scene. Sequence numbers in emitted packets stay strictly increasing.
 
-## StrumGuard & Performance Zones
+## StrumGuard & Performance Zones (needs PR #32 merged)
 - [ ] Start vision with `--strum-guard` (or `python -m vision.spatial --strum-guard`).
 - [ ] Hold guitar pick (pinched thumb and index) inside the lower guitar zone and strum:
   - Overlay shows `STRUM GUARD: MUTED`.
@@ -55,7 +55,7 @@ Run this before the demo and after any change to audio/ or engine/. Write down t
 - [ ] Move hand above strings into upper air expression zone: overlay clears to LIVE; pinch engages filter sweep.
 - [ ] Rapid strumming in air (> 2.5 m/s or rapid direction reversals): motion detector suppresses false clutch triggers.
 
-## DualAxis 3D Control
+## DualAxis 3D Control (needs PR #32 merged)
 - [ ] Run `python -m vision.spatial --dual-axis`.
 - [ ] Open hand, then pinch:
   - Vertical elevation ($Y$-axis) sweeps primary filter cutoff.

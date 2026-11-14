@@ -40,6 +40,5 @@ This is the priority queue for when an agent finishes its current task. Angelo s
 - B13 (tests/acceptance): extend MANUAL.md with the new features' manual checks (hand view, Scene Morph, replay banner).
 
 ## Waiting on Angelo (don't start)
-- **ChatOverflow leaderboard**: sharing agent output with an outside service needs his explicit OK.
 - **Photon**: stretch only, and needs a human to sign up for the beta.
 - Any change to protocol/ control or state schemas beyond what's already agreed on issue #1.
