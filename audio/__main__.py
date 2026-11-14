@@ -3,6 +3,7 @@
 Examples:
   python -m audio --list-devices
   python -m audio --make-test-wav test.wav
+  python -m audio --level-check --in Focusrite --hostapi WASAPI --input-channel 2
   python -m audio --input-wav test.wav --output-wav out.wav --sweep 4 --loop-at 0.5,2.5,5
   python -m audio --input-wav test.wav --play --sweep 4
   python -m audio --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2
@@ -17,6 +18,7 @@ import time
 
 from .engine import Engine, EngineConfig
 from .fileio import read_wav, write_test_wav, write_wav
+from .levels import analyze_levels
 from .offline import render, sweep_value
 
 KEYS = "keys: b=bypass  l=loop  f <0..1>=filter  r <0..1>=reverb  s=status  q=quit"
@@ -74,6 +76,8 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="python -m audio", description="OmniRiff audio engine")
     p.add_argument("--list-devices", action="store_true")
     p.add_argument("--make-test-wav", metavar="PATH", help="write a synthetic test chord and exit")
+    p.add_argument("--level-check", nargs="?", const=10.0, type=float, metavar="SECONDS",
+                   help="listen to the input (or --input-wav) and advise on the Solo gain knob; default 10 s")
     p.add_argument("--input-wav", metavar="PATH", help="process a WAV file instead of a live input")
     p.add_argument("--output-wav", metavar="PATH", help="with --input-wav: render to this file (no device)")
     p.add_argument("--play", action="store_true", help="with --input-wav: play through the speakers")
@@ -98,6 +102,11 @@ def main(argv=None) -> int:
         print(write_test_wav(a.make_test_wav, samplerate=a.samplerate))
         return 0
 
+    if a.level_check is not None and a.input_wav:
+        data, _ = read_wav(a.input_wav)
+        print(json.dumps(analyze_levels(data.mean(axis=1)), indent=1))
+        return 0
+
     if a.input_wav and a.output_wav:
         data, sr = read_wav(a.input_wav)
         engine = Engine(EngineConfig(samplerate=sr, input_gain_db=a.gain_db))
@@ -111,6 +120,13 @@ def main(argv=None) -> int:
 
     if a.list_devices:
         print(stream.list_devices())
+        return 0
+
+    if a.level_check is not None:
+        in_dev = stream.resolve_device(a.in_dev, a.hostapi, "input")
+        print(f"Strum normally, then your hardest, for {a.level_check:.0f} s...", flush=True)
+        mono = stream.record_input(in_dev, a.input_channel, a.level_check, a.samplerate)
+        print(json.dumps(analyze_levels(mono), indent=1))
         return 0
 
     try:

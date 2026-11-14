@@ -29,6 +29,7 @@ python -m audio --input-wav test.wav --play --sweep 4 --reverb 0.3   # through t
 
 1. Install Focusrite's driver. Plug the guitar into the Solo's **instrument jack (input 2)** with **INST** on. Turn **Direct Monitor off**, or you'll hear the dry guitar on top of the processed one.
 2. Find the device: `python -m audio --list-devices`.
+   Then set the gain: `python -m audio --level-check --in Focusrite --hostapi WASAPI --input-channel 2`. Strum normally, then as hard as you will in the demo, for 10 s. It reports the peak/RMS dBFS and says turn up / good / turn down (it aims for peaks around −12 dBFS and zero clipped samples). `--level-check` with `--input-wav` analyzes a recorded DI file instead.
 3. Start with WASAPI:
 
    ```bash
