@@ -3,10 +3,12 @@
 # From the repository root (choose one; execution-policy bypass is process-only):
 # powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -SerialPort COM3
 # powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -Headless
+# Add -Coach to either command once the coach package and its dependencies are installed.
 [CmdletBinding()]
 param(
     [string]$SerialPort = '',
-    [switch]$Headless
+    [switch]$Headless,
+    [switch]$Coach
 )
 
 $ErrorActionPreference = 'Stop'
@@ -39,6 +41,10 @@ try {
     }
     if (-not [string]::IsNullOrWhiteSpace($SerialPort)) {
         $demoArgs += @('--serial-port', $SerialPort)
+    }
+    if ($Coach) {
+        $demoArgs += '--coach'
+        Write-Host 'Coach requested; engine.demo manages its process and take directory.'
     }
 
     Write-Host 'Starting the local dashboard and engine. Keep this terminal open; q or Ctrl+C stops the demo.'
