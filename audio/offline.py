@@ -20,6 +20,7 @@ def render(
     out_channels: int = 2,
     sweep_period: float | None = None,
     loop_times: tuple[float, ...] = (),
+    on_block=None,
 ) -> np.ndarray:
     """Process `mono` block by block, applying a scripted sweep and loop toggles."""
     sr = engine.config.samplerate
@@ -35,4 +36,6 @@ def render(
             engine.set_filter(sweep_value(t, sweep_period))
         e = min(n, s + blocksize)
         engine.process(mono[s:e], out[s:e])
+        if on_block is not None:
+            on_block()
     return out

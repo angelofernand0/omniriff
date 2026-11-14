@@ -20,6 +20,10 @@ Tests: `python -m unittest discover -s engine/tests -v` after installing require
 
 ## Windows 11 quickstart — Scarlett Solo (3rd gen)
 
+**One command for the demo:** `python -m engine.demo --open [engine options]` serves the dashboard (port 8080, `--http-port`) and opens it, optionally starts gesture control (`--vision`, with `--vision-args "..."`), then runs the engine in the foreground with every normal engine option (`--headless`, `--replay`, `--serial-port`, …). Quitting the engine stops the dashboard and vision too.
+
+**Preflight first:** `python -m engine --check` opens no audio. It checks the required packages, finds the Focusrite (and whether input 2 and WASAPI/ASIO are available), recognizes the Arduino's COM port (and prints the `--serial-port` to use), and confirms UDP 47800 / TCP 47801, 47802 and 8080 are free. Each problem gets a fix hint. Exit code 1 means not ready.
+
 **Windows verification pending.** These commands are prepared from the Python/PortAudio and pySerial interfaces and this repo's CLI; they have not been run on Angelo's Windows laptop or Scarlett Solo. COM3 below is an example, not a detected port. No measured guitar-to-output latency is claimed.
 
 Run PowerShell in the repository root. Install Python 3.12 with the Windows launcher if `py -3.12 --version` fails. Install the official Scarlett Solo 3rd-gen Windows driver from [Focusrite Downloads](https://downloads.focusrite.com/focusrite/scarlett-3rd-gen/scarlett-solo-3rd-gen), then attach the interface and reboot if its installer requests it.

@@ -3,6 +3,7 @@
 Examples:
   python -m audio --list-devices
   python -m audio --make-test-wav test.wav
+  python -m audio --level-check --in Focusrite --hostapi WASAPI --input-channel 2
   python -m audio --input-wav test.wav --output-wav out.wav --sweep 4 --loop-at 0.5,2.5,5
   python -m audio --input-wav test.wav --play --sweep 4
   python -m audio --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2
@@ -17,6 +18,8 @@ import time
 
 from .engine import Engine, EngineConfig
 from .fileio import read_wav, write_test_wav, write_wav
+from .levels import analyze_levels
+from .takes import TakeWriter
 from .offline import render, sweep_value
 
 KEYS = "keys: b=bypass  l=loop  f <0..1>=filter  r <0..1>=reverb  s=status  q=quit"
@@ -74,6 +77,8 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="python -m audio", description="OmniRiff audio engine")
     p.add_argument("--list-devices", action="store_true")
     p.add_argument("--make-test-wav", metavar="PATH", help="write a synthetic test chord and exit")
+    p.add_argument("--level-check", nargs="?", const=10.0, type=float, metavar="SECONDS",
+                   help="listen to the input (or --input-wav) and advise on the Solo gain knob; default 10 s")
     p.add_argument("--input-wav", metavar="PATH", help="process a WAV file instead of a live input")
     p.add_argument("--output-wav", metavar="PATH", help="with --input-wav: render to this file (no device)")
     p.add_argument("--play", action="store_true", help="with --input-wav: play through the speakers")
@@ -88,9 +93,12 @@ def main(argv=None) -> int:
     p.add_argument("--latency", default="low", help="'low', 'high' or seconds")
     p.add_argument("--exclusive", action="store_true", help="WASAPI exclusive mode")
     p.add_argument("--gain-db", type=float, default=0.0, help="input gain in dB")
+    p.add_argument("--gate-db", type=float, default=None,
+                   help="optional noise gate open threshold in dBFS (e.g. -50); off by default")
     p.add_argument("--sweep", type=float, metavar="SECONDS", help="automate a filter sweep with this period")
     p.add_argument("--reverb", type=float, default=0.0, help="initial reverb amount 0..1")
     p.add_argument("--loop-at", default="", help="file modes: comma-separated loop toggle times (s)")
+    p.add_argument("--take-dir", metavar="DIR", help="save each finished loop take as WAV + JSON (practice coach input)")
     p.add_argument("--status-every", type=float, default=0.0, help="live modes: print levels every N s")
     a = p.parse_args(argv)
 
@@ -98,11 +106,22 @@ def main(argv=None) -> int:
         print(write_test_wav(a.make_test_wav, samplerate=a.samplerate))
         return 0
 
+    if a.level_check is not None and a.input_wav:
+        data, _ = read_wav(a.input_wav)
+        print(json.dumps(analyze_levels(data.mean(axis=1)), indent=1))
+        return 0
+
     if a.input_wav and a.output_wav:
         data, sr = read_wav(a.input_wav)
-        engine = Engine(EngineConfig(samplerate=sr, input_gain_db=a.gain_db))
+        engine = Engine(EngineConfig(samplerate=sr, input_gain_db=a.gain_db, gate_open_db=a.gate_db))
         engine.set_reverb(a.reverb)
-        out = render(engine, data.mean(axis=1), a.blocksize, a.out_channels, a.sweep, _parse_times(a.loop_at))
+        takes = TakeWriter(engine, a.take_dir) if a.take_dir else None
+        if takes:
+            takes.directory.mkdir(parents=True, exist_ok=True)
+        out = render(engine, data.mean(axis=1), a.blocksize, a.out_channels, a.sweep, _parse_times(a.loop_at),
+                     on_block=takes.poll if takes else None)
+        if takes:
+            print(f"saved {len(takes.saved)} take(s) to {takes.directory}", file=sys.stderr)
         write_wav(a.output_wav, out, sr)
         print(json.dumps(engine.snapshot(), indent=1))
         return 0
@@ -111,6 +130,13 @@ def main(argv=None) -> int:
 
     if a.list_devices:
         print(stream.list_devices())
+        return 0
+
+    if a.level_check is not None:
+        in_dev = stream.resolve_device(a.in_dev, a.hostapi, "input")
+        print(f"Strum normally, then your hardest, for {a.level_check:.0f} s...", flush=True)
+        mono = stream.record_input(in_dev, a.input_channel, a.level_check, a.samplerate)
+        print(json.dumps(analyze_levels(mono), indent=1))
         return 0
 
     try:
@@ -124,11 +150,11 @@ def main(argv=None) -> int:
 
     if a.input_wav:
         data, sr = read_wav(a.input_wav)
-        engine = Engine(EngineConfig(samplerate=sr, input_gain_db=a.gain_db))
+        engine = Engine(EngineConfig(samplerate=sr, input_gain_db=a.gain_db, gate_open_db=a.gate_db))
         target = lambda: stream.play(engine, data.mean(axis=1), out_dev, a.out_channels, a.blocksize, stop)
     else:
         in_dev = stream.resolve_device(a.in_dev, a.hostapi, "input")
-        engine = Engine(EngineConfig(samplerate=a.samplerate, input_gain_db=a.gain_db))
+        engine = Engine(EngineConfig(samplerate=a.samplerate, input_gain_db=a.gain_db, gate_open_db=a.gate_db))
         name = stream.sd.query_devices(in_dev, "input")["name"]
         if "scarlett" in name.lower() and a.input_channel == 1:
             print("Note: on a Scarlett Solo the guitar jack is input 2; pass --input-channel 2.", flush=True)
@@ -147,12 +173,16 @@ def main(argv=None) -> int:
         workers.append(threading.Thread(target=_status, args=(engine, a.status_every, stop), daemon=True))
     for w in workers:
         w.start()
+    takes = TakeWriter(engine, a.take_dir).start() if a.take_dir else None
     try:
         target()
     except KeyboardInterrupt:
         pass
     finally:
         stop.set()
+        if takes:
+            takes.stop()
+            print(f"saved {len(takes.saved)} take(s) to {takes.directory}", flush=True)
     print(json.dumps(engine.snapshot(), indent=1))
     return 0
 

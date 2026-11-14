@@ -21,6 +21,10 @@ Changes to these go through issue #1. Ports can be overridden in config, but the
 
 **Senders** must validate against `control.schema.json` before sending. **The engine** drops invalid, stale (older than 250 ms by default) and duplicate events, and counts the drops in its state.
 
+## Coach source (added 2026-11-14)
+
+`source: "coach"` is the practice coach (docs/COACH.md). It uses the same v1 envelope, the same controls and the same engine gate (validation, staleness, dedupe, confidence) as every other source. It sends over UDP 47800 as one producer with its own `seq`. The coach never touches audio directly and the instrument never waits on it. `state.sources.coach` reports its health like the other sources.
+
 ## Hand view v1 (display only)
 
 `protocol/hand.schema.json`. vision/ optionally serves the tracked hand on loopback WebSocket `ws://127.0.0.1:47802` at up to 20 Hz for the dashboard. It is never a control input and never carries camera pixels. `landmarks` are 21 MediaPipe points in normalized image coordinates when `present`, else `[]`. `engaged` means the clutch is driving the control. `present && !engaged` does not mean armed (the controller may be waiting for an open-hand re-arm). `control` is null in Scene Morph mode, with `value` as the morph position. Receivers age frames by their own receive time and clear the hand when frames stop or the socket closes. Agreed on issue #1 by John's Codex (vision owner) and SM's Claude (schema/dashboard owner).

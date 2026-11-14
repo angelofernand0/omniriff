@@ -1,0 +1,92 @@
+"""One-command demo bring-up: python -m engine.demo [launcher options] [engine options].
+
+Starts the dashboard web server, optionally starts vision as a child process,
+then runs the normal engine (same options as `python -m engine`) in the
+foreground. Ctrl-C or `q` stops everything; the dashboard and vision are
+shut down when the engine exits for any reason.
+
+  python -m engine.demo --open --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2 --serial-port COM4
+  python -m engine.demo --vision --headless                    # no audio hardware
+  python -m engine.demo --replay engine/demo-controls.jsonl    # labeled backup
+"""
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import subprocess
+import sys
+import threading
+import webbrowser
+
+from . import __main__ as engine_main
+
+
+def start_vision(cmd: list[str]) -> subprocess.Popen | None:
+    try:
+        return subprocess.Popen(cmd)
+    except OSError as exc:
+        print(f"demo: could not start vision ({exc}); continuing without it", flush=True)
+        return None
+
+
+def stop_process(proc: subprocess.Popen | None, timeout: float = 3.0) -> None:
+    if proc is None or proc.poll() is not None:
+        return
+    proc.terminate()
+    try:
+        proc.wait(timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout)
+
+
+def _ws_port(engine_args: list[str]) -> int:
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--ws-port", type=int, default=47801)
+    return p.parse_known_args(engine_args)[0].ws_port
+
+
+def main(argv=None) -> int:
+    p = argparse.ArgumentParser(
+        prog="python -m engine.demo",
+        description="Dashboard + optional vision + engine in one command. Unrecognized options go to the engine.")
+    p.add_argument("--http-port", type=int, default=8080, help="dashboard port (0 = any free port)")
+    p.add_argument("--open", action="store_true", help="open the dashboard in the default browser")
+    p.add_argument("--vision", action="store_true", help="also start gesture control (python -m vision)")
+    p.add_argument("--vision-args", default="", help='extra arguments for vision, e.g. "--relative --scene bloom"')
+    a, engine_args = p.parse_known_args(argv)
+
+    from dashboard.__main__ import make_server
+    try:
+        server = make_server(a.http_port)
+    except OSError as exc:
+        print(f"demo: dashboard port {a.http_port} unavailable ({exc}). Run python -m engine --check.", flush=True)
+        return 1
+    port = server.server_address[1]
+    ws = _ws_port(engine_args)
+    url = f"http://127.0.0.1:{port}/" + (f"?ws=ws://127.0.0.1:{ws}" if ws != 47801 else "")
+    threading.Thread(target=server.serve_forever, name="omniriff-dashboard", daemon=True).start()
+    print(f"demo: dashboard {url}", flush=True)
+
+    vision = None
+    if a.vision:
+        if importlib.util.find_spec("vision.__main__") is None:
+            print("demo: vision/ is not installed on this branch (pending PR #13); continuing without it", flush=True)
+        else:
+            vision = start_vision([sys.executable, "-m", "vision", *a.vision_args.split()])
+            if vision:
+                print(f"demo: vision started (pid {vision.pid})", flush=True)
+    if a.open:
+        webbrowser.open(url)
+
+    try:
+        return engine_main.main(engine_args)
+    finally:
+        stop_process(vision)
+        server.shutdown()
+        server.server_close()
+        print("demo: stopped dashboard" + (" and vision" if vision else ""), flush=True)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

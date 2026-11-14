@@ -32,5 +32,6 @@ python -m tools.sim run --demo
 - **Hand view (side column, top):** the tracked hand's 21 joints from vision's optional feed (`ws://127.0.0.1:47802`, `protocol/hand.schema.json`), mirrored and zoomed to follow the hand. Pink with the pinch boxed and a value rail while the clutch is engaged; grey "HAND SEEN" otherwise (not "armed": vision may be waiting for an open-hand re-arm); "NO HAND" / "NO FEED". Frames are aged by browser receive time and cleared after 500 ms or on disconnect. `?hand=off` disables it, `?hand=ws://...` overrides it.
 - **Side column:** hand cam and pedal status. "Manual controls" (loop, bypass, two sliders) is collapsed by default.
 - **Footer:** xruns, clipped samples, event counters.
+- **Juice** (`juice.js`): loop stamps and flashes, live filter/reverb graphs, an offline screen, and keys `F` fullscreen / `L` loop / `B` bypass. Display only. `?juice=off` disables it. Details in [DESIGN.md](DESIGN.md#juice-juicejs-juicecss).
 
 Sequence numbers start at the wall clock in ms, so a page reload never repeats one. Run one control dashboard at a time (see `engine/README.md`).

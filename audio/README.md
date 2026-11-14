@@ -5,13 +5,14 @@ Owner: Angelo's Claude. The signal chain is guitar → Scarlett Solo → engine 
 ## Signal chain
 
 ```
-input ch → gain → (+ loop playback) → low-pass sweep → (+ reverb) → bypass crossfade → peak limiter → safety clip → all output channels
+input ch → gain → [optional noise gate] → (+ loop playback) → low-pass sweep → (+ reverb) → bypass crossfade → peak limiter → safety clip → all output channels
               └→ loop recorder (dry, post-gain)
 ```
 
 - **Low-pass sweep.** `filter` in [0,1] sets the cutoff exponentially from 120 Hz (0) to 18 kHz (1). The default is 1, fully open, so nothing changes until a control moves it. It's smoothed (40 ms) and updated every 32 samples.
 - **Loop.** The `loop` action steps idle → recording → playing → idle (cleared). It holds up to 30 s, with 5 ms fades at the seam. The loop records the dry signal and plays back through the filter, so a gesture shapes both the loop and live playing.
 - **Bypass.** The `bypass` action toggles a 10 ms crossfade to the dry signal. The loop keeps playing.
+- **Noise gate (optional, off by default).** `--gate-db -50` (or `EngineConfig(gate_open_db=-50)`) silences hum/hiss between notes on the dry input, before the looper and effects, so hum isn't looped or fed into the reverb. It has 6 dB hysteresis, a 2 ms attack, a 60 ms hold and a 120 ms release. Set it a few dB above the noise floor that `--level-check` shows with the strings muted. The input meter shows the ungated level.
 - **Limiter.** A peak limiter holds the output just under −1 dBFS. Attack is instant per 32-sample sub-block, release is smooth (150 ms), and quiet signals pass untouched. A hard clip at −1 dBFS stays behind it as a safety net. `clipped_samples` counts only samples that reach that safety clip, so it should stay at 0. Loop + live + heavy reverb at +12 dB input gain produced 0 clipped samples in tests. Too-hot *input* still shows on `input_peak_dbfs` and the Solo's gain halo; fix that with the Solo's gain knob, not the limiter.
 - **Reverb.** `reverb` in [0,1] is the wet amount added after the filter. 0 adds nothing, and 1 is roughly as loud as the dry signal. It's a mono Freeverb-style design (8 combs, 4 allpasses, public-domain tunings scaled to the samplerate), with about a 3 s tail. It runs every block, so the tail doesn't cut off when the amount changes. Bypass skips it.
 
@@ -29,6 +30,7 @@ python -m audio --input-wav test.wav --play --sweep 4 --reverb 0.3   # through t
 
 1. Install Focusrite's driver. Plug the guitar into the Solo's **instrument jack (input 2)** with **INST** on. Turn **Direct Monitor off**, or you'll hear the dry guitar on top of the processed one.
 2. Find the device: `python -m audio --list-devices`.
+   Then set the gain: `python -m audio --level-check --in Focusrite --hostapi WASAPI --input-channel 2`. Strum normally, then as hard as you will in the demo, for 10 s. It reports the peak/RMS dBFS and says turn up / good / turn down (it aims for peaks around −12 dBFS and zero clipped samples). `--level-check` with `--input-wav` analyzes a recorded DI file instead.
 3. Start with WASAPI:
 
    ```bash
@@ -41,6 +43,10 @@ python -m audio --input-wav test.wav --play --sweep 4 --reverb 0.3   # through t
 ASIO: the standard `sounddevice` wheel's PortAudio may not expose ASIO devices. Check `--list-devices` for an ASIO entry, and follow the sounddevice docs if you need the ASIO-enabled build. Not yet verified on the team laptop.
 
 **Not yet verified:** this hasn't been run on the Windows laptop or the Solo. Round-trip latency is **unmeasured**. `stream.latency` (printed on exit) is PortAudio's reported buffer latency, not a measured guitar-to-ear time.
+
+## Take capture (practice coach input)
+
+`--take-dir DIR` on `python -m audio` or `python -m engine` saves each finished loop recording as `take-<time>-<n>.wav` (16-bit, mono, the **dry post-gain input** the looper recorded, with its 5 ms seam fades) plus `take-<time>-<n>.json`. The sidecar has version 1, take_id, wav, samplerate, frames, seconds, started_unix_ms and ended_unix_ms (wall clock, to line up with vision's hand data), source "loop", signal, input_gain_db, gate_open_db and seam_fade_ms. The audio callback only bumps counters. A background thread copies and writes, and skips (counts as missed) a take whose buffer was already overwritten by a new recording. Headless mode runs slower than real time, so headless takes are shorter than the wall-clock window.
 
 ## Interface for engine/
 

@@ -1,0 +1,76 @@
+/* OmniRiff dashboard juice (juice.js). Same rules as DESIGN.md: hard edges, stepped motion. */
+
+.juice-flash { position: fixed; inset: 0; pointer-events: none; z-index: 49; opacity: 0; }
+.juice-flash.go { animation: jflash 280ms steps(3) forwards; }
+@keyframes jflash { from { opacity: 0.2; } to { opacity: 0; } }
+
+/* loop moments: a stamp slams onto the waveform */
+.wave { overflow: hidden; transition: border-color 80ms steps(1); }
+.juice-stamp {
+  position: absolute; left: 50%; top: 50%; z-index: 2; pointer-events: none; white-space: nowrap;
+  font: 56px/1 var(--font-pixel); padding: 10px 22px; border: 4px solid currentColor;
+  background: var(--bg); box-shadow: 6px 6px 0 var(--shadow);
+  animation: jstamp 1000ms steps(2) forwards;
+  transform: translate(-50%, -50%);
+}
+@keyframes jstamp {
+  0%   { transform: translate(-50%, -50%) scale(1.35); opacity: 1; }
+  10%  { transform: translate(-50%, -50%) scale(0.95); }
+  16%  { transform: translate(-50%, -50%) scale(1); }
+  80%  { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+/* downbeat when the loop wraps */
+.loop-state { transition: border-color 60ms steps(1), box-shadow 60ms steps(1); }
+.loop-state.juice-beat { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(255, 92, 203, 0.25); }
+.app[data-loop="playing"] .loop-state.juice-beat .loop-dot { transform: scale(1.4); }
+
+/* shakes: bypass slams the fx zone, clip rattles the meter */
+.juice-shake { animation: jshake 240ms steps(1); }
+@keyframes jshake {
+  0% { transform: translate(-6px, 2px); } 25% { transform: translate(5px, -3px); }
+  50% { transform: translate(-3px, 1px); } 75% { transform: translate(2px, -1px); } 100% { transform: none; }
+}
+
+/* effect graphs */
+.juice-viz { display: block; width: 100%; height: 56px; }
+.engaged { position: relative; }
+.engaged > .juice-bg { position: absolute; inset: 24px; width: calc(100% - 48px); height: calc(100% - 48px); pointer-events: none; }
+.engaged-text, .tower { position: relative; z-index: 1; }
+
+.brand-mark { transform-origin: 50% 50%; }
+
+/* offline attract screen */
+.juice-attract {
+  position: fixed; inset: 0; z-index: 60; display: none; flex-direction: column; align-items: center; justify-content: center;
+  gap: 32px; padding: 16px; text-align: center; background: rgba(11, 11, 16, 0.95);
+}
+.juice-attract.on { display: flex; animation: popin 220ms steps(4); }
+.ja-logo { display: flex; align-items: center; gap: 0.3em; font: clamp(44px, 9vw, 128px)/1 var(--font-pixel); }
+.ja-mark { width: 0.55em; height: 0.55em; background: var(--accent); box-shadow: 0.1em 0.1em 0 var(--accent-deep); animation: blink 1.6s steps(2) infinite; }
+.ja-bars { display: flex; gap: 6px; align-items: center; height: 90px; max-width: 100%; }
+.ja-bars i { width: 10px; height: 10%; background: var(--accent); animation: jbar 1.2s steps(6) infinite; }
+@keyframes jbar { 0%, 100% { height: 10%; } 50% { height: 100%; } }
+.ja-state { font: clamp(18px, 3vw, 30px) var(--font-pixel); color: var(--warn); }
+.ja-hint { font-size: 16px; color: var(--muted); }
+
+/* projector-height screens (720p): keep the whole card, meter and detail line on screen */
+@media (max-height: 820px) {
+  .looper, .fx { padding-top: 14px; padding-bottom: 14px; }
+  .card { padding: 16px 20px; gap: 10px; }
+  .card h2 { font-size: 24px; }
+  .pct { font-size: 72px; }
+  .blocks i { height: 22px; }
+  .juice-viz { height: 40px; }
+  .app { grid-template-rows: auto minmax(160px, 1fr) minmax(0, 2fr) auto; }
+  .wave { min-height: 140px; }
+  .side { gap: 10px; }
+  .hand canvas { aspect-ratio: auto; height: clamp(110px, 22vh, 170px); }
+  .status { padding: 10px 14px; }
+  .manual summary { padding: 10px 14px; }
+}
+@media (max-width: 700px) {
+  .juice-stamp { font-size: 32px; }
+  .juice-viz { height: 40px; }
+}

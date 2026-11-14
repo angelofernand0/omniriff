@@ -73,6 +73,23 @@ The waveform is built in the browser from `input_peak_dbfs` frames captured whil
 - Blink: 0.8 s for REC, 0.4 s for active sources.
 - `prefers-reduced-motion` turns off all animation.
 
+## Juice (`juice.js`, `juice.css`)
+
+A display-only layer on top of `app.js`. Every effect fires on a real change in an engine frame (`app.js` re-dispatches each frame as the `omniriff:frame` window event). It sends nothing, except that the keys below press the existing manual buttons.
+
+- **Loop moments:** a stamp slams onto the waveform: `REC`, `LOOP 4.0S`, `CLEARED`, plus `FX ON` when bypass ends. A 280 ms stepped screen flash in rec red or accent.
+- **Downbeat:** when the playhead wraps, the loop panel border pulses.
+- **Effect graphs:** each card draws its effect: the filter as a low-pass magnitude curve on a log frequency axis (2-pole approximation from `cutoff_hz`), the reverb as a dry hit plus a tail that grows with wet. The engaged panel draws the same graph large and faint behind the number.
+- **Bypass / clip:** bypass shakes the FX zone and flashes amber; the clip light rattles the meter.
+- **Brand mark** scales in 4 steps with the output level.
+- **Offline screen:** after 1.5 s without the engine, a full-screen OMNIRIFF card says WAITING FOR ENGINE (never connected) or ENGINE OFFLINE · RECONNECTING.
+- **Keys:** `F` fullscreen, `L` loop, `B` bypass.
+- **Short screens (≤ 820 px tall, e.g. a 720p projector):** cards, looper and side column tighten so every primary element fits.
+
+`?juice=off` disables the layer. `prefers-reduced-motion` keeps the stamps, graphs and offline screen and drops flashes and shakes.
+
+Particles were tried and removed (SM: too noisy). Juice here should reinforce the value that changed, not decorate the screen.
+
 ## Not in v1 (needs engine or contract work)
 
 - **Armed state** (hand raised, not pinching): needs a vision status field in state v1, or a new event.
@@ -80,5 +97,4 @@ The waveform is built in the browser from `input_peak_dbfs` frames captured whil
 - **Overdub layers and selectable tracks:** the engine looper is single-track.
 - **Loop scrubbing and loop position in state:** the playhead is estimated in the browser.
 - **BPM and beat grid:** the engine has no tempo.
-- **Juicier effect visuals:** particles flying into the waveform, flashes on change.
 - **Voice coach:** captions in the footer and markers on the waveform. No chat box.

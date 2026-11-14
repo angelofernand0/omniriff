@@ -30,7 +30,12 @@ def main(argv=None):
     p.add_argument('--latency', default='low')
     p.add_argument('--gain-db', type=float, default=0)
     p.add_argument('--no-keyboard', action='store_true')
+    p.add_argument('--take-dir', help='save each finished loop take as WAV + JSON for the practice coach (audio/takes.py)')
+    p.add_argument('--check', action='store_true', help='preflight: packages, Focusrite, Arduino, free ports; opens no audio')
     a = p.parse_args(argv)
+    if a.check:
+        from .check import main_check
+        return main_check(udp_port=a.udp_port, ws_port=a.ws_port, input_channel=a.input_channel)
     if min(a.samplerate, a.blocksize, a.input_channel, a.out_channels, a.stale_ms) <= 0:
         p.error('rates, sizes, channels and stale window must be positive')
     if a.duration is not None and a.duration <= 0: p.error('duration must be positive')
@@ -43,6 +48,10 @@ def main(argv=None):
         logging.basicConfig(level=logging.WARNING, format='%(levelname)s %(message)s')
     from audio import Engine, EngineConfig
     audio = Engine(EngineConfig(samplerate=a.samplerate, input_gain_db=a.gain_db))
+    takes = None
+    if a.take_dir:
+        from audio.takes import TakeWriter
+        takes = TakeWriter(audio, a.take_dir).start()
     stop = threading.Event()
     errors = []
     if a.headless:
@@ -50,9 +59,18 @@ def main(argv=None):
             import numpy as np
             mono = np.zeros(a.blocksize, dtype=np.float32)
             out = np.zeros((a.blocksize, a.out_channels), dtype=np.float32)
+            period = a.blocksize / a.samplerate
+            deadline = time.monotonic()
             while not stop.is_set():
                 audio.process(mono, out)
-                stop.wait(a.blocksize / a.samplerate)
+                # Pace against a monotonic deadline so headless runs at real time
+                # (sleeping one period per block drifts slow by the processing time).
+                deadline += period
+                delay = deadline - time.monotonic()
+                if delay > 0:
+                    stop.wait(delay)
+                elif delay < -0.5:
+                    deadline = time.monotonic()  # fell far behind (e.g. machine suspended): resync
     else:
         from audio import stream
         in_dev = stream.resolve_device(a.in_dev, a.hostapi, 'input')
@@ -85,6 +103,10 @@ def main(argv=None):
         print(json.dumps(runtime.snapshot(), allow_nan=False))
     try: asyncio.run(run())
     except KeyboardInterrupt: stop.set(); worker.join(2)
+    finally:
+        if takes:
+            takes.stop()
+            print(f'saved {len(takes.saved)} take(s) to {takes.directory}', flush=True)
     if errors: raise SystemExit(f'audio failed: {errors[0]}')
     return 0
 

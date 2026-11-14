@@ -295,5 +295,66 @@ class ReverbTests(unittest.TestCase):
             Engine(EngineConfig(samplerate=SR, subblock=1024))
 
 
+class LevelCheckTests(unittest.TestCase):
+    def test_advice_bands(self):
+        from audio.levels import analyze_levels
+        cases = {
+            "silent": np.zeros(SR, np.float32),
+            "turn_up": sine(196, 1.0, amp=0.02),     # about -34 dBFS peak
+            "good": sine(196, 1.0, amp=0.25),        # about -12 dBFS peak
+            "turn_down": sine(196, 1.0, amp=0.7),    # about -3 dBFS peak
+        }
+        for expected, signal in cases.items():
+            with self.subTest(expected=expected):
+                self.assertEqual(analyze_levels(signal)["advice"], expected)
+
+    def test_clipping_is_reported_even_at_moderate_rms(self):
+        from audio.levels import analyze_levels
+        x = sine(196, 1.0, amp=0.1)
+        x[1000:1010] = 1.0
+        result = analyze_levels(x)
+        self.assertEqual(result["advice"], "turn_down")
+        self.assertEqual(result["clipped_samples"], 10)
+
+    def test_levels_in_dbfs(self):
+        from audio.levels import analyze_levels
+        r = analyze_levels(sine(1000, 1.0, amp=0.5))
+        self.assertAlmostEqual(r["peak_dbfs"], -6.0, delta=0.1)
+        self.assertAlmostEqual(r["rms_dbfs"], -9.0, delta=0.1)
+
+
+class NoiseGateTests(unittest.TestCase):
+    def test_gate_off_by_default_changes_nothing(self):
+        hum = sine(60, 0.5, amp=0.001)
+        out = run(Engine(EngineConfig(samplerate=SR)), hum)[:, 0]
+        self.assertGreater(rms(out[SR // 10:]), 0.0006)
+
+    def test_gate_silences_hum_but_passes_notes(self):
+        e = Engine(EngineConfig(samplerate=SR, gate_open_db=-50))
+        hum = sine(60, 0.5, amp=0.001)           # about -60 dBFS: below the gate
+        note = sine(196, 0.5, amp=0.1)           # about -20 dBFS: opens it
+        out_hum = run(e, hum)[:, 0]
+        self.assertLess(rms(out_hum[SR // 4:]), rms(hum) * 0.03, "hum should be >30 dB down once the gate closes")
+        out_note = run(e, note)[:, 0]
+        self.assertGreater(rms(out_note[SR // 10:]), rms(note) * 0.95, "notes pass at ~unity")
+
+    def test_hysteresis_prevents_chatter_on_a_decaying_note(self):
+        from audio.dsp import NoiseGate
+        g = NoiseGate(-40, -46, SR, 32)
+        t = np.arange(SR) / SR
+        tail = (0.02 * np.exp(-2.5 * t) * np.sin(2 * np.pi * 196 * t)).astype(np.float32)  # -34 dB → far below
+        flips, last = 0, g.is_open
+        for s in range(0, len(tail), 32):
+            g.process(tail[s:s + 32].copy())
+            flips += g.is_open != last
+            last = g.is_open
+        self.assertLessEqual(flips, 2, "open once, close once, without chattering")
+
+    def test_input_meter_shows_the_ungated_level(self):
+        e = Engine(EngineConfig(samplerate=SR, gate_open_db=-30))
+        run(e, sine(60, 0.3, amp=0.003))         # about -50 dBFS, gated
+        self.assertGreater(e.snapshot()["input_peak_dbfs"], -55)
+
+
 if __name__ == "__main__":
     unittest.main()
