@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OmniRiff · Play room</title><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header><div><span class="brand">OMNIRIFF</span><span class="tag">VIRTUAL GUITAR</span></div><span id="health" role="status">Connecting…</span></header>
+  <main>
+    <section class="desk" aria-label="Virtual guitar controls">
+      <div class="intro"><span class="eyebrow">HARDWARE-FREE PLAY ROOM</span><h1>Hear what your controls do.</h1><p id="source">Loading the guitar…</p></div>
+      <div class="transport">
+        <button id="playing" class="primary" disabled>Pause guitar</button>
+        <label class="volume">Listening volume <output id="volumeValue">35%</output><input id="volume" type="range" min="0" max="1" step="0.01" value="0.35" disabled></label>
+        <button id="mute" disabled>Mute</button><span id="position">0:00 / 0:00</span>
+      </div>
+      <div class="controls">
+        <div class="sounds"><span class="eyebrow">TRY A SOUND</span><div class="row"><button data-preset="dry" disabled>Clean / dry</button><button data-preset="dark" disabled>Dark / warm</button><button data-preset="space" disabled>Wide / space</button></div></div>
+        <div class="pedals"><span class="eyebrow">VIRTUAL PEDALS</span><div class="row"><button id="loop" disabled>Record loop</button><button id="bypass" disabled>Bypass FX</button></div></div>
+        <div class="sliders"><label>Filter <output id="filterValue">100%</output><input id="filter" type="range" min="0" max="1" step="0.01" value="1" disabled></label><label>Reverb <output id="reverbValue">0%</output><input id="reverb" type="range" min="0" max="1" step="0.01" value="0" disabled></label></div>
+      </div>
+      <p class="hint">Try this: <strong>Record loop</strong> → wait a few beats → <strong>Play loop</strong> → <strong>Pause guitar</strong>. Now shape the recorded loop with Filter and Reverb. Press <strong>Clear loop</strong> to start again.</p>
+      <p id="error" role="alert"></p>
+    </section>
+    <div class="dashboard-label"><span>LIVE ENGINE &amp; DASHBOARD</span><a id="dashboardLink" target="_blank" rel="noopener">Open dashboard ↗</a></div>
+    <iframe id="dashboard" title="OmniRiff dashboard"></iframe>
+    <footer>Synthesized guitar → real audio engine → laptop output. Camera and pedal remain offline until connected. Audio keeps running if this page closes; Ctrl-C in the launcher stops it. <span>Space: pause guitar · L: loop · B: bypass</span></footer>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
