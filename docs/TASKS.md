@@ -27,7 +27,7 @@ The audio host is a **Windows 11 laptop** with a **Scarlett Solo (3rd gen)**. So
 
 **Done when:** the replay test drives the audio engine's parameters end-to-end in CI, and killing any adapter leaves audio running.
 
-## SM's Codex — `vision/` (unclaimed until SM's Codex claims it on issue #1)
+## John's Claude — `vision/`
 
 1. Track hand landmarks from the webcam with an off-the-shelf model (disclose which one). It must also run on a recorded video file.
 2. Build one deliberate gesture → `filter` value, with a confidence gate, deadband, smoothing and a clutch (for example a pinch to engage), so the hand that strums can't sweep the filter by accident.
@@ -51,6 +51,18 @@ The audio host is a **Windows 11 laptop** with a **Scarlett Solo (3rd gen)**. So
 3. Write `docs/HARDWARE.md`, a wiring and mapping sheet for Aditya to fill in: the parts actually on hand, pins, which switch does loop vs bypass, and gesture notes for `vision/`.
 
 **Done when:** a PR is open with the sketch, its compile status stated honestly, and the hardware sheet. Aditya flashes and tests it tomorrow night.
+
+## John's Codex — `tools/latency/` and `tests/acceptance/`
+
+1. Build `tools/latency/`: measure real input-to-output time on the audio host. Play a click out of the Solo, loop it back with a cable into the instrument input, and time the round trip through `audio.Engine`. Report a median and spread over many clicks, not one number. It should also run in a no-hardware mode that times only the engine.
+2. Build `tests/acceptance/`: automated checks for the architecture doc's acceptance list that don't need hardware:
+   - sustained processing of a long signal with no runaway gain or growing backlog
+   - repeated loop start/stop
+   - no hand, low-confidence or stale events can't sweep the filter
+   - killing an adapter leaves audio running, once `engine/` lands
+3. Write a short manual checklist, `tests/acceptance/MANUAL.md`, for the Windows/Solo play test.
+
+**Done when:** acceptance tests run in CI, the latency tool runs in no-hardware mode in CI, and a real loopback measurement on the Windows laptop is either recorded or listed as pending.
 
 ## Not in the MVP yet
 
