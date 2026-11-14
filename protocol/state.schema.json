@@ -590,6 +590,26 @@
           "description": "Null until three onsets in the recent two-second window; otherwise interval CV <=0.2 and no gap >1.6x median. Intended rests can look unsteady."
         }
       }
+    },
+    "pedal": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional (additive, R24). Practice requests the router accepted. Omitted until the first one. The coach starts or ends a session when practice_count changes; the engine never changes audio for it.",
+      "required": [
+        "practice_count",
+        "last_practice_ms"
+      ],
+      "properties": {
+        "practice_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "last_practice_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Host Unix ms when the last practice request was accepted."
+        }
+      }
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",

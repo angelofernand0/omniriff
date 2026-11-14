@@ -112,6 +112,8 @@ class Runtime:
                     controls=dict(self.router.counts),
                     sources={k: dict(v) for k, v in self.router.sources.items()},
                     adapters={k: dict(v) for k, v in self.adapters.items()})
+        if self.router.pedal is not None:
+            state['pedal'] = dict(self.router.pedal)
         if self.replay is not None:
             state['replay'] = dict(self.replay.state)
         if self.live is not None:

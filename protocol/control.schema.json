@@ -43,7 +43,8 @@
         "filter",
         "reverb",
         "loop",
-        "bypass"
+        "bypass",
+        "practice"
       ]
     },
     "value": {
@@ -84,6 +85,38 @@
           "enum": [
             "loop",
             "bypass"
+          ]
+        }
+      },
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "value"
+            ]
+          },
+          {
+            "required": [
+              "confidence"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "description": "R24: the player asks for a practice session (pedal long-press, dashboard or keyboard). The engine never applies it to audio; it is counted in state.pedal for the coach.",
+      "properties": {
+        "type": {
+          "const": "action"
+        },
+        "control": {
+          "const": "practice"
+        },
+        "source": {
+          "enum": [
+            "arduino",
+            "dashboard",
+            "manual"
           ]
         }
       },
