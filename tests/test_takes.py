@@ -88,9 +88,8 @@ class TakeCaptureTests(unittest.TestCase):
             wavs = sorted(Path(tmp).glob("take-*.wav"))
             self.assertEqual(len(wavs), 1, r.stdout[-500:])
             meta = json.loads(wavs[0].with_suffix(".json").read_text())
-            # The script records from 1 s to 3 s of wall time. Headless mode paces blocks with sleeps and
-            # runs slower than real time, so only check that a real, non-trivial take was captured.
-            self.assertGreater(meta["seconds"], 0.5)
+            # The demo script records from 1 s to 3 s; headless now runs at real time.
+            self.assertAlmostEqual(meta["seconds"], 2.0, delta=0.25)
             self.assertLessEqual(abs(meta["frames"] - meta["seconds"] * meta["samplerate"]), 3)  # seconds is rounded
 
 
