@@ -16,6 +16,9 @@ Windows 11 laptop + charger, power strip. Scarlett Solo (3rd gen) + USB cable. G
 
 ## 2. Full rig
 ```bash
+# one command (dashboard + vision + engine); use the COM port engine --check printed
+python -m engine.demo --open --vision --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2 --serial-port COM3
+# or separately:
 python -m engine --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2 --serial-port COM3
 python -m dashboard            # → http://127.0.0.1:8080
 python -m vision ...           # (pending PR #13: webcam gesture control + hand view on ws 47802)
