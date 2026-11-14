@@ -15,7 +15,7 @@ Our own targets, to leave slack: feature freeze **4:00 AM**, demo rehearsal and 
 ## Eligibility
 
 - [x] Public GitHub repo created after the 8 PM Friday start: `angelofernand0/omniriff` was created at 9:18 PM ET Nov 13. **Do not submit the old `hackprinceton-2026` repo.** It's private and was created before the start.
-- [x] Team of at most 4: Angelo, SM, John, Aditya. Nobody else can join.
+- [x] Team of at most 4: Angelo, SM, Joey, Aditya. Nobody else can join.
 - [ ] Everyone's **Discord username** is on the Devpost submission (organizers contact winners there).
 
 ## Tracks

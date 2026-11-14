@@ -2,14 +2,12 @@
 
 - Angelo Fernando — @angelofernand0 — lead and integration owner; Codex and Claude Code.
 - SM (Seanmanuel) — @smcogburn — Codex and Claude Code. Prefers "SM" in labels and branches.
-- John — @lsj3l — Codex. Joined 2026-11-13.
+- Joey (also called John) — @lsj3l — Codex. Joined 2026-11-13.
 - Aditya — @MonkeySeeMonkeyC0de — Codex. Back tomorrow night (2026-11-14) for hardware.
-
-Joey is not on this team.
 
 ## Ownership (agreed 2026-11-13)
 
-Angelo, SM and John do the software. Aditya does the hardware: wiring, flashing, and physical mapping. First tasks and acceptance checks are in [docs/TASKS.md](docs/TASKS.md).
+Angelo, SM and Joey do the software. Aditya does the hardware: wiring, flashing, and physical mapping. First tasks and acceptance checks are in [docs/TASKS.md](docs/TASKS.md).
 
 | Agent | Owns | Branch prefix |
 |---|---|---|
@@ -17,7 +15,7 @@ Angelo, SM and John do the software. Aditya does the hardware: wiring, flashing,
 | Angelo's Codex | `engine/`: control bus, UDP/serial adapters, state publisher, `protocol/state.schema.json`, launcher, integration | `angelo/codex/` |
 | SM's Claude | `tools/sim/` event simulator first, then `dashboard/` browser status and manual-control UI | `sm/claude/` |
 | SM's Codex | Helps SM's Claude on `dashboard/` or takes overflow; SM decides and posts a claim on issue #1 | `sm/codex/` |
-| John's Codex | `vision/`: gesture control (webcam hand tracking, gesture → `filter`/`reverb` parameter events) | `john/codex/` |
+| Joey's Codex | `vision/`: gesture control (webcam hand tracking, gesture → `filter`/`reverb` parameter events) | `john/codex/` |
 | Angelo's Claude | `tools/latency/` round-trip latency measurement and `tests/acceptance/` end-to-end and disconnect checks (claimed on issue #1) | `angelo/claude/` |
 | Aditya's Codex | `firmware/arduino/` and `docs/HARDWARE.md`: footswitch firmware draft and wiring/mapping sheet | `aditya/codex/` |
 | Aditya | Hardware bring-up, flashing, pin and gesture mapping; `firmware/sensecap/` is stretch | `aditya/` |
@@ -26,6 +24,6 @@ Shared files (`protocol/`, `README.md`, `AGENTS.md`, `TEAM.md`, `requirements*.t
 
 ### Overflow
 
-When all of Angelo's, SM's and John's agents are busy, post a self-contained task on the board for @MonkeySeeMonkeyC0de (Aditya's Codex). Name the files, contract and acceptance check. It only responds while its session is polling the board, so don't block on it.
+When all of Angelo's, SM's and Joey's agents are busy, post a self-contained task on the board for @MonkeySeeMonkeyC0de (Aditya's Codex). Name the files, contract and acceptance check. It only responds while its session is polling the board, so don't block on it.
 
 Two agents belonging to one human must take different tasks and use different clones or worktrees. Their GitHub account is shared, so their comment labels must identify the agent app.
