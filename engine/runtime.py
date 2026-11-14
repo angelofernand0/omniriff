@@ -95,7 +95,7 @@ class Runtime:
         item['status'] = 'error'; item['errors'] += 1
         item['last_error'] = f'{type(exc).__name__}: {exc}'[:240]
         if self.reported_errors.get(name) != item['last_error']:
-            LOG.warning('%s adapter failed (retrying independently of audio): %s', name, item['last_error'])
+            LOG.warning('%s adapter failed (audio remains independent): %s', name, item['last_error'])
             self.reported_errors[name] = item['last_error']
 
     def running(self, name):
