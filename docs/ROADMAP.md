@@ -148,6 +148,7 @@ SM's two agents split the coach evenly (about 8–9 agent-hours each): **Codex b
 | R5 | **Fixtures first:** render takes with planted mistakes (a 400 ms hesitation at each chord change; a clean take; the same pattern "after the drill" with a 120 ms gap), each with a take sidecar and a matching hand log with a stall at the same times | `tools/virtual_guitar/`, `coach/fixtures/` | 1 h | `python -m tools.ears` and `vision.eyes` flag the planted spots |
 | R6 | **Smoke test, then coach core** per COACH-BUILD §1–§8: model, six tools, Ears/Eyes subagents, workspace backend, `interrupt_on` for `rig_control`, feed publishing per R1, runner watching `--take-dir` | `coach/` | 4 h | Slice 1 (15:00 gate) on `--fixtures`; cost and seconds per take posted |
 | R6b | **Four drill skills** as `SKILL.md` folders (COACH-BUILD §4) | `coach/workspace/skills/` | 45 min | Smoke test lists them; the agent opens the right one for the planted hesitation |
+| R6d | **The session flow** (§1 "How you use it", SM 2026-11-14). The first judgeable take sets `goal` (or memory does: "Last time…"); plan 2 drills (isolate it, then full pattern over the loop); at most 3 tries per drill, adjusting after a miss (slower, smaller chunk); wrap-up line written to `player.md` and sent as `session.summary`; then `mode: "play"` and quiet. Publish `session` on every frame: `mode`, `goal`, `plan[{title,status}]`, `drill{step,of}`, `attempt{n,of:3}`, `metric{history: judgeable takes only}`, `next`, `last_time`, `summary`. The scripted session in `tools/sim/coach.py` is the reference behaviour; `tests/test_coach_sim.py::test_full_session_flow` is the shape | `coach/` | 1 h | The dashboard's map walks GOAL → DRILL 1 → DRILL 2 → DONE on a live run |
 | R7 | **Memory:** `player.md` loaded with `memory=`, updated by the agent; second session opens with "Last time…" | `coach/` | 45 min | Two consecutive runs show it |
 | R8 | **Before/after:** `compare_takes` + `before_after` frame + `pleased` when it improved | `coach/` | 45 min | Numbers match `tools.ears` output |
 | R8b | **Tests without network** (COACH-BUILD §10) and the budget guard ($8 stop) | `tests/`, `coach/budget.py` | 45 min | CI green |
@@ -155,6 +156,12 @@ SM's two agents split the coach evenly (about 8–9 agent-hours each): **Codex b
 **Approval design (no new engine contract):** the coach proposes the rig change and sets `awaiting_approval`. The player taps the pedal's loop switch, which starts recording the drill take anyway; the coach sees `loop.state` go to `recording` and approves. `Y` on the dashboard (R1/R3) also approves. Details in COACH-BUILD §6.
 
 **API key: done.** SM's key is in a gitignored `.env` in SM's checkouts and in `~/.config/omniriff/.env`, and COACH-BUILD §0.5 loads both. Other agents don't need it: they build against stubs and fixtures. The demo laptop gets it in person at bring-up (never via the board or the repo: the repo is public). The key holds about $10; the coach stops itself at $8.
+
+### Pedal long-press (PLAY → PRACTICE)
+
+| # | Owner | Task | Done when |
+|---|---|---|---|
+| R24 | Aditya's Codex (firmware) + Angelo's Codex (engine) | A long press (≥ 700 ms) on the loop switch sends a new action, `practice`, that never toggles the looper; the engine forwards it to the coach (agree the exact shape on the board; additive). Until then the simulator and dashboard use `Y` | A long press starts another practice round on the rig |
 
 ### Angelo's Claude (`angelo/claude/`): integration, real signals, story
 
