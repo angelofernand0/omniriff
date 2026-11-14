@@ -28,6 +28,8 @@ Run only one demo at a time. Download the hand model as described in §2 before 
    `python -m tools.latency --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2 --blocksize 128`
    Try `--blocksize 64` and `--exclusive`. Keep the lowest setting with 0 xruns. **Write down median ± spread**; these are the only latency numbers we quote.
 
+   **Or all the Devpost numbers in two passes:** `powershell -ExecutionPolicy Bypass -File .\scripts\windows\measure.ps1 -Pass Loopback` (loopback cable: preflight, latency, CPU), then re-patch the guitar and run `... measure.ps1 -Pass Guitar` (5-minute soak while you play, then a 20 s take through Ears). Each run writes `runs/measure/<UTC stamp>/results.md` with paste-ready lines for DEVPOST.md; anything that didn't run says "not measured". Cross-platform: `python -m tools.measure --help`.
+
 ## 2. Full rig
 Vision setup, once: download the MediaPipe Hand Landmarker model to `models/hand_landmarker.task` (link in [vision/README.md](../vision/README.md#setup); `models/` is git-ignored). Then calibrate at the table: `python -m vision --model models/hand_landmarker.task --calibrate` (see vision/README's demo-table section). It saves `vision-calibration.json`, which every later `python -m vision` run loads by default; don't pass a different `--calibration` name, because a missing file silently falls back to defaults. Add `--scene bloom` for Scene Morph or `--setlist vision/setlist-demo.json` for scene switching.
 
