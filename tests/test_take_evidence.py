@@ -77,3 +77,12 @@ class TakeEvidenceTests(unittest.TestCase):
     def test_oversized_numeric_value_rejected_consistently(self):
         ears,hands=self.reports();ears['duration_s']=10**1000
         with self.assertRaises(ValueError):validate(ears,hands)
+
+    def test_accepted_clock_duration_offset_keeps_wrist_window_valid(self):
+        ears,hands=self.reports()
+        hands['duration_s']=2.05
+        hands['stalls'][0].update(start_ms=1800,end_ms=2033)
+        self.assertEqual(validate(ears,hands),2.)
+        with tempfile.TemporaryDirectory() as folder:
+            page=export(ears,hands,Path(folder)/'offset',label='SYNTHETIC CLOCK OFFSET')
+            self.assertIn('Wrist-window duration offset',page.read_text())
