@@ -364,7 +364,7 @@
   function wink() { winkStart = performance.now() + 180; winkSide = Math.random() < 0.5 ? -1 : 1; }
 
   const COPY = {
-    asleep: ['COACH OFF', 'Not running. The rig plays without it.'],
+    asleep: ['COACH OFF', 'Riff is asleep. You can still play.'],
     idle: ['COACH READY', 'Play a take.'],
     listening: ['LISTENING', 'Keep playing.'],
     thinking: ['READING TAKE', 'One moment.'],
