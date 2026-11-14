@@ -18,22 +18,23 @@ Our own targets, to leave slack: feature freeze **4:00 AM**, demo rehearsal and 
 - [x] Team of at most 4: Angelo, SM, Joey, Aditya. Nobody else can join.
 - [ ] Everyone's **Discord username** is on the Devpost submission (organizers contact winners there).
 
-## Tracks (Angelo, 2026-11-14: enter as many as we can credibly win)
+## Tracks (see [ROADMAP.md §2](ROADMAP.md) for the full reasoning)
 
-**Timeline:** all software and most of the pitch must be done by **8 PM Saturday**, when Aditya is back and hardware bring-up starts. Hardware runs 8 PM onwards, then a full rehearsal, then Devpost by **8:00 AM Sunday**.
+**Timeline:** feature freeze and hardware bring-up at **8 PM Saturday**; real-rig run by **midnight**; team freeze **4 AM**; Devpost by **7 AM** (hard deadline **8:00 AM Sunday**).
 
-| Track | Status | What we must show | Owner |
+| Track | Status | What we must show | Needs working |
 |---|---|---|---|
-| Main: **Entertainment & Media** | **Final** (Angelo kept it over Education, 2026-11-14) | A live instrument and performance demo; the coach is the practice side of the same instrument | Angelo |
-| **Best Physical AI Hack** ($500) | Entering | Off-the-shelf hand-landmark model → gesture control of a physical guitar rig, live at the table. Describe the model honestly (pretrained MediaPipe + our mapping) | Joey (vision), Angelo (integration) |
-| **Best Hardware Hack** | Entering | Pedal (Arduino/Grove) + camera + Solo working live | Aditya (hardware) |
-| **LangChain: Best use of deepagents** | Entering | A working deep agent (the practice coach, docs/COACH.md) that plans and acts between takes; the instrument never waits on it | SM |
-| **Amazon: Best Practical AI Innovation** | Entering | Their list explicitly includes accessibility tools using voice/vision/gesture. Needs a working prototype, a clear use case and target user (players with limited mobility or dexterity; hands-busy musicians), basic docs and a pitch. Judged on creativity, usefulness, technical quality and UX | Angelo (pitch), everyone (prototype) |
-| **Photon messaging agent** | Stretch, only if the coach lands early | Coach sends a practice summary or drill by message; needs a Photon beta signup by a human | SM, if time |
-| **ChatOverflow agent leaderboard** | Skipping (decided 2026-11-14) | Would connect our coding agents to an outside network that shares agent-written content; unvetted install; prizes depend on leaderboard rank | — |
-| CoStar, Capital One Nessie, Arlequin, Peri | Skipping | No fit, or (Peri) needs a real business consulted with evidence | — |
+| Main: **Entertainment & Media** | **Current** (Angelo kept it, 2026-11-14) | A live instrument; practice as a duet with the coach | The rig |
+| Main: **Education** | **Switch only if** the coach runs end to end on the real rig by the midnight gate. **The team decides in person**; no agent changes it | "Interactive, accessible, personalized": hears, sees, drills and remembers | Coach slice 1 on hardware |
+| **LangChain: deepagents** | Entering if the coach ships | Plan on screen, Ears/Eyes subagents, drills as skills, journal + memory on the filesystem, pedal approval | Coach D/E/F |
+| **Amazon: Best Practical AI** | Entering | Working prototype, clear user (guitarists practising alone; players with limited dexterity), basic docs, pitch. Agentic + adaptive | Coach + memory |
+| **Best Physical AI** ($500) | Entering | AI perceives (camera, guitar signal) **and acts** on the physical rig, after the player's tap | Coach on hardware (fallback: gesture control) |
+| **Best Hardware** | Entering | Pedal + camera + interface + guitar; unplug anything and it keeps playing | Pedal flashed |
+| **Peri: Forward Deployed** | Conditional | A real guitar teacher or music club consulted, with name, role and evidence | A human conversation |
+| Photon | Stretch only | Coach texts the drill card; needs a human beta signup | — |
+| ChatOverflow, CoStar, Capital One, Arlequin | Skipping | No fit, or sharing agent output externally (ChatOverflow) | — |
 
-Every special track adds judge visits. Prepare a **20-second track-specific angle** for each (in DEVPOST.md) on top of the shared 2-minute demo. Don't enter a track whose requirement isn't working by 7 AM Sunday.
+Every special track adds judge visits. Don't enter a track whose requirement isn't working by 7 AM Sunday.
 
 ## Judging criteria and our answer
 
@@ -41,7 +42,7 @@ Every special track adds judge visits. Prepare a **20-second track-specific angl
 |---|---|
 | Creativity | Live guitar shaped by a deliberate hand gesture and a foot pedal, without stopping playing |
 | Utility | A real-time instrument that keeps playing if the camera, pedal or dashboard drops (manual bypass). Show measured latency, not targets. |
-| Charity | Accessibility: control effects without taking your hands off the instrument or bending to small knobs. Useful for players with limited mobility or dexterity. **Don't claim user testing we didn't do.** |
+| Charity | A teacher for players between lessons or who can't afford them, plus hands-free control for limited dexterity. Quote the venue guitarist conversations as conversations. **Don't claim user testing we didn't do.** |
 | Avidity | Play it live and well. Polished Devpost page, plus clear next steps. |
 
 ## Devpost page
