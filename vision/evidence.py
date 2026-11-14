@@ -8,6 +8,8 @@ import wave
 
 MAX_REPORT_BYTES = 8 * 1024 * 1024
 MAX_AUDIO_BYTES = 128 * 1024 * 1024
+MAX_ANALYSIS_SECONDS = 60
+MAX_ANALYSIS_SAMPLES = 2880000  # PCM channel-samples; Ears allocates full filtering arrays.
 
 
 def load_report(path):
@@ -54,8 +56,8 @@ def validate(ears, hands):
                 number(item.get('at_ms'), 'audio finding time', high=duration*1000+.5)
                 number(item.get('extra_ms', 0), 'extra gap', low=-3600000)
             else:
-                left = number(item.get('start_ms'), 'wrist span start', high=duration*1000+.5)
-                right = number(item.get('end_ms'), 'wrist span end', high=duration*1000+.5)
+                left = number(item.get('start_ms'), 'wrist span start', high=hand_duration*1000+.5)
+                right = number(item.get('end_ms'), 'wrist span end', high=hand_duration*1000+.5)
                 if right < left:
                     raise ValueError('wrist span ends before it starts')
     return duration
@@ -68,7 +70,7 @@ def html_page(bundle, audio):
 <title>OmniRiff · Take evidence</title><style>
 :root{color-scheme:dark;font:17px/1.6 system-ui;background:#100f19;color:#f7f2ff}body{max-width:1100px;margin:auto;padding:32px 24px}small{color:#f5a2bf;letter-spacing:.12em;text-transform:uppercase}h1{font-size:clamp(30px,6vw,54px);margin:10px 0}p{color:#c1b8cd}audio{width:100%}.panel{padding:24px;background:#1d1829;border:1px solid #584263;border-radius:12px;margin:24px 0}#status{color:#ffe0a6;font-weight:600}svg{width:100%;height:250px;overflow:visible}button{color:#fff;background:#402546;border:1px solid #bf82b5;font:inherit;padding:8px 14px;cursor:pointer;border-radius:5px}button:disabled{opacity:.55;cursor:default}li{margin:14px 0;padding:12px;background:#211a2d}a{color:#d9b4ff}.legend{display:flex;gap:24px;flex-wrap:wrap}.pink{color:#f5a2bf}.purple{color:#b6a4ff}#now{font-variant-numeric:tabular-nums}#label{color:#fff}
 </style><small>OmniRiff / Take evidence</small><h1>Hear the pause. See the timing.</h1><p id="label"></p><p id="take"></p>
-<div class="panel"><div id="status" role="status"></div>PLAYER<p id="now">Playback: 0.00 s</p><svg id="timeline" viewBox="0 0 1000 220" role="img" aria-label="Audio findings and wrist stationary spans on the same take timeline"></svg><div class="legend"><span class="pink">Pink: extra audio gap / onset marker</span><span class="purple">Purple: observed stationary wrist span</span></div></div>
+<div class="panel"><div id="status" role="status"></div><p id="alignment"></p>PLAYER<p id="now">Playback: 0.00 s</p><svg id="timeline" viewBox="0 0 1000 220" role="img" aria-label="Audio findings and wrist stationary spans on the same take timeline"></svg><div class="legend"><span class="pink">Pink: extra audio gap / onset marker</span><span class="purple">Purple: observed stationary wrist span</span></div></div>
 <h2>Replay an audio finding</h2><ol id="findings"></ol><h2>Wrist evidence</h2><ol id="stalls"></ol>
 <p>Both reports use the same take ID and Unix start time. Alignment shows when observations occurred; an intended rest can look like a hesitation or stationary wrist. A matching span does not establish a cause.</p>
 <p>Camera timestamps mark frame availability, not sample-accurate exposure. Missing wrist tracking is not plotted as stillness. This viewer cannot verify camera/audio provenance.</p>
@@ -77,6 +79,7 @@ def html_page(bundle, audio):
 const data=PAYLOAD, ears=data.ears, hands=data.hands, duration=ears.duration_s;
 const $=id=>document.getElementById(id), audio=$('audio'), ns='http://www.w3.org/2000/svg';
 $('label').textContent=data.label;$('take').textContent='Take '+ears.take_id+' · '+duration.toFixed(2)+' seconds';
+const offset=Math.round((hands.duration_s-duration)*1000);$('alignment').textContent=offset?'Wrist-window duration offset: '+(offset>0?'+':'')+offset+' ms. Timeline clips at the audio end.':'Audio and wrist-window durations align.';
 const usable=hands.available===true;
 $('status').textContent=usable?'Wrist evidence available · analyzed coverage '+Math.round((hands.coverage||0)*100)+'%':'WRIST EVIDENCE INCOMPLETE — inspect coverage and tracking before drawing conclusions';
 if(ears.judgeable===false)$('status').textContent+=' · AUDIO TAKE NOT JUDGEABLE';
@@ -100,27 +103,76 @@ if(audio)audio.ontimeupdate=()=>{cursor.setAttribute('x1',x(audio.currentTime*10
 </script></html>'''.replace('PLAYER',player).replace('PAYLOAD',payload)
 
 
+def inspect_wav(path, *, duration=None, analysis=False):
+    path=Path(path)
+    if path.stat().st_size>MAX_AUDIO_BYTES:
+        raise ValueError('WAV exceeds 128 MiB')
+    with wave.open(str(path),'rb') as info:
+        frames,rate,channels=info.getnframes(),info.getframerate(),info.getnchannels()
+        if (channels not in (1,2) or info.getcomptype()!='NONE' or
+            info.getsampwidth() not in (1,2,3,4) or not 8000<=rate<=96000 or frames<1):
+            raise ValueError('use a nonempty mono/stereo PCM WAV at 8..96 kHz')
+        seconds=frames/rate
+        if duration is not None and abs(seconds-duration)>.1:
+            raise ValueError('WAV duration differs from the reports')
+        if analysis and (seconds>MAX_ANALYSIS_SECONDS or frames*channels>MAX_ANALYSIS_SAMPLES):
+            raise ValueError('analysis is limited to 60 seconds and 2880000 PCM channel-samples')
+        expected=frames*channels*info.getsampwidth()
+        decoded=0
+        while decoded<expected:
+            chunk=info.readframes(16384)
+            if not chunk:
+                raise ValueError('WAV payload is incomplete')
+            decoded+=len(chunk)
+    return dict(frames=frames,samplerate=rate,channels=channels,seconds=seconds)
+
+
+def analyze_capture(take, *, sidecar=None, hand_log=None):
+    """Use the production offline analyzers after validating a completed capture."""
+    from dataclasses import asdict
+    from tools.ears.analyze import analyze_take
+    from .eyes import HandMovementAnalyzer, report_for_window
+
+    take=Path(take)
+    sidecar=Path(sidecar) if sidecar else take.with_suffix('.json')
+    metadata=load_report(sidecar)
+    if not isinstance(metadata,dict) or type(metadata.get('version')) is not int or metadata['version']!=1:
+        raise ValueError('a version 1 audio take sidecar is required')
+    take_id=metadata.get('take_id')
+    if not isinstance(take_id,str) or not take_id.strip():
+        raise ValueError('sidecar take_id must be nonempty')
+    start,end=metadata.get('started_unix_ms'),metadata.get('ended_unix_ms')
+    if type(start) is not int or type(end) is not int or not 0<=start<end or end-start>3600000:
+        raise ValueError('sidecar requires a positive take window of at most one hour')
+    header=inspect_wav(take,analysis=True)
+    for key in ('frames','samplerate'):
+        if type(metadata.get(key)) is not int or metadata[key]!=header[key]:
+            raise ValueError(f'sidecar {key} does not match WAV')
+    seconds=number(metadata.get('seconds'),'sidecar seconds',.001,3600)
+    if abs(seconds-header['seconds'])>.001 or abs((end-start)/1000-header['seconds'])>.1:
+        raise ValueError('sidecar duration/window does not match WAV')
+    if metadata.get('wav')!=take.name:
+        raise ValueError('sidecar wav must name the selected WAV basename')
+    if hand_log is not None:
+        # Fail before audio analysis when a provided log is invalid/unavailable.
+        hands=report_for_window(hand_log,start,end,take_id)
+    else:
+        hands=asdict(HandMovementAnalyzer().analyze())
+        hands.update(take_id=take_id,started_unix_ms=start,ended_unix_ms=end,
+                     duration_s=(end-start)/1000,available=False,coverage=0.,
+                     source='vision.eyes/unavailable',summary='No hand log supplied; wrist evidence unavailable.')
+    ears=asdict(analyze_take(take,sidecar))
+    validate(ears,hands)
+    return ears,hands
+
+
 def export(ears, hands, output, *, label, audio=None):
     duration = validate(ears,hands)
     if not isinstance(label,str) or not label.strip():
         raise ValueError('provide an explicit source label')
     if audio:
         audio=Path(audio)
-        if audio.stat().st_size>MAX_AUDIO_BYTES:
-            raise ValueError('WAV exceeds 128 MiB')
-        with wave.open(str(audio),'rb') as info:
-            if (info.getnchannels() not in (1,2) or info.getcomptype()!='NONE' or
-                info.getsampwidth() not in (1,2,3,4) or not 8000<=info.getframerate()<=96000):
-                raise ValueError('use a mono/stereo PCM WAV')
-            if abs(info.getnframes()/info.getframerate()-duration)>.1:
-                raise ValueError('WAV duration differs from the reports')
-            expected=info.getnframes()*info.getnchannels()*info.getsampwidth()
-            decoded=0
-            while decoded<expected:
-                chunk=info.readframes(16384)
-                if not chunk:
-                    raise ValueError('WAV payload is incomplete')
-                decoded+=len(chunk)
+        inspect_wav(audio,duration=duration)
     bundle=dict(version=1,label=label,ears=ears,hands=hands)
     # Check serialization before creating any output.
     encoded=json.dumps(bundle,indent=2,allow_nan=False)+'\n'
@@ -135,14 +187,31 @@ def export(ears, hands, output, *, label, audio=None):
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--ears',type=Path,required=True)
-    p.add_argument('--hands',type=Path,required=True)
+    source=p.add_mutually_exclusive_group(required=True)
+    source.add_argument('--ears',type=Path,help='precomputed Ears report; requires --hands')
+    source.add_argument('--take',type=Path,help='completed take WAV; analyze it and copy audio for replay')
+    p.add_argument('--hands',type=Path,help='precomputed take-window Eyes report')
+    p.add_argument('--sidecar',type=Path,help='with --take: audio sidecar override; defaults to WAV basename.json')
+    p.add_argument('--hand-log',type=Path,help='with --take: both-hand log; omission explicitly marks wrist evidence unavailable')
+    p.add_argument('--metadata-only',action='store_true',help='with --take: omit the audio copy from the output')
     p.add_argument('--audio',type=Path,help='optionally copy the take WAV for local replay')
     p.add_argument('--label',required=True,help='explicit source label; mark synthetic/replay inputs')
     p.add_argument('--output',type=Path,required=True,help='new folder; refuses overwrite')
     args=p.parse_args(argv)
+    if args.take and (args.hands or args.audio):
+        p.error('--take computes reports and includes its WAV; omit --hands/--audio')
+    if args.ears and (not args.hands or args.sidecar or args.hand_log or args.metadata_only):
+        p.error('--ears requires --hands; --sidecar/--hand-log/--metadata-only require --take')
     try:
-        print(export(load_report(args.ears),load_report(args.hands),args.output,label=args.label,audio=args.audio))
+        if args.output.exists():
+            raise ValueError('output folder exists; choose a new folder')
+        if args.take:
+            ears,hands=analyze_capture(args.take,sidecar=args.sidecar,hand_log=args.hand_log)
+            audio=None if args.metadata_only else args.take
+        else:
+            ears,hands=load_report(args.ears),load_report(args.hands)
+            audio=args.audio
+        print(export(ears,hands,args.output,label=args.label,audio=audio))
     except (ValueError,OSError,TypeError,OverflowError,RecursionError,wave.Error) as exc:
         p.exit(2,f'evidence: {exc}\n')
 
