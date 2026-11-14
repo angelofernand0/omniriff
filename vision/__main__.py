@@ -8,6 +8,7 @@ import time
 from .control import Controller
 from .tracking import HandSelector
 from .scenes import SceneMorph, SCENES
+from .hand_view import HandView
 
 
 def main():
@@ -17,6 +18,8 @@ def main():
     p.add_argument('--camera', type=int, default=0)
     p.add_argument('--max-hand-jump', type=float, default=0.30,
                    help='maximum normalized wrist movement per frame before tracking fails closed')
+    p.add_argument('--no-hand-view', action='store_true', help='disable local dashboard landmark feed')
+    p.add_argument('--hand-view-port', type=int, default=47802)
     p.add_argument('--host', default='127.0.0.1')
     p.add_argument('--port', type=int, default=47800)
     p.add_argument('--rate', type=float, default=20)
@@ -65,6 +68,8 @@ def main():
     last_stamp = -1
     pending = {}
     last_sent = minimum_interval = None
+    hand_view = None if args.no_hand_view else HandView(args.hand_view_port).start()
+    hand_view_error_reported = False
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock, mp.tasks.vision.HandLandmarker.create_from_options(options) as detector:
             while True:
@@ -99,6 +104,15 @@ def main():
                         for point in points:
                             cv2.circle(frame, (int(point.x * width), int(point.y * height)), 3, (0, 255, 0), -1)
                 event = controller.update(y, pinch, confidence, now, int(time.time() * 1000))
+                if hand_view:
+                    if hand_view.error and not hand_view_error_reported:
+                        import sys
+                        print('Hand view unavailable: ' + hand_view.error, file=sys.stderr)
+                        hand_view_error_reported = True
+                    landmarks = [[min(1., max(0., p.x)), min(1., max(0., p.y))] for p in points] if y is not None else []
+                    hand_view.publish(dict(version=1, type='hand', timestamp_ms=int(time.time() * 1000),
+                        present=y is not None, engaged=controller.active, confidence=confidence,
+                        control=None if scene else args.control, value=controller.value, landmarks=landmarks))
                 events = scene.events(event) if scene and event else ([event] if event else [])
                 for event in events if not args.calibrate else []:
                     validator.validate(event)
@@ -128,6 +142,8 @@ def main():
                             args.calibration.write_text(json.dumps(pending) + '\n')
                             break
     finally:
+        if hand_view:
+            hand_view.close()
         cap.release()
         cv2.destroyAllWindows()
         elapsed = time.monotonic() - start
