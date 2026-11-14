@@ -11,6 +11,7 @@ from .scenes import SceneMorph, SCENES
 from .hand_view import HandView
 from .take import TakeRecorder
 from .setlist import Setlist
+from .metrics import FrameMetrics
 
 
 def main():
@@ -21,6 +22,7 @@ def main():
     p.add_argument('--max-hand-jump', type=float, default=0.30,
                    help='maximum normalized wrist movement per frame before tracking fails closed')
     p.add_argument('--record-take', type=Path, help='save control events as replay JSONL; refuses overwrite')
+    p.add_argument('--metrics-json', type=Path, help='save measured processing/rate summary on exit; refuses overwrite')
     p.add_argument('--no-hand-view', action='store_true', help='disable local dashboard landmark feed')
     p.add_argument('--hand-view-port', type=int, default=47802)
     p.add_argument('--host', default='127.0.0.1')
@@ -37,6 +39,8 @@ def main():
     p.add_argument('--no-overlay', action='store_true')
     p.add_argument('--dry-run', action='store_true', help='Validate and print events without UDP')
     args = p.parse_args()
+    if args.metrics_json and args.metrics_json.exists():
+        p.error('metrics file exists; choose a new file')
     if args.calibrate and args.no_overlay:
         p.error('calibration requires overlay')
     if not math.isfinite(args.max_hand_jump) or not 0 < args.max_hand_jump <= 1:
@@ -86,6 +90,7 @@ def main():
     take_error_reported = False
     hand_view = None if args.no_hand_view else HandView(args.hand_view_port).start()
     hand_view_error_reported = False
+    metrics = FrameMetrics()
     try:
         if args.record_take:
             take = TakeRecorder(args.record_take)
@@ -132,6 +137,7 @@ def main():
                         present=y is not None, engaged=controller.active, confidence=confidence,
                         control=None if scene else args.control, value=controller.value, landmarks=landmarks))
                 events = scene.events(event) if scene and event else ([event] if event else [])
+                frame_events = 0
                 for event in events if not args.calibrate else []:
                     validator.validate(event)
                     payload = json.dumps(event, separators=(',', ':'))
@@ -146,11 +152,13 @@ def main():
                             print('Take recording: ' + take.error, file=sys.stderr)
                             take_error_reported = True
                     count += 1
+                    frame_events += 1
                     emitted = time.monotonic()
                     if last_sent is not None:
                         interval = emitted - last_sent
                         minimum_interval = interval if minimum_interval is None else min(minimum_interval, interval)
                     last_sent = emitted
+                metrics.record(now, time.monotonic(), frame_events, hand_present=y is not None)
                 if not args.no_overlay:
                     label = 'CALIBRATE: l low, h high, s save' if args.calibrate else f'{scene.name if scene else args.control}: {controller.value} active={controller.active} events={count}'
                     cv2.putText(frame, label, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 255, 255), 1)
@@ -183,6 +191,13 @@ def main():
         cv2.destroyAllWindows()
         elapsed = time.monotonic() - start
         import sys
+        if args.metrics_json:
+            report = dict(metrics.snapshot(), input='recorded-video' if args.video else 'webcam',
+                          transmission='dry-run' if args.dry_run else 'udp',
+                          note='event rate is actual output during this run, not detector accuracy or audio latency')
+            with args.metrics_json.open('x', encoding='utf-8') as file:
+                json.dump(report, file, indent=2)
+                file.write('\n')
         print(json.dumps(dict(events=count, elapsed_seconds=elapsed, average_hz=count / max(elapsed, .001),
                               minimum_interval_seconds=minimum_interval)), file=sys.stderr)
 

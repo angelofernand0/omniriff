@@ -20,6 +20,7 @@ from vision.hand_view import HandView
 from vision.scenes import SCENES, SceneMorph
 from vision.tracking import HandSelector
 from vision.slider import FilterSlider
+from vision.metrics import FrameMetrics
 
 
 class BrowserVision:
@@ -38,6 +39,7 @@ class BrowserVision:
         self.error = None
         self.frame_count = self.event_count = 0
         self.last_frame_at = 0.0
+        self.metrics = FrameMetrics()
 
     def start(self):
         if self.thread is not None and self.thread.is_alive():
@@ -48,6 +50,7 @@ class BrowserVision:
         self.frames = queue.Queue(maxsize=1)
         self.status, self.error = 'starting', None
         self.frame_count = self.event_count = 0
+        self.metrics = FrameMetrics()
         self.thread = threading.Thread(target=self._run, name='browser-vision', daemon=True)
         self.thread.start()
 
@@ -77,7 +80,8 @@ class BrowserVision:
     def snapshot(self):
         return dict(status=self.status, error=self.error, frames=self.frame_count,
                     events=self.event_count, model_ready=self.model.is_file(),
-                    scene=self.scene_name, control='filter' if self.scene_name is None else 'scene')
+                    scene=self.scene_name, control='filter' if self.scene_name is None else 'scene',
+                    metrics=self.metrics.snapshot())
 
     def _run(self):
         try:
@@ -149,9 +153,12 @@ class BrowserVision:
                         self.error = slider.error
                     landmarks = [[min(1., max(0., p.x)), min(1., max(0., p.y))] for p in points] if y is not None else []
                     hand_view.publish(self._hand_frame(y, controller, confidence, landmarks, wall_ms, scene))
+                    emitted = 0
                     for event in (scene.events(gesture) if scene else [gesture]) if gesture else []:
                         sock.sendto(json.dumps(event, allow_nan=False, separators=(',', ':')).encode(), ('127.0.0.1', self.udp_port))
                         self.event_count += 1
+                        emitted += 1
+                    self.metrics.record(now, time.monotonic(), emitted, hand_present=y is not None)
                     self.frame_count += 1
                     self.status = 'running'
         finally:
