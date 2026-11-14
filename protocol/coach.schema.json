@@ -509,6 +509,49 @@
                   ],
                   "maxLength": 120,
                   "description": "One line from the player's memory, if any."
+                },
+                "mode": {
+                  "enum": [
+                    "practice",
+                    "play"
+                  ],
+                  "description": "PRACTICE while a session runs; PLAY when it is over (wrap-up done) and Riff is quiet. Absent means practice."
+                },
+                "plan": {
+                  "type": "array",
+                  "maxItems": 5,
+                  "description": "The session's drills in order, for the GOAL \u2192 DRILL 1 \u2192 DRILL 2 \u2192 DONE map.",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "title",
+                      "status"
+                    ],
+                    "properties": {
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 60
+                      },
+                      "status": {
+                        "enum": [
+                          "done",
+                          "now",
+                          "next",
+                          "skipped"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "summary": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 200,
+                  "description": "Set at DONE: the wrap-up in one or two lines, the same thing written to memory."
                 }
               }
             }

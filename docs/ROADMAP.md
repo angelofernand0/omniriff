@@ -21,13 +21,36 @@ Before today the pitch was two products: a hands-free effects controller, and an
 
 | Part | Its job in the one story |
 |---|---|
-| Audio engine + looper | The coach's hands: it loops the bar, goes dry, records the take |
+| Audio engine + looper | Your mirror and your backing: every take plays straight back so you hear yourself; in drill 2 your loop is the backing you play over. Riff goes dry for timing checks |
 | Ears (`tools/ears`) | What the teacher hears: strum timing, hesitations |
 | Eyes (`vision/eyes.py`) | What the teacher sees: the strumming hand stalling |
 | Coach (deep agent) | The teacher: diagnoses the cause, plans the drill, remembers you |
 | Riff + dashboard | The teacher's face: shows what it's doing and why |
 | Pedal | How you answer ("go", "again") without letting go |
 | Pinch | How you shape your tone without letting go (the performance side) |
+
+### How you use it: one practice session (SM decided 2026-11-14; source of truth for screen, brain and pitch)
+
+**It is a practice tool, not a DAW.** The looper holds one phrase: no tracks, no overdubs, no editing, and we never pitch it as a track builder. You sit down with something you're working on, and Riff works on it with you: an active, intelligent practice partner.
+
+**Two modes, one pedal.**
+- **PLAY:** a free, hands-free rig. Loop, pinch for tone, FX POWER. Riff stays quiet.
+- **PRACTICE:** a guided session. It starts with your first take; afterwards you return to PLAY.
+
+**A session (~10 minutes), hands-free:**
+1. **Play what you're working on.** Tap the pedal, play the part that's bugging you, tap to stop. It loops back so you hear yourself while Riff listens with you.
+2. **Riff sets the goal from what it heard,** or from memory if it knows you ("Last time it was the G to C. Let's check it."). Screen: *GOAL Clean G to C change*.
+3. **Drill 1, isolate it.** Riff names one cause and one fix, and asks to set up the rig (e.g. effects off). A tap is yes and starts the drill take.
+4. **Check.** Riff compares the take with the last judgeable one; the chart shows every take against the target.
+   - **Pass:** go to the next drill.
+   - **Not yet:** Riff adjusts (slower, smaller chunk) and you go again, at most **3 tries** per drill; after 3 it moves on and notes it for next time.
+5. **Drill 2, back in context.** Play the full pattern at tempo over your own loop as backing.
+6. **Wrap-up.** Riff sums up in one or two lines ("Your gap went from half a second to a tenth. Next time, let's push the tempo to 100.") and writes it to memory. The screen shows a short summary card.
+7. **Back to PLAY.** Riff goes quiet until you start another round.
+
+**On screen:** a session map **GOAL → DRILL 1 → DRILL 2 → DONE** (the current one lit), what the pedal does right now, the PRACTICE card (drill, try n/3, the number vs target, every take), and the summary at DONE. The mode (PLAY / PRACTICE) is always visible.
+
+**The contract between brain and screen** is `coach.frame.session` (protocol/coach.schema.json): `mode`, `goal`, `plan[]` (each drill's title and status), `drill`, `attempt` (try n of 3), `metric` (target + one value per judgeable take), `next`, `last_time`, `summary` (set at DONE). Without `session` the screen shows PLAY.
 
 ### Why it beats everything else in the room
 
@@ -186,14 +209,17 @@ SM's two agents split the coach evenly (about 8–9 agent-hours each): **Codex b
 | Anyone free | **Charity + Peri:** talk to 2–3 guitarists and, ideally, one guitar teacher or campus music club officer. One question: "What do you do when a passage keeps going wrong and you don't know why?" Get name, role, and a quote or photo with permission. That satisfies Peri's evidence rule and gives Charity real voices | 18:00 |
 | Joey | Wake Joey's Codex for R15 | Now |
 
-## 7. The new 2-minute demo
+## 7. The 2-minute demo (SM, 2026-11-14)
+
+The story: you sit down with something you're working on, and Riff helps you fix it, live, while your hands stay on the guitar.
 
 | Time | Beat |
 |---|---|
-| 0:00–0:15 | **Problem.** "Practising alone, you know you messed up but not why, and every tool makes you stop playing. Never put the guitar down." |
-| 0:15–0:35 | **The rig.** Pedal starts a loop; pinch sweeps the filter over it. Hands never leave the guitar. |
-| 0:35–1:20 | **The teacher (the ah-ha).** Play the take with the stumble. Riff thinks (plan on screen; Ears and Eyes run), then: *"Your strumming hand stops at the change."* Riff flies to the loop, sets up the drill, waits. Tap the pedal. Play the drill. Before/after numbers appear. |
-| 1:20–1:40 | **It remembers.** Show the journal entry and "Last time…" opening line. |
-| 1:40–2:00 | **Safe by design.** Unplug the camera: music keeps playing; the AI never touches the sound without your tap. One honest limitation. |
+| 0:00–0:15 | **Problem.** "Practising alone, you know you messed up but not why, and every tool makes you stop playing." |
+| 0:15–0:40 | **Play what you're working on (step 1).** Tap, play the G to C pattern with a real stumble, tap. It loops back. Riff listens: plan on screen, Ears and Eyes working. |
+| 0:40–1:10 | **Riff names it and sets up the drill (steps 2–3).** "Your strumming hand stops right at the change." GOAL appears. Riff walks to FX POWER and asks; tap = yes; play just the change. |
+| 1:10–1:35 | **Check (step 4).** The bar drops under the target line; Riff: "Nice. That gap went from almost half a second to about a tenth." |
+| 1:35–1:50 | **One line about memory.** "And it remembers: next time it opens with 'Last time it was the G to C.'" |
+| 1:50–2:00 | **Never put the guitar down.** Everything was the pedal. Unplug the camera, it keeps playing. One honest limitation. |
 
 Track visits get their 20-second angle from §2 on top of this.

@@ -239,3 +239,19 @@
 .coach-col { overflow: hidden; }
 @media (max-height: 820px) { .booth .riff-socket { width: 88px; height: 88px; } .steps li { padding: 2px var(--s1); } }
 .app[data-fx="engaged"] .cards { visibility: hidden; transition: none; }
+
+/* session map + mode (ROADMAP §1 "How you use it") */
+.steps-head { display: flex; justify-content: flex-end; }
+.mode { font: 400 clamp(11px, 2.8cqi, 14px)/1.2 var(--font-pixel); padding: 2px var(--s2); border: var(--stroke) solid var(--accent); color: var(--accent); }
+.mode[data-mode="play"] { border-color: var(--ok); color: var(--ok); }
+.steps li::before { content: none; }
+.steps[data-mode="play"] li { color: var(--dim); }
+.steps[data-mode="play"] li[data-n] { background: var(--bg) !important; border-color: var(--line) !important; color: var(--dim) !important; }
+.p-summary { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3); border: var(--stroke) solid var(--ok); }
+.p-summary b { font: 400 var(--p1)/1.2 var(--font-pixel); color: var(--ok); }
+.p-summary span { font: 600 clamp(14px, 3.6cqi, 18px)/1.35 var(--font-mono); color: var(--text); }
+/* the pinch readout swaps in instantly, so the tone area never flashes empty */
+.app[data-fx="engaged"] .engaged { animation: none; }
+/* at DONE the session summary is the result; the before/after line steps aside */
+.coach-col:has(#pSummary:not([hidden])) #coachBA { display: none !important; }
+@media (max-height: 820px) { #coachBA { display: none !important; } }   /* short screens: the line, the number and the chart already say it */

@@ -167,19 +167,35 @@
   // ---------- the practice loop, hands-free: which step, and what the pedal does now ----------
   // From the real loop state (app.js writes data-loop) and the coach frame; never a guess.
   function steps() {
-    const box = $('steps'), word = $('pedalNext');
+    const box = $('steps'), word = $('pedalNext'), badge = $('modeBadge');
     if (!box || !word) return;
     const f = frame, loop = app ? app.dataset.loop : 'idle';
-    const drillTake = !!(f && (f.session && f.session.attempt && f.session.attempt.n >= 1 && !f.before_after));
-    let step = 1, say = 'Tap, play a few bars, tap again';
-    if (!f || f.state === 'asleep') { step = 1; say = loop === 'recording' ? 'Tap to stop' : 'Tap to record'; }
-    else if (f.awaiting_approval) { step = 3; say = 'Tap to start the drill (or wait to skip)'; }
-    else if (loop === 'recording') { step = drillTake ? 3 : 1; say = 'Tap to stop the take'; }
-    else if (f.before_after && (f.state === 'pleased' || f.state === 'speaking')) { step = 4; say = 'Tap to go again'; }
-    else if (f.state === 'pointing') { step = 3; say = 'Get ready for the drill'; }
-    else if (f.state === 'thinking' || f.state === 'speaking') { step = drillTake ? 4 : 2; say = 'Nothing yet, Riff is on it'; }
+    const ses = f && f.session;
+    const mode = !f || f.state === 'asleep' ? 'play' : ses && ses.mode === 'play' ? 'play' : 'practice';
+    // where we are in the session map: GOAL → DRILL 1 → DRILL 2 → DONE
+    let step = 1;
+    if (ses && ses.plan && ses.plan.length) {
+      const now = ses.plan.findIndex((d) => d.status === 'now');
+      step = now >= 0 ? now + 2 : 4;
+    } else if (ses && ses.drill) step = ses.drill.step + 1;
     box.dataset.step = String(step);
+    box.dataset.mode = mode;
+    if (badge) { badge.dataset.mode = mode; badge.textContent = mode === 'play' ? 'PLAY' : 'PRACTICE'; }
+    // what the pedal does right now
+    let say;
+    if (mode === 'play') say = loop === 'recording' ? 'Tap to close the loop' : 'Loop and play freely. Hold for another round (Y here)';
+    else if (loop === 'recording') say = step === 1 ? 'Tap to stop when you\'ve played it' : 'Tap to stop the drill take';
+    else if (f && f.awaiting_approval) say = 'Tap to start the drill (or wait to skip)';
+    else if (f && (f.state === 'thinking' || f.state === 'speaking' || f.state === 'pointing')) say = 'Nothing yet, Riff is on it';
+    else if (step === 1) say = 'Tap, play what you\'re working on, tap again';
+    else if (step === 4) say = 'Nothing yet, Riff is wrapping up';
+    else say = `Tap to play drill ${step - 1}`;
     word.querySelector('span').textContent = say;
+    // in PLAY the pedal belongs to the looper, so another round is asked for differently
+    if (els.ask) {
+      const b = els.ask.querySelector('b');
+      if (b) b.textContent = mode === 'play' ? 'ANOTHER ROUND? PRESS Y' : 'TAP PEDAL TO START';
+    }
   }
   if (app) new MutationObserver(steps).observe(app, { attributes: true, attributeFilter: ['data-loop'] });
 
@@ -211,6 +227,12 @@
         `<i class="${pass(v) ? 'pass' : ''}${i === m.history.length - 1 ? ' last' : ''}" style="height:${Math.max(4, (v / top) * 100).toFixed(1)}%" title="${Math.round(v)} ${esc(m.unit)}"></i>`).join('')
         + `<span class="goal" style="bottom:${((m.target / top) * 100).toFixed(1)}%" data-label="${Math.round(m.target)} ${esc(m.unit)}"></span>`;
     }
+    const sum = $('pSummary');
+    if (sum) {
+      sum.hidden = !(ses && ses.summary);
+      if (ses && ses.summary) sum.querySelector('span').textContent = ses.summary;
+    }
+    if (ses && !ses.drill) els.now.hidden = true;
     const next = ses && ses.next;
     els.nextRow.hidden = !next;
     if (next) els.next.textContent = next;
