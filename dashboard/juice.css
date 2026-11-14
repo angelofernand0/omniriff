@@ -1,13 +1,11 @@
 /* OmniRiff dashboard juice (juice.js). Same rules as DESIGN.md: hard edges, stepped motion. */
 
-.juice-layer { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 50; }
 .juice-flash { position: fixed; inset: 0; pointer-events: none; z-index: 49; opacity: 0; }
 .juice-flash.go { animation: jflash 280ms steps(3) forwards; }
 @keyframes jflash { from { opacity: 0.2; } to { opacity: 0; } }
 
 /* loop moments: a stamp slams onto the waveform */
 .wave { overflow: hidden; transition: border-color 80ms steps(1); }
-.wave.juice-hit { border-color: var(--accent); }
 .juice-stamp {
   position: absolute; left: 50%; top: 50%; z-index: 2; pointer-events: none; white-space: nowrap;
   font: 56px/1 var(--font-pixel); padding: 10px 22px; border: 4px solid currentColor;
@@ -40,7 +38,6 @@
 .engaged { position: relative; }
 .engaged > .juice-bg { position: absolute; inset: 24px; width: calc(100% - 48px); height: calc(100% - 48px); pointer-events: none; }
 .engaged-text, .tower { position: relative; z-index: 1; }
-.engaged.juice-hit { box-shadow: 0 0 0 14px rgba(255, 92, 203, 0.3), 6px 6px 0 var(--shadow); }
 
 .brand-mark { transform-origin: 50% 50%; }
 

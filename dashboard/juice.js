@@ -4,7 +4,7 @@
 // triggered by a real change in an engine frame. The only inputs it adds are keyboard
 // shortcuts that press the existing manual buttons.
 //   ?juice=off            disables all of it
-//   prefers-reduced-motion keeps the stamps and the effect graphs, drops particles/flash/shake
+//   prefers-reduced-motion keeps the stamps and the effect graphs, drops flash/shake
 'use strict';
 
 (() => {
@@ -20,19 +20,13 @@
     accent: C('--accent'), rec: C('--rec'), warn: C('--warn'), ok: C('--ok'), text: C('--text'),
     muted: C('--muted'), off: C('--off'), deep: C('--accent-deep'), dim: '#4A4858',
   };
-  const TICK_MS = 1000 / 30;  // particles move in 30 Hz steps for the pixel feel
-  const GRID = 3;             // particles snap to a 3 px grid
-  const MAX_PARTICLES = 500;
+  const TICK_MS = 1000 / 30;  // graphs redraw at 30 Hz
 
   // ---------- layers ----------
-  const layer = document.createElement('canvas');
-  layer.className = 'juice-layer';
-  layer.setAttribute('aria-hidden', 'true');
   const flash = document.createElement('div');
   flash.className = 'juice-flash';
   flash.setAttribute('aria-hidden', 'true');
-  document.body.append(flash, layer);
-  const lctx = layer.getContext('2d');
+  document.body.append(flash);
 
   // effect graphs: one small canvas per card, one big faint one behind the engaged panel
   function addViz(parent, before, cls) {
@@ -63,9 +57,6 @@
   document.body.appendChild(attract);
 
   // ---------- helpers ----------
-  const rect = (el) => el.getBoundingClientRect();
-  const center = (el) => { const r = rect(el); return [r.left + r.width / 2, r.top + r.height / 2]; };
-  const rnd = (a, b) => a + Math.random() * (b - a);
   const level = (db) => Math.max(0, Math.min(1, (db + 60) / 60));
 
   function restart(el, cls, ms) {
@@ -90,62 +81,6 @@
     d.style.color = color;
     host.appendChild(d);
     setTimeout(() => d.remove(), 1100);
-  }
-
-  // ---------- particles ----------
-  const parts = [];
-  // mode 'home': flies to (tx, ty) and "injects" into the target element on arrival
-  // mode 'fall': sprays out and falls under gravity until its life runs out
-  function emit(n, x, y, opt) {
-    if (!motion) return;
-    for (let i = 0; i < n && parts.length < MAX_PARTICLES; i++) {
-      parts.push({
-        x: x + rnd(-6, 6), y: y + rnd(-6, 6),
-        vx: (opt.vx ?? 0) + rnd(-opt.spread, opt.spread), vy: (opt.vy ?? 0) + rnd(-opt.spread, opt.spread),
-        tx: opt.tx, ty: opt.ty, hit: opt.hit, mode: opt.mode, color: opt.color,
-        size: opt.size || (Math.random() < 0.3 ? 6 : 3), life: opt.life || 40, age: 0, px: x, py: y,
-      });
-    }
-  }
-  function step() {
-    for (let i = parts.length - 1; i >= 0; i--) {
-      const p = parts[i];
-      p.px = p.x; p.py = p.y; p.age++;
-      if (p.mode === 'home') {
-        const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy) || 1;
-        const sp = Math.min(34, 6 + p.age * 1.6);
-        p.vx = p.vx * 0.82 + (dx / d) * sp * 0.18;
-        p.vy = p.vy * 0.82 + (dy / d) * sp * 0.18;
-        p.x += p.vx; p.y += p.vy;
-        if (d < 14 || p.age > 90) {
-          if (p.hit && d < 14) restart(p.hit, 'juice-hit', 140);
-          parts.splice(i, 1);
-        }
-      } else {
-        p.vy += 0.7; p.vx *= 0.97;
-        p.x += p.vx; p.y += p.vy;
-        if (p.age > p.life) parts.splice(i, 1);
-      }
-    }
-  }
-  function drawParticles() {
-    const dpr = window.devicePixelRatio || 1;
-    const w = innerWidth, h = innerHeight;
-    if (layer.width !== Math.round(w * dpr) || layer.height !== Math.round(h * dpr)) {
-      layer.width = Math.round(w * dpr); layer.height = Math.round(h * dpr);
-    }
-    lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    lctx.clearRect(0, 0, w, h);
-    const g = (v) => Math.round(v / GRID) * GRID;
-    for (const p of parts) {
-      const fade = p.mode === 'fall' ? Math.max(0, 1 - p.age / p.life) : 1;
-      lctx.globalAlpha = 0.35 * fade;  // one-step trail
-      lctx.fillStyle = p.color;
-      lctx.fillRect(g(p.px), g(p.py), p.size, p.size);
-      lctx.globalAlpha = Math.ceil(fade * 3) / 3;  // stepped fade
-      lctx.fillRect(g(p.x), g(p.y), p.size, p.size);
-    }
-    lctx.globalAlpha = 1;
   }
 
   // ---------- effect graphs ----------
@@ -200,16 +135,13 @@
 
   // ---------- frame-driven events ----------
   let s = null, lastLoop = null, playStart = 0, lastPos = 0;
-  let lastBypass = null, lastClip = false, lastFx = 'idle', everLive = false, offlineSince = performance.now();
-  const prev = { filter: null, reverb: null };
+  let lastBypass = null, lastClip = false, everLive = false, offlineSince = performance.now();
 
   window.addEventListener('omniriff:frame', (e) => {
     const f = e.detail;
     const now = performance.now();
     const first = s === null;
     s = f;
-    const wave = document.querySelector('.wave');
-    const wr = rect(wave);
 
     // loop transitions
     const ls = f.loop && f.loop.state;
@@ -220,43 +152,13 @@
         playStart = now; lastPos = 0;
         if (lastLoop === 'recording') {
           stamp('LOOP ' + (f.loop.seconds || 0).toFixed(1) + 'S', P.accent); doFlash(P.accent);
-          emit(40, wr.left + wr.width / 2, wr.top + wr.height / 2, { mode: 'fall', color: P.accent, spread: 12, vy: -8, life: 34 });
         }
       } else if (ls === 'idle' && lastLoop) {
         stamp('CLEARED', P.muted);
-        // the old loop crumbles off the waveform
-        for (let i = 0; i < 70; i++) {
-          emit(1, rnd(wr.left + 12, wr.right - 12), wr.top + wr.height / 2 + rnd(-wr.height / 4, wr.height / 4),
-            { mode: 'fall', color: Math.random() < 0.5 ? P.dim : P.accent, spread: 3, vy: -3, life: rnd(20, 40) });
-        }
       }
     }
     if (ls === 'playing' && first) playStart = now;
     lastLoop = ls;
-
-    // recording: the input is sucked into the new end of the loop
-    if (ls === 'recording' && level(f.input_peak_dbfs) > 0.45 && Math.random() < 0.6) {
-      const [mx, my] = center($('inSegs'));
-      emit(1, mx, my, { mode: 'home', tx: wr.right - 20, ty: wr.top + wr.height / 2 + rnd(-30, 30), color: P.rec, spread: 6, vy: 6, hit: wave });
-    }
-
-    // effect moves: inject particles from the control into the loop, at the playhead if it's playing
-    for (const k of ['filter', 'reverb']) {
-      const v = f[k] && f[k].value;
-      if (typeof v !== 'number') continue;
-      if (prev[k] !== null && !first) {
-        const dv = Math.abs(v - prev[k]);
-        if (dv > 0.004) {
-          const engaged = app.dataset.fx === 'engaged';
-          const src = engaged ? (document.querySelector('.tower i.top') || $('tower')) : $('card-' + k).querySelector('.juice-viz');
-          const [sx, sy] = center(src);
-          let tx = wr.left + wr.width * rnd(0.3, 0.9);
-          if (ls === 'playing' && f.loop.seconds > 0) tx = wr.left + 12 + lastPos * (wr.width - 24);
-          emit(Math.min(6, Math.ceil(dv * 80)), sx, sy, { mode: 'home', tx, ty: wr.top + wr.height / 2 + rnd(-24, 24), color: P.accent, spread: 10, vy: -6, hit: wave });
-        }
-      }
-      prev[k] = v;
-    }
 
     // bypass slam
     if (!first && lastBypass !== null && !!f.bypass !== lastBypass) {
@@ -291,8 +193,6 @@
         const pos = ((now - playStart) / 1000 / s.loop.seconds) % 1;
         if (pos < lastPos) {
           restart(document.querySelector('.loop-state'), 'juice-beat', 180);
-          const wr = rect(document.querySelector('.wave'));
-          emit(10, wr.left + 14, wr.top + wr.height / 2, { mode: 'fall', color: P.text, spread: 5, vx: 4, vy: -7, life: 22 });
         }
         lastPos = pos;
       }
@@ -308,14 +208,7 @@
     if (clip && !lastClip) shake(document.querySelector('.bar .meter'));
     lastClip = clip;
 
-    // hand takes over: burst from the hand view into the engaged panel
     const fxState = app.dataset.fx;
-    if (fxState === 'engaged' && lastFx !== 'engaged') {
-      const [hx, hy] = center($('handPanel'));
-      const [ex, ey] = center($('engaged'));
-      emit(18, hx, hy, { mode: 'home', tx: ex, ty: ey, color: P.accent, spread: 14, hit: $('engaged') });
-    }
-    lastFx = fxState;
 
     // effect graphs
     if (s) {
@@ -329,8 +222,6 @@
       }
     }
 
-    step();
-    drawParticles();
   }
   requestAnimationFrame(tick);
 
