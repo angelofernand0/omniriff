@@ -117,6 +117,14 @@ class Voice:
         return {'version': 1, 'type': 'coach.audio', 'timestamp_ms': int(time.time() * 1000),
                 'text': text.strip(), 'mime': 'audio/mpeg', 'audio_b64': base64.b64encode(mp3).decode()}
 
+    @staticmethod
+    def seconds(msg: dict | None, text: str = '') -> float:
+        """How long a line takes to say: from the coach.audio MP3 (128 kbps), else estimated from
+        the words. Pace the session with it: hold each line this long plus ~0.9 s before the next."""
+        if msg and msg.get('audio_b64'):
+            return len(msg['audio_b64']) * 3 / 4 * 8 / 128_000
+        return max(1.2, len((text or (msg or {}).get('text', '')).split()) / 2.6)
+
     async def render(self, text: str) -> dict | None:
         """coach.audio for text, synthesized off the event loop; None if there's no audio."""
         mp3 = await asyncio.to_thread(self.synthesize, text)
