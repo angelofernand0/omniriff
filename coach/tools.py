@@ -40,6 +40,7 @@ class CoachTools:
         last_time = last_time_cue(self.workspace)
         self.session = PracticeSession(last_time=last_time if last_time and len(last_time) <= 120 else None)
         self.current_take_id: str | None = None
+        self._read_take_ids: set[str] = set()
 
     def _report(self, take_id: str, name: str) -> dict:
         take_id = _safe_take_id(take_id)
@@ -58,6 +59,8 @@ class CoachTools:
         """Read measured strum times and hesitations for a recorded take."""
         report = self._report(take_id, "take.json")
         self.session.record_take(report)
+        if self.session.has_take(take_id):
+            self._read_take_ids.add(take_id)
         self.feed.publish(state="thinking", mood="concentrating", target="loop",
                           session=self.session.snapshot())
         self.feed.publish_activity("ears", "get_take_report", "done" if report.get("available", True) else "failed")
@@ -69,6 +72,21 @@ class CoachTools:
         self.feed.publish(state="thinking", mood="concentrating", target="hand")
         self.feed.publish_activity("eyes", "get_hand_report", "done" if report.get("available", True) else "failed")
         return report
+
+    def set_practice_goal(self, goal: str) -> str:
+        """Publish a measured goal only when the player has not supplied one."""
+        if self.current_take_id is None or self.current_take_id not in self._read_take_ids:
+            raise ValueError("read a judgeable first TakeReport before setting a goal")
+        if self.session.mode != "practice" or self.session.goal is not None:
+            raise ValueError("practice goal already set or session ended")
+        self.session.plan(
+            goal=goal, next_step="Isolate the measured trouble spot",
+            drill_count=2, attempt_count=3,
+            drill_titles=["Isolate the trouble spot", "Full pattern over your loop"],
+        )
+        self.feed.publish(session=self.session.snapshot())
+        self.feed.publish_activity("coach", "set_practice_goal", "done")
+        return goal
 
     def compare_takes(self, before_id: str, after_id: str) -> dict:
         """Compare two measured takes, returning counts, worst gaps, and stability."""
@@ -96,6 +114,8 @@ class CoachTools:
 
     def write_drill_card(self, skill: str, passage: str, reps: int, pass_rule: str, rig: dict) -> str:
         """Save one specific practice drill; rig settings here are proposals only."""
+        if self.session.mode != "practice":
+            raise ValueError("practice session is not active")
         if skill not in SKILLS:
             raise ValueError("unknown drill skill")
         if not isinstance(passage, str) or not 1 <= len(passage) <= 80:
@@ -214,6 +234,11 @@ def build_langchain_tools(service: CoachTools) -> dict:
         return service.compare_takes(before_id, after_id)
 
     @tool
+    def set_practice_goal(goal: str) -> str:
+        """Set one short goal grounded in the measured first take; do not guess a chord name."""
+        return service.set_practice_goal(goal)
+
+    @tool
     def write_drill_card(skill: str, passage: str, reps: int, pass_rule: str, rig: dict) -> str:
         """Save a measurable drill card; proposed rig settings still need approval."""
         return service.write_drill_card(skill, passage, reps, pass_rule, rig)
@@ -229,6 +254,6 @@ def build_langchain_tools(service: CoachTools) -> dict:
         return service.rig_control(control, value)
 
     return {item.name: item for item in (
-        get_rig_state, get_take_report, get_hand_report, compare_takes,
+        get_rig_state, get_take_report, get_hand_report, compare_takes, set_practice_goal,
         write_drill_card, say, rig_control,
     )}

@@ -20,8 +20,10 @@ fixture only** check, use `python -m coach --fixtures
 genuine zero-key, zero-cost offline check is `python -m coach.smoke --tools-only`. The
 local guard refuses new runs when its conservative estimated usage is near $8.
 `coach/workspace/usage.jsonl` stores counts and an upper-bound estimate, not
-the provider's bill. The fixture run is labeled scripted in the feed because
-its input is replayed synthetic data, even though the agent itself is live.
+the provider's bill. Fixture mode prints `SYNTHETIC FIXTURES` in the terminal.
+Its feed has `scripted: false` because the agent is live; that flag does **not**
+mean the guitar or camera input was live. Do not present fixture results as a
+real performance.
 Fixture runs use an ignored `coach/workspace-fixtures/` profile. They never
 read or overwrite the real `coach/workspace/memories/player.md`; both modes
 share only the conservative usage ledger. A second session opens with a
@@ -38,3 +40,14 @@ audio timing only.
 Tests without a model key: `python -m unittest discover -s tests -p
 test_coach_core.py -v`. The API smoke harness is `python -m coach.smoke
 --tools-only`; omitting `--tools-only` makes one paid model call.
+
+In a live session, Riff asks for a goal before the first take. The dashboard
+TALK/typed input reaches the runner as `coach.say`; after the first take it is
+a note for the next decision. The runner uses judgeable TakeReports for a
+two-drill plan with up to three attempts per drill, displays the strongest
+measured hesitation as a take-relative loop mark, then returns to quiet PLAY.
+The pedal's accepted `practice_count` starts or pauses a round; a new spoken
+goal can also start one from PLAY. The engine remains independent of the coach.
+The budget guard checks each parent, Ears, Eyes and summarization model call;
+the `$8` ceiling is a conservative local estimate, **not** a provider billing
+cap. No paid-model quality claim is made by the offline tests.
