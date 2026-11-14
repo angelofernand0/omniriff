@@ -17,17 +17,17 @@
   if (mode === 'off' || mode === 'preview' || !window.OmniRiff || !window.OmniRiff.coach) return;
   const URL_ = params.get('coachws') || 'ws://127.0.0.1:47803';
   const $ = (id) => document.getElementById(id);
-  const dock = $('coachDock'), led = $('led-coach'), detail = $('coachDetail');
+  const app = $('app'), dock = $('coachDock'), led = $('led-coach');
   const els = {
-    tag: dock && dock.querySelector('.preview-tag'),
+    tag: dock && dock.querySelector('.preview-tag'), cue: $('coachLine'),
     ask: $('coachAsk'), askText: $('coachAskText'),
-    plan: $('coachPlan'), drill: $('coachDrill'), ba: $('coachBA'), acts: $('coachActs'),
+    drill: $('coachDrill'), ba: $('coachBA'), acts: $('coachActsLine'),
   };
 
-  // logical targets (schema) → the element Riff perches on
+  // logical targets (schema) → what Riff walks to. Buttons get reached with the finger.
   const TARGET = {
-    loop: '.wave', filter: '#card-filter', reverb: '#card-reverb', bypass: '.fx-zone',
-    input: '.meters', hand: '#handPanel', coach: null, player: null,
+    loop: '.wave', filter: '#card-filter', reverb: '#card-reverb', bypass: '#fxPower',
+    input: '.loop-state', hand: '#handPanel', coach: null, player: null,
   };
 
   let ws = null, retry = 0, frame = null, live = false, joined = false;
@@ -55,13 +55,23 @@
 
   // ---------- render ----------
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const MARK = { completed: '✓', in_progress: '▸', pending: '·', done: '✓', running: '…', waiting: '?', failed: '✕' };
+  const WHO = { coach: 'RIFF', ears: 'EARS', eyes: 'EYES' };
+  // what each tool means, said like a person (the raw tool names are in the coach's LangSmith trace)
+  const SAYS = [
+    [/^get_take_report/, 'reading your timing'], [/^get_hand_report/, 'watching your strumming hand'],
+    [/^open skill (.+)/, (m) => `opening the ${m[1].replace(/-/g, ' ')} drill`], [/^write_drill_card/, 'writing the drill'],
+    [/^rig_control (\w+)/, (m) => m[1] === 'bypass' ? 'asking to switch effects off' : `asking to change ${m[1]}`],
+    [/^compare_takes/, 'comparing your takes'], [/memories/, 'remembering this for next time'],
+    [/^get_rig_state/, 'checking the rig'], [/^say/, 'talking'],
+  ];
+  const human = (what) => { for (const [re, out] of SAYS) { const m = what.match(re); if (m) return typeof out === 'function' ? out(m) : out; } return what.replace(/_/g, ' '); };
 
   function offline() {
     live = false; frame = null;
-    window.OmniRiff.coach.set({ state: 'asleep', target: null, cue: '', mood: 'sleepy' });
-    if (detail) detail.hidden = true;
+    window.OmniRiff.coach.set({ state: 'asleep', target: null, cue: '', mood: 'sleepy', stage: false });
+    spotlight(false, null);
     if (dock) { delete dock.dataset.scripted; dock.dataset.ask = 'false'; }
+    if (els.acts) els.acts.textContent = '';
     setLed('off', 'OFF');
   }
 
@@ -70,62 +80,72 @@
     led.classList.toggle('online', kind === 'live');
     led.classList.toggle('warn', kind === 'scripted');
     led.querySelector('span').textContent = word;
+    if (app) app.dataset.coach = kind;
+  }
+
+  // Spotlight: Riff steps forward only when it has something for you: a cue it is saying, a
+  // question waiting for your pedal, or a result. Otherwise the screen is the instrument.
+  let spotTarget = null;
+  function spotlight(on, targetSel) {
+    if (app) app.dataset.spot = on ? 'on' : 'off';
+    if (spotTarget) spotTarget.classList.remove('spot-target');
+    spotTarget = on && targetSel ? document.querySelector(targetSel) : null;
+    if (spotTarget) spotTarget.classList.add('spot-target');
   }
 
   function apply(f) {
     const prevCue = frame && frame.cue;
     frame = f; live = true;
     const target = f.target ? TARGET[f.target] : null;
-    window.OmniRiff.coach.set({ state: f.state, target, cue: f.cue || '', mood: f.mood, gaze: f.target === 'player' ? 'player' : null });
+    const on = !!f.cue && ['speaking', 'pointing', 'pleased'].includes(f.state) || !!f.awaiting_approval || (!!f.before_after && f.state === 'pleased');
+    // centre stage when it talks to you; at the control when it operates one
+    window.OmniRiff.coach.set({ state: f.state, target, cue: f.cue || '', mood: f.mood, stage: on && !target });
+    spotlight(on, target);
     // riff.js renders the LED for its own preview; the feed owns it from here
     setLed(f.scripted ? 'scripted' : 'live', f.state === 'asleep' ? 'OFF' : f.scripted ? 'SCRIPTED' : 'LIVE');
     if (dock) {
       if (f.scripted) dock.dataset.scripted = 'true'; else delete dock.dataset.scripted;
       dock.dataset.ask = String(!!f.awaiting_approval);
     }
-    if (els.tag) els.tag.textContent = f.scripted ? 'SCRIPTED · NOT AI' : 'SCRIPTED PREVIEW';
     render(f);
     if (joined) { joined = false; spoken = f.cue || ''; }   // joined mid-line: don't start talking halfway
     else if (f.cue && f.cue !== prevCue) cueChanged(f.cue);
   }
 
   function render(f) {
-    if (!detail) return;
+    if (els.cue) els.cue.textContent = f.cue || '';
     const a = f.awaiting_approval;
-    els.ask.hidden = !a;
-    if (a) els.askText.textContent = a.summary;
+    if (els.ask) { els.ask.hidden = !a; if (a) els.askText.textContent = a.summary; }
 
     const d = f.drill_card;
-    els.drill.hidden = !d;
-    if (d) {
-      els.drill.innerHTML = `<header><b>DRILL</b><span>${esc(d.title)}</span></header>`
-        + `<p>${esc(d.passage)} · ${d.reps}×</p><p class="pass">PASS: ${esc(d.pass_rule)}</p>`
-        + (d.journal_path ? `<p class="path">${esc(d.journal_path)}</p>` : '');
+    if (els.drill) {
+      els.drill.hidden = !d || !!f.before_after;
+      if (d) els.drill.innerHTML = `<b>DRILL</b><span>${esc(d.title)}</span><span>${esc(d.passage)} · ${d.reps}×</span><span class="pass">${esc(d.pass_rule)}</span>`;
     }
-
-    // the plan only while there's no drill card or result competing for the space
-    const todos = f.todos || [];
-    els.plan.hidden = !todos.length || !!d || !!f.before_after;
-    els.plan.innerHTML = '<header><b>PLAN</b></header>' + todos.slice(0, 5).map((t) =>
-      `<li data-s="${t.status}"><i>${MARK[t.status]}</i>${esc(t.text)}</li>`).join('');
 
     const b = f.before_after;
-    els.ba.hidden = !b;
-    if (b) {
-      const pct = (v) => Math.round(v * 100);
-      els.ba.dataset.improved = String(b.improved);
-      els.ba.innerHTML = '<header><b>BEFORE → AFTER</b></header>'
-        + `<div><span>WORST GAP</span><b>${Math.round(b.worst_gap_ms[0])} → ${Math.round(b.worst_gap_ms[1])} ms</b></div>`
-        + `<div><span>HESITATIONS</span><b>${b.hesitations[0]} → ${b.hesitations[1]}</b></div>`
-        + `<div><span>STEADY</span><b>${pct(b.tempo_stability[0])} → ${pct(b.tempo_stability[1])}%</b></div>`;
+    if (els.ba) {
+      els.ba.hidden = !b;
+      if (b) {
+        const pct = (v) => Math.round(v * 100);
+        els.ba.dataset.improved = String(b.improved);
+        els.ba.innerHTML =
+          `<div><span>LONGEST GAP</span><b>${Math.round(b.worst_gap_ms[0])}<i>→</i>${Math.round(b.worst_gap_ms[1])}<small>ms</small></b></div>`
+          + `<div><span>HESITATIONS</span><b>${b.hesitations[0]}<i>→</i>${b.hesitations[1]}</b></div>`
+          + `<div><span>STEADY</span><b>${pct(b.tempo_stability[0])}<i>→</i>${pct(b.tempo_stability[1])}<small>%</small></b></div>`;
+      }
     }
 
-    const acts = (f.activity || []).slice(-3);
-    els.acts.hidden = !acts.length;
-    els.acts.innerHTML = acts.map((x) =>
-      `<li data-s="${x.status}"><b>${x.who.toUpperCase()}</b><span>${esc(x.what)}</span><i>${MARK[x.status]}</i></li>`).join('');
-
-    detail.hidden = els.ask.hidden && els.drill.hidden && els.plan.hidden && els.ba.hidden && els.acts.hidden;
+    // one quiet line by Riff's perch: the plan's progress and what the harness is doing right now
+    if (els.acts) {
+      const todos = f.todos || [];
+      const done = todos.filter((t) => t.status === 'completed').length;
+      const now = [...(f.activity || [])].reverse().find((x) => x.status === 'running' || x.status === 'waiting');
+      const busy = ['thinking', 'listening'].includes(f.state) || (now && f.state !== 'idle');
+      els.acts.textContent = busy && (now || todos.length)
+        ? (now ? `${WHO[now.who]} · ${human(now.what)}${now.status === 'running' ? '…' : ''}` : '') + (todos.length ? `   ${Math.min(done + 1, todos.length)}/${todos.length}` : '')
+        : '';
+    }
   }
 
   // ---------- voice ----------

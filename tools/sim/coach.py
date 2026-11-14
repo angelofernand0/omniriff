@@ -252,6 +252,7 @@ class ScriptedSession:
         if not self.bypass and self.sender is not None:
             self.sender.send('bypass')
             self.we_bypassed = True
+            await self.wait(0.7)                   # let the player see Riff press it before moving on
         self.say(state='listening', mood='concentrating', target='loop', awaiting_approval=None,
                  todos=_todos(4), activity=_act(self.feed, 'coach', 'rig_control bypass', 'done'))
         await self.until_quiet()

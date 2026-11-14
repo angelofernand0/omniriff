@@ -39,6 +39,10 @@ python -m tools.sim run --demo
 
 Sequence numbers start at the wall clock in ms, so a page reload never repeats one. Run one control dashboard at a time (see `engine/README.md`).
 
-## Coach layer (coach.js, coach.css)
+## Layout: Spotlight (index.html, stage.css, stage.js)
 
-Connects to the coach feed `ws://127.0.0.1:47803` (`protocol/coach.schema.json`; override with `?coachws=`). It drives Riff, and fills 04 COACH with the approval prompt (pedal, or `Y`/`N`), the drill card, the plan, before/after numbers and a two-line activity strip showing the coach and its Ears/Eyes subagents at work. Riff's voice: `coach.audio` from the coach (ElevenLabs) when it arrives, else the browser's voice after 1.5 s; `M` mutes. Riff's talking squash follows the real loudness of the voice. A scripted session (`python -m tools.sim coach`) shows `COACH SCRIPTED` and `SCRIPTED · NOT AI`. With no feed, nothing changes: `COACH OFF`. Checked in headless Chrome at 1920x1080 and 1280x720 with the scripted session: no scroll, no page errors.
+While you play it is a guitar app: LOOP is the hero, TONE below with FX POWER, the hand view appears only while the camera sees a hand, and Riff sits small on the loop's top edge. When Riff has something for you (a cue, a question for your pedal, a result) it steps forward: the instrument dims except the control it is operating, Riff grows to centre stage, and the line prints at subtitle size so it reads from the floor. When it changes your rig it walks to the control, points, and presses it in time with the real change. Engineering readouts (LEDs, meters, dB, xruns, manual faders, keys) live in the rig drawer: `D` or the RIG button. One status pill says what is true (LIVE, SIMULATED, REPLAY, SCRIPTED COACH).
+
+## Coach layer (coach.js)
+
+Connects to the coach feed `ws://127.0.0.1:47803` (`protocol/coach.schema.json`; override with `?coachws=`), drives Riff and fills the spotlight: the line, the pedal prompt (`Y`/`N` also answer), the drill, big before/after numbers, and one quiet line by Riff's perch saying what the coach and its Ears/Eyes subagents are doing. Voice: the coach's ElevenLabs audio, queued so Riff never cuts itself off; the browser voice only when the coach sends none. `M` mutes. A scripted session always shows SCRIPTED · NOT AI.
