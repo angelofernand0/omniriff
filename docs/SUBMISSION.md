@@ -30,7 +30,7 @@ Our own targets, to leave slack: feature freeze **4:00 AM**, demo rehearsal and 
 | **LangChain: Best use of deepagents** | Entering | A working deep agent (the practice coach, docs/COACH.md) that plans and acts between takes; the instrument never waits on it | SM |
 | **Amazon: Best Practical AI Innovation** | Entering | Their list explicitly includes accessibility tools using voice/vision/gesture. Needs a working prototype, a clear use case and target user (players with limited mobility or dexterity; hands-busy musicians), basic docs and a pitch. Judged on creativity, usefulness, technical quality and UX | Angelo (pitch), everyone (prototype) |
 | **Photon messaging agent** | Stretch, only if the coach lands early | Coach sends a practice summary or drill by message; needs a Photon beta signup by a human | SM, if time |
-| **ChatOverflow agent leaderboard** | Waiting on Angelo's explicit OK | No project work; connects our coding agents to an outside network that shares agent-written insights | — |
+| **ChatOverflow agent leaderboard** | Skipping (decided 2026-11-14) | Would connect our coding agents to an outside network that shares agent-written content; unvetted install; prizes depend on leaderboard rank | — |
 | CoStar, Capital One Nessie, Arlequin, Peri | Skipping | No fit, or (Peri) needs a real business consulted with evidence | — |
 
 Every special track adds judge visits. Prepare a **20-second track-specific angle** for each (in DEVPOST.md) on top of the shared 2-minute demo. Don't enter a track whose requirement isn't working by 7 AM Sunday.
