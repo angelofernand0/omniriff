@@ -11,6 +11,7 @@ from jsonschema import Draft202012Validator
 from websockets.asyncio.client import connect
 from audio import Engine
 from engine.runtime import Runtime
+from vision.tracking import HandSelector
 
 
 class GestureTests(unittest.TestCase):
@@ -76,6 +77,34 @@ class GestureTests(unittest.TestCase):
         self.assertFalse(c.active)
         c.update(.4, .25, .9, .7, 700)
         self.assertTrue(c.active)
+
+
+class HandSelectorTests(unittest.TestCase):
+    def test_follows_same_wrist_when_detection_order_changes(self):
+        tracker = HandSelector()
+        self.assertEqual(tracker.select([(.2, .4), (.8, .4)]), 0)
+        # Detector order flips. Select the wrist near the previous center.
+        self.assertEqual(tracker.select([(.79, .41), (.22, .42)]), 1)
+        self.assertEqual(tracker.center, (.22, .42))
+
+    def test_rejects_far_hand_until_old_track_is_forgotten(self):
+        tracker = HandSelector(max_jump=.2, forget_after=3)
+        self.assertEqual(tracker.select([(.1, .2)]), 0)
+        self.assertIsNone(tracker.select([(.8, .8)]))
+        self.assertIsNone(tracker.select([(.8, .8)]))
+        self.assertIsNone(tracker.select([(.8, .8)]))
+        # After the old identity expires, the next frame starts a new track.
+        self.assertEqual(tracker.select([(.8, .8)]), 0)
+
+    def test_invalid_coordinates_fail_closed(self):
+        tracker = HandSelector()
+        self.assertIsNone(tracker.select([(float('nan'), .5)]))
+        self.assertIsNone(tracker.select([(-.1, .5)]))
+
+    def test_tracker_configuration_is_validated(self):
+        for kwargs in ({'max_jump': 0}, {'max_jump': float('nan')}, {'forget_after': 0}):
+            with self.assertRaises(ValueError):
+                HandSelector(**kwargs)
 
     def test_events_match_shared_schema(self):
         import json

@@ -6,6 +6,7 @@ from pathlib import Path
 import socket
 import time
 from .control import Controller
+from .tracking import HandSelector
 
 
 def main():
@@ -13,6 +14,8 @@ def main():
     p.add_argument('--model', required=True, help='MediaPipe hand_landmarker.task model path')
     p.add_argument('--video', help='Recorded video; otherwise use webcam')
     p.add_argument('--camera', type=int, default=0)
+    p.add_argument('--max-hand-jump', type=float, default=0.30,
+                   help='maximum normalized wrist movement per frame before tracking fails closed')
     p.add_argument('--host', default='127.0.0.1')
     p.add_argument('--port', type=int, default=47800)
     p.add_argument('--rate', type=float, default=20)
@@ -25,6 +28,8 @@ def main():
     args = p.parse_args()
     if args.calibrate and args.no_overlay:
         p.error('calibration requires overlay')
+    if not math.isfinite(args.max_hand_jump) or not 0 < args.max_hand_jump <= 1:
+        p.error('--max-hand-jump must be finite and in (0, 1]')
     import cv2
     import mediapipe as mp
     from jsonschema import Draft202012Validator
@@ -34,7 +39,7 @@ def main():
     validator = Draft202012Validator(schema)
     options = mp.tasks.vision.HandLandmarkerOptions(
         base_options=mp.tasks.BaseOptions(model_asset_path=args.model),
-        running_mode=mp.tasks.vision.RunningMode.VIDEO, num_hands=1,
+        running_mode=mp.tasks.vision.RunningMode.VIDEO, num_hands=2,
         min_hand_detection_confidence=0.6, min_hand_presence_confidence=0.6,
         min_tracking_confidence=0.6)
     cap = cv2.VideoCapture(args.video if args.video else args.camera)
@@ -46,6 +51,7 @@ def main():
         cap.release()
         raise ValueError('Recorded video must report a positive frame rate')
     start = time.monotonic()
+    selector = HandSelector(max_jump=args.max_hand_jump)
     frame_number = count = 0
     last_stamp = -1
     pending = {}
@@ -68,8 +74,10 @@ def main():
                 result = detector.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), stamp)
                 y = pinch = None
                 confidence = 0.
-                if result.hand_landmarks:
-                    points = result.hand_landmarks[0]
+                centers = [(hand[0].x, hand[0].y) for hand in result.hand_landmarks]
+                selected = selector.select(centers)
+                if selected is not None:
+                    points = result.hand_landmarks[selected]
                     height, width = frame.shape[:2]
                     distance = lambda a, b: math.hypot((points[a].x - points[b].x) * width, (points[a].y - points[b].y) * height)
                     scale = distance(5, 17)
@@ -77,7 +85,7 @@ def main():
                         y = points[0].y
                         pinch = distance(4, 8) / scale
                         # Tasks exposes handedness score, not per-landmark confidence.
-                        confidence = result.handedness[0][0].score
+                        confidence = result.handedness[selected][0].score
                     if not args.no_overlay:
                         for point in points:
                             cv2.circle(frame, (int(point.x * width), int(point.y * height)), 3, (0, 255, 0), -1)
