@@ -122,6 +122,14 @@
   let level = 0;                           // input level 0..1 from real engine frames
   let moving = false, docked = true, last = performance.now();
 
+  let voice = 0, voiceAt = 0;              // Riff's own voice loudness 0..1 while it talks (coach.js)
+  window.addEventListener('omniriff:voice', (e) => {
+    const v = e.detail && e.detail.level;
+    voice = typeof v === 'number' ? Math.max(0, Math.min(1, v)) : 0;
+    voiceAt = performance.now();
+  });
+  setInterval(() => { if (performance.now() - voiceAt > 400) voice *= 0.5; }, 100);   // boundary pulses decay
+
   window.addEventListener('omniriff:frame', (e) => {
     const db = e.detail && e.detail.input_peak_dbfs;
     if (typeof db === 'number') level = Math.max(0, Math.min(1, (db + 48) / 48));
@@ -156,6 +164,7 @@
     if (n.state && STATES.includes(n.state)) st.state = n.state;
     if ('target' in n) st.target = n.target || null;
     if ('cue' in n) st.cue = n.cue || '';
+    if ('mood' in n) el.dataset.mood = n.mood || 'neutral';   // expression (R3b); feed field "mood"
     el.dataset.state = st.state;
     const away = !!resolve(st.target);
     if (away) docked = false;
@@ -221,6 +230,7 @@
     let sx = 1 + stretch, sy = 1 - stretch;
     let extra = '';
     if (st.state === 'listening') { const b = 1 + level * 0.1; extra = ` scale(${(2 - b).toFixed(3)}, ${b.toFixed(3)})`; }
+    else if (voice > 0.02) { const b = 1 + 0.09 * voice; extra = ` scale(${(2 - b).toFixed(3)}, ${b.toFixed(3)})`; }   // real voice loudness (coach.js)
     else if (st.state === 'speaking' || (st.state === 'pointing' && st.cue)) { const b = 1 + 0.035 * Math.sin(now / 70); extra = ` scale(${(2 - b).toFixed(3)}, ${b.toFixed(3)})`; }
     else if (st.state === 'asleep') { const b = 1 + 0.025 * Math.sin(now / 900); extra = ` scale(${(2 - b).toFixed(3)}, ${b.toFixed(3)})`; }
     else if (st.state === 'pleased') { const hop = Math.abs(Math.sin(now / 160)) * 6; extra = ` translate(0, ${(-hop).toFixed(1)}px)`; }
