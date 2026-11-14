@@ -2,24 +2,10 @@
 
 .riff { position: fixed; left: 0; top: 0; z-index: 40; width: 72px; height: 72px; cursor: pointer; will-change: transform; -webkit-tap-highlight-color: transparent; }
 .riff-still { position: relative; z-index: auto; cursor: default; }
-.riff-sq { position: relative; width: 100%; height: 100%; transform-origin: 50% 62%; will-change: transform; }
-.riff svg { display: block; width: 100%; height: 100%; overflow: visible; }
-
-.riff-body path { fill: var(--accent); }
-.riff-ticks line { stroke: var(--accent-shade); stroke-width: 3; stroke-linecap: round; }
-.riff-white { fill: #FFFFFF; }
-.riff-pupil ellipse { fill: var(--bg); }
-.riff-glint { fill: #FFFFFF; }
-.riff-lid { fill: var(--accent); }
-.riff-arc { display: none; fill: none; stroke: var(--bg); stroke-width: 4; stroke-linecap: round; }
-
-/* pleased: eyes become two arches. asleep: two resting curves once the lids are down. */
-.riff[data-state="pleased"] .riff-eye > g { display: none; }
-.riff[data-state="pleased"] .riff-arc-happy { display: block; }
-.riff[data-state="asleep"][data-shut="true"] .riff-arc-sleep { display: block; }
-.riff[data-state="asleep"] .riff-body path { fill: var(--accent-shade); }
-.riff[data-state="asleep"] .riff-lid { fill: var(--accent-shade); }
-.riff[data-state="asleep"] .riff-ticks line { stroke: var(--accent-low); }
+.riff-sq { position: relative; width: 100%; height: 100%; }
+/* real pixel art: a 36x36 grid scaled with hard edges. It overhangs the 72px box so stretch,
+   squash and hops have room; the box (and the dock socket) stay 72px. */
+.riff-px { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; }
 
 /* the z is machine type: it steps */
 .riff-z { display: none; position: absolute; right: -8px; top: -12px; font: 16px/1 var(--font-pixel); color: var(--muted); animation: riffz 2.4s steps(4) infinite; }

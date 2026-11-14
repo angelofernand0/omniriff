@@ -128,6 +128,8 @@
   <section>
     <h2 class="label"><span class="n">06</span> RIFF, THE COACH</h2>
     <div class="riffs" id="riffs"></div>
+    <p class="note">Moods: the face Riff makes, set by the coach feed. Each one follows a real event.</p>
+    <div class="riffs" id="riffMoods"></div>
     <p class="note">Riff is the only round thing on the screen and the only thing that moves smoothly. The machine is square and moves in steps; the teacher is alive. Riff has eyes and no mouth: what it says is printed beside it. It turns like a knob when it changes a control, and it only moves when the coach is doing something. These are still portraits. <a href="./?coach=preview" style="color:var(--accent)">Watch the scripted preview</a> on the dashboard.</p>
   </section>
 
@@ -153,6 +155,16 @@
     t.appendChild(OmniRiff.portrait(s, 96));
     t.insertAdjacentHTML('beforeend', `<b>${s.toUpperCase()}</b><span class="cap">${USE[s]}</span>`);
     riffs.appendChild(t);
+  }
+  const MOOD_USE = { neutral: 'Default', curious: 'Reading the take', concentrating: 'Listening hard', aha: 'A finding lands',
+    concerned: 'Naming the mistake', encouraging: 'Asking for your tap (winks)', proud: 'The drill passed', sleepy: 'Coach off' };
+  const moods = document.getElementById('riffMoods');
+  for (const m of OmniRiff.moods) {
+    const t = document.createElement('div');
+    t.className = 'panel tile';
+    t.appendChild(OmniRiff.portrait(m === 'sleepy' ? 'idle' : 'speaking', 96, m));
+    t.insertAdjacentHTML('beforeend', `<b>${m.toUpperCase()}</b><span class="cap">${MOOD_USE[m]}</span>`);
+    moods.appendChild(t);
   }
 </script>
 </body>
