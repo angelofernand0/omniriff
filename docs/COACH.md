@@ -105,12 +105,16 @@ Built with LangChain's `deepagents` (0.7.38, needs Python 3.11+, `pip install de
 
 ## 5. The coach on screen
 
-SM's direction: a small floating character on the dashboard. A circle with eyes that squashes, stretches and moves.
+The coach has a face: **Riff**, a small floating character on the dashboard. The full character sheet is in [BRAND_SPEC.md](../BRAND_SPEC.md) section 7, and `/brand.html` shows every state.
 
-- It **moves to whatever it is operating**: over the looper when it arms a loop, over the filter when it changes the tone, over the hand panel when it's watching your hand. Every movement maps to something the agent is really doing, so it is never decoration.
-- States: idle, listening (you're playing), thinking, speaking, pointing, pleased.
-- It **speaks** short cues and you can **talk to it**. For this weekend, the browser's built-in speech (Web Speech API) does both with no extra service. Chrome's speech recognition needs internet. To keep the guitar from confusing it, it only listens when you hold the pedal or the guitar is quiet.
-- Text cue and checklist stay on screen, so it works with the sound off.
+**Designed and drawn, not wired (2026-11-14).** `dashboard/riff.js` draws and animates Riff and exposes `OmniRiff.coach.set({ state, target, cue })`. It has no AI and opens no socket. Until piece E (the coach feed) exists, Riff sleeps in the 04 COACH dock and the dashboard reads `COACH OFF`. `?coach=preview` plays a scripted, labelled tour for demos and design review.
+
+- **Form:** a pink disc with eight soft ridges, like a knob seen from above, with two large eyes and no mouth. It is the only round, smoothly moving thing on a square, stepped screen, so the teacher never looks like part of the machine.
+- **It moves to whatever it is operating**: onto the loop when it arms a loop, onto the filter when it changes the tone, onto the hand panel when it is watching your hand. It gives the control a quarter turn when it arrives. Every movement maps to something the agent is really doing, so it is never decoration.
+- **States:** asleep (no coach), idle, listening (bobs with the real input level), thinking (turns steadily), pointing, speaking, pleased. Piece F maps agent events to them: a tool call to `rig_control` is `pointing` at that control, a subagent running is `thinking`, `say` is `speaking`, a passed drill is `pleased`.
+- **It speaks short cues**, printed in a square box beside it and repeated in the dock, so it works with the sound off. Voice (piece H) reads the same line aloud. Two sentences at most: the cause, then the fix.
+- **You can talk to it.** For this weekend, the browser's built-in speech (Web Speech API) does both directions with no extra service. Chrome's speech recognition needs internet. To keep the guitar from confusing it, it only listens when you hold the pedal or the guitar is quiet.
+- **The checklist and drill card** go in the 04 COACH module under the dock. Timing dots go on the loop waveform.
 
 ## 6. What has to be built
 

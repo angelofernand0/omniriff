@@ -120,7 +120,7 @@
   let lid = 1, lidT = 1;                   // 0 open .. 1 closed
   let blinkAt = performance.now() + 2500, glanceAt = 0, peekUntil = 0;
   let level = 0;                           // input level 0..1 from real engine frames
-  let moving = false, last = performance.now();
+  let moving = false, docked = true, last = performance.now();
 
   window.addEventListener('omniriff:frame', (e) => {
     const db = e.detail && e.detail.input_peak_dbfs;
@@ -158,6 +158,7 @@
     if ('cue' in n) st.cue = n.cue || '';
     el.dataset.state = st.state;
     const away = !!resolve(st.target);
+    if (away) docked = false;
     el.dataset.away = String(away);
     if (dock) dock.dataset.away = String(away);
     cueEl.textContent = st.cue;
@@ -199,7 +200,9 @@
     if (!pos.placed) { pos.x = g.x; pos.y = g.y; pos.placed = true; }
 
     // travel: a slightly underdamped spring, so arrivals overshoot and settle
-    if (motion) {
+    // docked: sit rigidly in the socket, so scrolling or resizing never makes Riff drift
+    if (docked && !resolve(st.target)) { pos.x = g.x; pos.y = g.y; pos.vx = pos.vy = 0; }
+    else if (motion) {
       const k = 150, c = 17;
       pos.vx += (k * (g.x - pos.x) - c * pos.vx) * dt;
       pos.vy += (k * (g.y - pos.y) - c * pos.vy) * dt;
@@ -209,6 +212,7 @@
     const dist = Math.hypot(g.x - pos.x, g.y - pos.y);
     if (speed > 260) moving = true;
     if (moving && dist < 10 && speed < 140) { moving = false; impactV = 9; }   // landed
+    docked = !resolve(st.target) && !moving && dist < 1.5 && speed < 20;
     impactV += (-220 * impact - 16 * impactV) * dt; impact += impactV * dt;
 
     // squash and stretch: stretch along the direction of travel, squash on landing

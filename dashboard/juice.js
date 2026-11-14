@@ -18,7 +18,7 @@
   const css = getComputedStyle(document.documentElement);
   const C = (n) => css.getPropertyValue(n).trim();
   const P = {
-    accent: C('--accent'), rec: C('--rec'), warn: C('--warn'), ok: C('--ok'), text: C('--text'),
+    accent: C('--accent'), rec: C('--rec'), ok: C('--ok'), text: C('--text'),
     muted: C('--muted'), off: C('--off'), deep: C('--accent-deep'), dim: C('--dim'), panel2: C('--panel-2'),
   };
   const TICK_MS = 1000 / 30;  // graphs redraw at 30 Hz

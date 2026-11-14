@@ -260,8 +260,7 @@
 
     for (let c = 0; c < cols && loop.state !== 'idle'; c++) {  // idle: the empty state says it
       let v;
-      if (loop.state === 'idle') v = 0.02;
-      else if (smp.length === 0) v = loop.state === 'playing' ? 0.25 + 0.15 * Math.abs(Math.sin(c * 0.7)) : 0.02;
+      if (smp.length === 0) v = loop.state === 'playing' ? 0.25 + 0.15 * Math.abs(Math.sin(c * 0.7)) : 0.02;
       else if (loop.state === 'recording') {
         // newest samples scroll in from the right
         const i = smp.length - cols + c;

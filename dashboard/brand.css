@@ -19,7 +19,7 @@
   /* ink */
   --text: #ECE9F5;
   --muted: #A6A3B6;
-  --faint: #7C7990;
+  --faint: #868399;
   /* the one brand colour: anything alive (loop playing, hand engaged, coach) */
   --accent: #FF5CCB;
   --accent-ink: #0B0B10;
@@ -55,6 +55,7 @@ body { font: var(--t2)/1.4 var(--font-mono); -webkit-font-smoothing: antialiased
 button, input { font: inherit; color: inherit; }
 h1, h2, h3, p { margin: 0; font-weight: 400; }
 ::selection { background: var(--accent); color: var(--accent-ink); }
+[hidden] { display: none !important; }
 
 /* pixel art: whole-number scaling only, never smoothed */
 [data-icon], [data-logo] { display: inline-block; flex: none; line-height: 0; }

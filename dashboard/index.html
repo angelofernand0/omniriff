@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OmniRiff</title>
+<meta name="description" content="OmniRiff: a practice rig with a teacher in the signal chain. Live dashboard.">
+<meta name="theme-color" content="#0B0B10">
 <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="brand.css">
 <link rel="stylesheet" href="style.css">
@@ -84,11 +86,11 @@
 
     <aside class="side">
       <!-- 03 HAND -->
-      <section class="mod" aria-labelledby="h-hand">
+      <section class="mod hand-mod" aria-labelledby="h-hand">
         <h2 class="label" id="h-hand"><i data-icon="hand"></i><span class="n">03</span>HAND<span class="grow"></span><span class="label-r hand-state" id="handState" role="status">NO CAMERA</span></h2>
         <div class="panel hand" id="handPanel" data-hand="off" data-perch="bl">
           <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
-          <div class="empty hand-empty"><i data-icon="cam" class="x4"></i><b id="handEmptyWord">NO CAMERA</b><span id="handEmptyHint">Start vision to see your hand.</span></div>
+          <div class="empty hand-empty"><i data-icon="cam" class="x4 if-off"></i><i data-icon="hand" class="x4 if-none"></i><b id="handEmptyWord">NO CAMERA</b><span id="handEmptyHint">Start vision to see your hand.</span></div>
         </div>
       </section>
 
@@ -118,7 +120,7 @@
 
   <footer class="foot">
     <span id="diag">No engine yet</span>
-    <span class="keys" aria-label="Keyboard shortcuts"><kbd>F</kbd>FULL<kbd>L</kbd>LOOP<kbd>B</kbd>BYPASS</span>
+    <span class="keys" aria-label="Keyboard shortcuts"><kbd>F</kbd>FULLSCREEN<kbd>L</kbd>LOOP<kbd>B</kbd>BYPASS</span>
   </footer>
 </div>
 <script src="brand.js"></script>
