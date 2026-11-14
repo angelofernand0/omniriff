@@ -27,6 +27,7 @@ from .reverb import Reverb
 
 PARAMETERS = ("filter", "reverb")
 ACTIONS = ("loop", "bypass")
+ACTION_QUEUE_LIMIT = 32  # pending actions; the callback drains up to 8 per block
 
 
 @dataclass
@@ -71,7 +72,9 @@ class Engine:
         # Latest-value mailbox (float assignment is atomic for readers).
         self._target_filter = 1.0  # fully open: no audible effect until a control moves it
         self._target_reverb = 0.0
-        self._actions: deque[str] = deque(maxlen=32)
+        # Unbounded deque, bounded by submit(): a full queue rejects new actions
+        # instead of silently dropping the oldest (which would mis-toggle state).
+        self._actions: deque[str] = deque()
         self._submit_lock = threading.Lock()
 
         self._filter_s = Smoother(1.0, c.smoothing_ms, sr, c.subblock)
@@ -131,8 +134,13 @@ class Engine:
         if etype == "action" and control in ACTIONS:
             if "value" in event or "confidence" in event:
                 return self._count(rejected=True)
-            self._actions.append(control)
-            return self._count()
+            with self._submit_lock:
+                # Only submit() appends, under this lock; the callback only pops,
+                # so the length can only shrink between this check and the append.
+                full = len(self._actions) >= ACTION_QUEUE_LIMIT
+                if not full:
+                    self._actions.append(control)
+            return self._count(rejected=full)
         return self._count(rejected=True)
 
     def _count(self, rejected: bool = False, low_conf: bool = False) -> bool:

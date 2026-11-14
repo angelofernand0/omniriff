@@ -93,6 +93,45 @@ class ControlTests(unittest.TestCase):
         self.assertEqual(e.snapshot()["filter"]["target"], 0.4)
 
 
+class ActionQueueTests(unittest.TestCase):
+    def test_full_queue_rejects_instead_of_overwriting(self):
+        from audio.engine import ACTION_QUEUE_LIMIT
+        e = Engine(EngineConfig(samplerate=SR))
+        results = [e.toggle_bypass() for _ in range(ACTION_QUEUE_LIMIT + 1)]
+        self.assertEqual(results.count(True), ACTION_QUEUE_LIMIT)
+        self.assertFalse(results[-1], "the action past the limit must be rejected, not silently dropped")
+        run(e, np.zeros(BLOCK * 8, np.float32))  # drains 8 per block
+        # Exactly the accepted toggles were applied: an even count leaves bypass off.
+        self.assertEqual(e.snapshot()["bypass"], ACTION_QUEUE_LIMIT % 2 == 1)
+        self.assertEqual(e.snapshot()["events"]["rejected"], 1)
+
+    def test_queue_accepts_again_after_draining(self):
+        from audio.engine import ACTION_QUEUE_LIMIT
+        e = Engine(EngineConfig(samplerate=SR))
+        for _ in range(ACTION_QUEUE_LIMIT):
+            e.toggle_loop()
+        self.assertFalse(e.toggle_bypass())
+        run(e, np.zeros(BLOCK, np.float32))
+        self.assertTrue(e.toggle_bypass())
+
+    def test_concurrent_submitters_never_exceed_the_limit(self):
+        import threading
+        from audio.engine import ACTION_QUEUE_LIMIT
+        e = Engine(EngineConfig(samplerate=SR))
+        accepted = []
+
+        def spam():
+            accepted.append(sum(e.toggle_bypass() for _ in range(50)))
+
+        threads = [threading.Thread(target=spam) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(sum(accepted), ACTION_QUEUE_LIMIT)
+        self.assertLessEqual(len(e._actions), ACTION_QUEUE_LIMIT)
+
+
 class BypassTests(unittest.TestCase):
     def test_bypass_is_dry_and_click_free(self):
         e = Engine(EngineConfig(samplerate=SR))
