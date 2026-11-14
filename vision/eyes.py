@@ -11,6 +11,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 
+def report_for_window(log_path, start_unix_ms, end_unix_ms, take_id, hand='strum'):
+    """Return take-aligned wrist evidence; see HAND-LOG.md for coverage limits."""
+    from .hand_window import report_for_window as window_report
+    return window_report(log_path, start_unix_ms, end_unix_ms, take_id, hand)
+
+
 @dataclass
 class StallEvent:
     start_time_s: float

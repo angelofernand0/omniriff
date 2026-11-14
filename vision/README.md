@@ -84,6 +84,13 @@ Confirm each item in order before the judging window:
 
 ## Validation status
 
+For the coach, opt into timestamped **both-hand wrist logs** with `--hand-log
+runs/hands.jsonl --strum-hand Right` (or Left after verifying the camera labels).
+The [hand-log guide](HAND-LOG.md) explains take-window analysis, coverage gates,
+and alignment limits. `vision.eyes.report_for_window(...)` returns take-relative
+stall times using the same Unix start as the audio sidecar. Camera gaps are
+reported as missing evidence rather than stationary playing.
+
 Unit tests cover activation, loss/rearm, confidence rejection, rate limiting, deadband, smoothing and invalid calibration. Run `python -m unittest discover -s tests -p test_vision.py -v`.
 
 Unit coverage includes reordered two-hand detections, implausible wrist jumps, track expiry, and clutch re-arm. Live webcam and audible integration still require validation on the target camera and audio hardware. Do not treat synthetic unit tests as a hardware acceptance check.
