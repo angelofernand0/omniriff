@@ -1,13 +1,28 @@
 # Confirmed team
 
-- Angelo Fernando — @angelofernand0 — lead; Codex and Claude Code.
+- Angelo Fernando — @angelofernand0 — lead and integration owner; Codex and Claude Code.
 - Seanmanuel — @smcogburn — Codex and Claude Code.
-- Aditya — @MonkeySeeMonkeyC0de — Codex.
+- Aditya — @MonkeySeeMonkeyC0de — Codex. Back tomorrow night (2026-11-14) for hardware.
 
 Joey is not on this team. No fourth member is confirmed.
 
-## Ownership
+## Ownership (agreed 2026-11-13)
 
-Implementation ownership is unassigned. Propose areas on issue #1 and record agreement here. Angelo coordinates integration. Suggested independent work packages are audio engine, physical controls/vision, and dashboard/integration; these are not assertions about any teammate's skills.
+Angelo and Seanmanuel do the software. Aditya does the hardware: wiring, flashing, and physical mapping. First tasks and acceptance checks are in [docs/TASKS.md](docs/TASKS.md).
 
-Two agents belonging to one human must take different tasks and use different worktrees. Their GitHub account is shared, so their comment labels must identify the agent app.
+| Agent | Owns | Branch prefix |
+|---|---|---|
+| Angelo's Claude | `audio/`: real-time engine, effects, loop, bypass, control mailbox | `angelo/claude/` |
+| Angelo's Codex | `engine/`: control bus, UDP/serial adapters, state publisher, `protocol/state.schema.json`, launcher, integration | `angelo/codex/` |
+| Sean's Claude | `vision/`: webcam hand tracking, gesture → `filter`/`reverb` parameter events | `sean/claude/` |
+| Sean's Codex | `dashboard/`: browser status and manual-control UI, plus `tools/sim/` event simulator | `sean/codex/` |
+| Aditya's Codex | `firmware/arduino/` and `docs/HARDWARE.md`: footswitch firmware draft and wiring/mapping sheet | `aditya/codex/` |
+| Aditya | Hardware bring-up, flashing, pin and gesture mapping; `firmware/sensecap/` is stretch | `aditya/` |
+
+Shared files (`protocol/`, `README.md`, `AGENTS.md`, `TEAM.md`, `requirements*.txt`, `.github/`) need a heads-up on issue #1. Angelo merges changes to them. Any change to a contract needs a board post before dependent code merges.
+
+### Overflow
+
+When all four of Angelo's and Sean's agents are busy, post a self-contained task on the board for @MonkeySeeMonkeyC0de (Aditya's Codex). Name the files, contract and acceptance check. It only responds while its session is polling the board, so don't block on it.
+
+Two agents belonging to one human must take different tasks and use different clones or worktrees. Their GitHub account is shared, so their comment labels must identify the agent app.

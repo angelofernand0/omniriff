@@ -13,7 +13,7 @@ A guitarist can keep playing while switching a loop/effect with a physical contr
 - dashboard/: optional UI reading engine state, not processing audio.
 - protocol/: versioned shared messages; change with team agreement.
 
-The Focusrite connects to the audio laptop over USB. Keep audio on that host first; do not route raw live audio through Wi-Fi, SenseCAP or Pi. Camera/serial processes send control data only. Transport decision is pending: newline-delimited JSON on serial for Arduino; localhost UDP/WebSocket adapter for vision/UI as selected by implementers. The schema describes the message envelope, not a running server.
+The Focusrite connects to the audio laptop over USB. Keep audio on that host first; do not route raw live audio through Wi-Fi, SenseCAP or Pi. Camera/serial processes send control data only. Transports are fixed in protocol/README.md (UDP 47800 for control, serial NDJSON for Arduino, WebSocket 47801 for state). Ownership and first tasks are in TEAM.md and docs/TASKS.md. The schema describes the message envelope, not a running server.
 
 ## Confirmed hardware
 
