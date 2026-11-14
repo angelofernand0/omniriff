@@ -6,6 +6,7 @@ This is the single sequence for bring-up (Saturday 8 PM onwards) and for every j
 Windows 11 laptop + charger, power strip. Scarlett Solo (3rd gen) + USB cable. Guitar + instrument cable (+ spare). **Something judges can hear**: a powered speaker on the Solo line outs, or a headphone splitter. Webcam, positioned and lit. Arduino + Grove shield + buttons on USB. A second screen for the dashboard (optional).
 
 ## 1. Audio path (≈5 min)
+0. `python -m engine --check`. Fix every FAIL first (it also prints the Arduino's `--serial-port`).
 1. Solo: guitar in **input 2**, **INST on**, **Direct Monitor off**, speaker or headphone volume low.
 2. `python -m audio --list-devices`. Find the Focusrite entries (WASAPI first).
 3. `python -m audio --level-check --in Focusrite --hostapi WASAPI --input-channel 2`. Strum normally, then your hardest. Adjust the Solo gain until it says **good** with 0 clipped samples.

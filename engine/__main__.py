@@ -30,7 +30,11 @@ def main(argv=None):
     p.add_argument('--latency', default='low')
     p.add_argument('--gain-db', type=float, default=0)
     p.add_argument('--no-keyboard', action='store_true')
+    p.add_argument('--check', action='store_true', help='preflight: packages, Focusrite, Arduino, free ports; opens no audio')
     a = p.parse_args(argv)
+    if a.check:
+        from .check import main_check
+        return main_check(udp_port=a.udp_port, ws_port=a.ws_port, input_channel=a.input_channel)
     if min(a.samplerate, a.blocksize, a.input_channel, a.out_channels, a.stale_ms) <= 0:
         p.error('rates, sizes, channels and stale window must be positive')
     if a.duration is not None and a.duration <= 0: p.error('duration must be positive')
