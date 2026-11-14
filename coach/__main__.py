@@ -9,6 +9,7 @@ from pathlib import Path
 from .agent import build_agent, prepare_workspace
 from .budget import BudgetGuard
 from .feed import CoachFeed
+from .memory import prepare_fixture_workspace
 from .rig import RigClient, RigStateReader
 from .runner import CoachRunner
 from .smoke import load_key
@@ -17,6 +18,7 @@ from .tools import CoachTools
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = ROOT / "coach" / "workspace"
+FIXTURE_WORKSPACE = ROOT / "coach" / "workspace-fixtures"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -40,8 +42,9 @@ def main(argv: list[str] | None = None) -> int:
 
     logging.basicConfig(level=logging.INFO, format="coach: %(levelname)s %(message)s")
     load_key()
-    workspace = prepare_workspace(WORKSPACE)
-    budget = BudgetGuard(workspace / "usage.jsonl")
+    workspace = (prepare_fixture_workspace(WORKSPACE, FIXTURE_WORKSPACE)
+                 if args.fixtures else prepare_workspace(WORKSPACE))
+    budget = BudgetGuard(WORKSPACE / "usage.jsonl")
     session_id = uuid.uuid4().hex
     feed = CoachFeed(session_id, port=args.feed_port, scripted=args.fixtures)
     state = RigStateReader(port=args.state_port)
@@ -68,6 +71,7 @@ def main(argv: list[str] | None = None) -> int:
             fixture_dir = ROOT / "coach" / "fixtures" / "generated"
             generate(fixture_dir)
             print("SYNTHETIC FIXTURES: no live guitar, webcam, engine or rig control.")
+            runner.open_session()
             for name in ("before", "after", "clean")[:args.fixture_limit]:
                 wav = fixture_dir / f"coach-{name}.wav"
                 runner.process_take(wav)

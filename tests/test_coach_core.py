@@ -14,6 +14,7 @@ from types import SimpleNamespace
 
 from coach.budget import BudgetGuard, estimate_upper_bound_usd
 from coach.feed import CoachFeed, VALIDATOR, allowed_origin
+from coach.memory import last_time_cue, prepare_fixture_workspace, remember_comparison
 from coach.rig import RigClient, RigStateReader, control_message
 from coach.runner import CoachRunner, _pending_actions
 from coach.tools import CoachTools
@@ -62,6 +63,30 @@ class CoachRigTests(unittest.TestCase):
         reader.observe({"loop": {"state": "playing"}})
         reader.observe({"loop": {"state": "recording"}})
         self.assertEqual(reader.recording_counter(), 2)
+
+
+class CoachMemoryTests(unittest.TestCase):
+    def test_fixture_profile_is_separate_and_preserves_its_own_history(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            live = root / "live"
+            fixture = root / "fixture"
+            (live / "skills" / "dry-check").mkdir(parents=True)
+            (live / "skills" / "dry-check" / "SKILL.md").write_text("Synthetic test skill.\n")
+            (live / "memories").mkdir()
+            (live / "AGENTS.md").write_text("Test instructions.\n")
+            (live / "memories" / "player.example.md").write_text("No prior sessions.\n")
+            (live / "memories" / "player.md").write_text("Real-player history stays private.\n")
+            prepare_fixture_workspace(live, fixture)
+            self.assertNotIn("Real-player", (fixture / "memories" / "player.md").read_text())
+            comparison = {"worst_gap_ms": [900, 620], "hesitations": [3, 0]}
+            remember_comparison(fixture, comparison, synthetic=True)
+            self.assertIn("synthetic replay", last_time_cue(fixture))
+            prepare_fixture_workspace(live, fixture)
+            self.assertIn("Verified synthetic take", (fixture / "memories" / "player.md").read_text())
+            self.assertEqual((live / "memories" / "player.md").read_text(),
+                             "Real-player history stays private.\n")
+            self.assertIsNone(last_time_cue(live))
 
 
 class CoachToolTests(unittest.TestCase):
@@ -143,6 +168,8 @@ class CoachRunnerTests(unittest.TestCase):
             self.assertEqual(feed.frame["mood"], "proud")
             self.assertTrue(VALIDATOR.is_valid(feed.frame))
             self.assertEqual(len((root / "usage.jsonl").read_text().splitlines()), 2)
+            runner.open_session()
+            self.assertTrue(feed.frame["cue"].startswith("Last time in synthetic replay"))
 
     @unittest.skipUnless(find_spec("langchain_core"), "coach/requirements.txt is optional in core CI")
     def test_fake_agent_interrupt_resumes_only_after_fixture_approval(self):
