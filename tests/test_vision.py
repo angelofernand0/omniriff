@@ -61,6 +61,22 @@ class GestureTests(unittest.TestCase):
         changed = c.update(.3, .1, .9, .2, 200)
         self.assertGreater(changed['value'], 0.0)
 
+    def test_pinch_hysteresis_ignores_threshold_jitter(self):
+        c = Controller(rate=60, deadband=0)
+        c.update(.8, .6, .9, 0, 0)  # Arm with an open hand.
+        self.assertIsNone(c.update(.5, .3, .9, .1, 100))  # Not pinched enough.
+        self.assertTrue(c.update(.5, .25, .9, .2, 200)['value'] == 0.5)
+        c.update(.4, .3, .9, .3, 300)  # In the hysteresis band: remain engaged.
+        self.assertTrue(c.active)
+        c.update(.4, .44, .9, .4, 400)
+        self.assertTrue(c.active)
+        self.assertIsNone(c.update(.4, .45, .9, .5, 500))  # Release threshold.
+        self.assertFalse(c.active)
+        self.assertIsNone(c.update(.4, .3, .9, .6, 600))  # Band alone cannot re-engage.
+        self.assertFalse(c.active)
+        c.update(.4, .25, .9, .7, 700)
+        self.assertTrue(c.active)
+
     def test_events_match_shared_schema(self):
         import json
         from pathlib import Path
