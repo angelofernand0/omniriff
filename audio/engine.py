@@ -43,6 +43,7 @@ class EngineConfig:
     limiter_release_ms: float = 150.0
     gate_open_db: float | None = None   # None = gate off (default); e.g. -50 for single-coil hum
     gate_hysteresis_db: float = 6.0
+    input_history_seconds: float = 2.5  # recent dry input kept for the live layer (snapshot_input)
     max_loop_seconds: float = 30.0
     loop_level: float = 1.0
     bypass_fade_ms: float = 10.0
@@ -91,6 +92,10 @@ class Engine:
         # Slightly under the ceiling so float rounding can't reach the safety clip.
         self._gate = (NoiseGate(c.gate_open_db, c.gate_open_db - c.gate_hysteresis_db, sr, c.subblock)
                       if c.gate_open_db is not None else None)
+        # Recent dry input (post-gain, pre-gate): the callback copies each block in; readers
+        # use snapshot_input(), which is lock-free and retries if the window was overwritten.
+        self._hist = np.zeros(max(1, int(c.input_history_seconds * sr)), np.float32)
+        self._hist_written = 0  # total frames ever written (int assignment is atomic for readers)
         self._limiter = PeakLimiter(self._ceiling * 0.999, sr, c.subblock, c.limiter_release_ms)
 
         self._bypass = False
@@ -192,6 +197,7 @@ class Engine:
         dry = self._dry[:n]
         np.multiply(inp, self._gain, out=dry)
         in_peak = float(np.max(np.abs(dry))) if n else 0.0  # pre-gate, so the meter shows the real input
+        self._write_history(dry)
         if self._gate is not None:
             self._gate.process(dry)  # before the loop recorder and effects, so hum isn't looped or reverbed
 
@@ -246,6 +252,43 @@ class Engine:
         self._blocks += 1
 
         out[:n] = mono[:, None]
+
+    def _write_history(self, block: np.ndarray) -> None:
+        """Callback-side: copy one block into the history ring (no allocation)."""
+        h, n = self._hist, len(block)
+        if n >= len(h):
+            h[:] = block[-len(h):]
+        else:
+            i = self._hist_written % len(h)
+            k = min(n, len(h) - i)
+            h[i:i + k] = block[:k]
+            if k < n:
+                h[:n - k] = block[k:]
+        self._hist_written += n
+
+    def snapshot_input(self, seconds: float | None = None, retries: int = 3):
+        """Copy of the most recent dry input, from any non-audio thread.
+
+        Returns (mono float32, frames_written, samplerate). frames_written is the
+        engine's running input-frame count at the end of the copy, which lets a
+        caller line snapshots up. Lock-free: if the callback wrapped over the
+        window while copying, it retries; after `retries` it returns the last copy.
+        """
+        h = self._hist
+        want = len(h) if seconds is None else max(0, min(len(h), int(seconds * self.config.samplerate)))
+        out = np.zeros(want, np.float32)
+        for _ in range(max(1, retries)):
+            end = self._hist_written
+            have = min(want, end)
+            start = end - have
+            i = start % len(h)
+            k = min(have, len(h) - i)
+            out[want - have:want - have + k] = h[i:i + k]
+            if k < have:
+                out[want - have + k:] = h[:have - k]
+            if self._hist_written - start <= len(h):  # nothing we copied was overwritten
+                return out, end, self.config.samplerate
+        return out, end, self.config.samplerate
 
     def _drain_actions(self) -> None:
         for _ in range(8):
