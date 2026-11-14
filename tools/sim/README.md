@@ -13,6 +13,7 @@ python -m tools.sim send loop        # one action over UDP 47800
 python -m tools.sim send filter 0.4 --source vision --confidence 0.9
 ```
 
+- `hand.py`: simulated hand-view feed on ws 47802 (same port as vision/, so don't run both). `run --demo` drives it in step with the scripted pinch sweeps; `--hand-port 0` disables it. A synthetic 21-point hand, not a tracked one.
 - `synth.py`: deterministic plucked partials in E minor pentatonic on an eighth-note grid. Bounded to ±0.98.
 - `events.py`: builds envelopes, validates them against `protocol/control.schema.json` before sending, and sends them over UDP. `seq` starts at the wall clock in ms, so separate runs never send a duplicate.
 - `demo.py`: a 16 s cycle: record 4 s, play, reverb sweep, filter sweep, clear.

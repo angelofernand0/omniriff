@@ -106,6 +106,13 @@ h2 { margin: 0; font-weight: 400; }
 .app[data-bypass="true"] .cards, .app[data-bypass="true"] .engaged { opacity: 0.25; }
 
 .side { flex: 1 1 260px; display: flex; flex-direction: column; gap: 14px; }
+.hand { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.hand-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.hand-state { font: 14px var(--font-pixel); color: var(--muted); }
+.hand[data-hand="engaged"] .hand-state { color: var(--accent); }
+.hand[data-hand="seen"] .hand-state { color: var(--text); }
+.hand canvas { display: block; width: 100%; aspect-ratio: 4 / 3; background: var(--bg); border: 2px solid var(--line-2); }
+.hand[data-hand="engaged"] canvas { border-color: var(--accent); }
 .status { display: flex; align-items: center; gap: 14px; padding: 16px; }
 .status > div { display: flex; flex-direction: column; }
 .status-name { font: 16px var(--font-pixel); }

@@ -70,6 +70,10 @@
     </div>
 
     <aside class="side">
+      <div class="panel hand" id="handPanel" data-hand="off">
+        <div class="hand-head"><span class="status-name">HAND</span><span class="hand-state" id="handState" role="status">NO FEED</span></div>
+        <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
+      </div>
       <div class="panel status" id="st-vision">
         <span class="status-dot" aria-hidden="true"></span>
         <div><span class="status-name">HAND CAM</span><span class="status-val" id="visionVal">offline</span></div>

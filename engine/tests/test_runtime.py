@@ -287,11 +287,41 @@ class NetworkTests(unittest.IsolatedAsyncioTestCase):
         replay = Replay([(0,dict(version=1,source='manual',seq=0,timestamp_ms=0,type='action',control='bypass'))])
         from unittest.mock import patch
         async def delayed_sleep(_): router.clock=lambda:11000
-        with patch('engine.replay.asyncio.sleep', delayed_sleep):
+        with patch('engine.replay.asyncio.sleep', delayed_sleep), self.assertLogs('omniriff.replay',level='WARNING') as logs:
             await replay.run(router)
         process(self.audio)
         self.assertEqual(router.counts['stale'],1)
         self.assertFalse(self.audio.snapshot()['bypass'])
+        self.assertEqual(replay.state['status'],'error')
+        self.assertEqual(replay.state['position'],1)
+        self.assertIn('control rejected', '\n'.join(logs.output))
+        self.assertNotIn('completed', '\n'.join(logs.output))
+
+    async def test_replay_rejection_stops_before_later_controls(self):
+        from engine.replay import Replay
+        from unittest.mock import patch
+        router = Router(self.audio, clock=lambda:10000)
+        replay = Replay([(0,event(value=.25)),
+                         (0,dict(version=1,source='manual',seq=1,timestamp_ms=10000,type='action',control='loop')),
+                         (0,event(2,value=.75))])
+        original_submit = self.audio.submit
+        def reject_loop(command):
+            return False if command['control']=='loop' else original_submit(command)
+        with patch.object(self.audio,'submit',side_effect=reject_loop), self.assertLogs('omniriff.replay',level='WARNING') as logs:
+            await replay.run(router)
+        self.assertEqual(router.counts['accepted'],1)
+        self.assertEqual(router.counts['audio_rejected'],1)
+        self.assertEqual(replay.state['status'],'error')
+        self.assertFalse(replay.state['active'])
+        self.assertEqual(replay.state['position'],2)
+        self.assertEqual(replay.state['total'],3)
+        self.assertEqual(self.audio.snapshot()['filter']['target'],.25)
+        self.assertIn('event 2/3 (action loop)', '\n'.join(logs.output))
+        self.audio.toggle_bypass(); process(self.audio)
+        self.assertTrue(self.audio.snapshot()['bypass'])
+        self.assertEqual(self.audio.snapshot()['loop']['state'],'idle')
+        runtime = Runtime(self.audio,udp_port=None,ws_port=None,replay=replay)
+        Draft202012Validator(json.loads((ROOT/'protocol/state.schema.json').read_text())).validate(runtime.snapshot())
 
     async def test_busy_udp_port_reports_once_and_recovers(self):
         occupied = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

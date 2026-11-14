@@ -6,6 +6,9 @@
 (() => {
   const params = new URLSearchParams(location.search);
   const WS_URL = params.get('ws') || 'ws://127.0.0.1:47801';
+  // optional hand-view feed from vision/ (protocol/hand.schema.json); ?hand=off disables
+  const HAND_URL = params.get('hand') === 'off' ? null : (params.get('hand') || 'ws://127.0.0.1:47802');
+  const HAND_STALE_MS = 500;       // no hand frame for this long => clear the drawing
   const STALE_MS = 1000;           // no frame for this long => STALE
   const ENGAGED_MS = 350;          // vision accepted this recently => ENGAGED
   const ONLINE_MS = 3000;          // a source seen this recently => online
@@ -47,6 +50,23 @@
     ws.onerror = () => { try { ws.close(); } catch (e) {} };
   }
   function schedule() { setTimeout(connect, retry); retry = Math.min(4000, retry * 2); }
+
+  // hand feed: aged by browser receive time, never by the frame's own timestamp
+  const hand = { ws: null, retry: 1000, frame: null, at: 0 };
+  function connectHand() {
+    if (!HAND_URL) return;
+    try { hand.ws = new WebSocket(HAND_URL); } catch (e) { scheduleHand(); return; }
+    hand.ws.onopen = () => { hand.retry = 1000; };
+    hand.ws.onmessage = (msg) => {
+      try {
+        const f = JSON.parse(msg.data);
+        if (f && f.version === 1 && f.type === 'hand' && Array.isArray(f.landmarks)) { hand.frame = f; hand.at = performance.now(); }
+      } catch (e) { /* ignore malformed frame */ }
+    };
+    hand.ws.onclose = () => { hand.ws = null; hand.frame = null; scheduleHand(); };
+    hand.ws.onerror = () => { try { hand.ws.close(); } catch (e) {} };
+  }
+  function scheduleHand() { setTimeout(connectHand, hand.retry); hand.retry = Math.min(5000, hand.retry * 2); }
 
   function send(control, value) {
     if (!ws || ws.readyState !== WebSocket.OPEN) return false;
@@ -190,6 +210,7 @@
     }
 
     drawWave(now);
+    drawHand(now);
     requestAnimationFrame(render);
   }
 
@@ -252,6 +273,70 @@
       ctx.fillRect(Math.round(pad + pos * (w - pad * 2)), 0, 3, h);
     }
   }
+
+  // ---------- hand view ----------
+  // MediaPipe hand topology: wrist 0, thumb 1-4, index 5-8, middle 9-12, ring 13-16, pinky 17-20
+  const BONES = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
+                 [9,13],[13,14],[14,15],[15,16],[13,17],[0,17],[17,18],[18,19],[19,20]];
+  const CAM_ASPECT = 4 / 3;  // landmarks are normalized per axis; undo that so the hand isn't stretched
+  const view = { cx: 0.5, cy: 0.5, size: 0.4 };  // smoothed follow-zoom around the hand
+  const handCanvas = $('handCanvas');
+  const hctx = handCanvas.getContext('2d');
+  function drawHand(now) {
+    const fresh = hand.frame && now - hand.at < HAND_STALE_MS;
+    if (!fresh) hand.frame = null;  // stale or disconnected: never keep an old hand on screen
+    const f = hand.frame;
+    let mode = 'off', label = HAND_URL ? 'NO FEED' : 'OFF';
+    if (f && !f.present) { mode = 'none'; label = 'NO HAND'; }
+    else if (f && f.engaged) {
+      mode = 'engaged';
+      const pct = typeof f.value === 'number' ? Math.round(f.value * 100) + '%' : '';
+      label = (f.control ? f.control.toUpperCase() : 'MORPH') + ' ' + pct;
+    } else if (f) { mode = 'seen'; label = 'HAND SEEN'; }  // not "armed": may be waiting for an open-hand re-arm
+    $('handPanel').dataset.hand = mode;
+    $('handState').textContent = label;
+
+    const dpr = window.devicePixelRatio || 1;
+    const w = handCanvas.clientWidth, h = handCanvas.clientHeight;
+    if (handCanvas.width !== Math.round(w * dpr) || handCanvas.height !== Math.round(h * dpr)) {
+      handCanvas.width = Math.round(w * dpr); handCanvas.height = Math.round(h * dpr);
+    }
+    hctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    hctx.clearRect(0, 0, w, h);
+    const G = 12;
+    hctx.fillStyle = color('--off');
+    for (let gx = G / 2; gx < w; gx += G) for (let gy = G / 2; gy < h; gy += G) hctx.fillRect(Math.round(gx) - 1, Math.round(gy) - 1, 2, 2);
+
+    const engaged = mode === 'engaged';
+    if (engaged && typeof f.value === 'number') {  // value rail on the right edge
+      const rh = Math.round(f.value * (h - 8));
+      hctx.fillStyle = color('--accent-deep'); hctx.fillRect(w - 10, 4, 6, h - 8);
+      hctx.fillStyle = color('--accent'); hctx.fillRect(w - 10, h - 4 - rh, 6, rh);
+    }
+    if (!f || !f.present || f.landmarks.length !== 21) return;
+
+    // mirrored like a mirror, then follow-zoomed so the hand fills the panel; the rail shows the value
+    const Q = f.landmarks.map(([x, y]) => [(1 - x) * CAM_ASPECT, y]);
+    const xs = Q.map((q) => q[0]), ys = Q.map((q) => q[1]);
+    const bx = (Math.min(...xs) + Math.max(...xs)) / 2, by = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const bs = Math.max(0.05, Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+    const k = 0.25;
+    view.cx += (bx - view.cx) * k; view.cy += (by - view.cy) * k; view.size += (bs - view.size) * k;
+    const sc = (0.72 * Math.min(w, h)) / view.size;
+    const P = Q.map(([x, y]) => [(x - view.cx) * sc + w / 2, (y - view.cy) * sc + h / 2]);
+    hctx.lineWidth = 3; hctx.lineCap = 'square';
+    hctx.strokeStyle = engaged ? color('--accent') : color('--muted');
+    hctx.beginPath();
+    for (const [a, b] of BONES) { hctx.moveTo(P[a][0], P[a][1]); hctx.lineTo(P[b][0], P[b][1]); }
+    hctx.stroke();
+    hctx.fillStyle = engaged ? '#FFFFFF' : color('--text');
+    for (const [x, y] of P) hctx.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
+    if (engaged) {  // the pinch: thumb tip + index tip
+      hctx.strokeStyle = color('--accent'); hctx.lineWidth = 2;
+      for (const i of [4, 8]) hctx.strokeRect(Math.round(P[i][0]) - 7, Math.round(P[i][1]) - 7, 14, 14);
+    }
+  }
+  connectHand();
 
   // ---------- manual controls ----------
   $('btnLoop').addEventListener('click', () => send('loop'));

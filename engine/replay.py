@@ -61,8 +61,15 @@ class Replay:
                 event = dict(stored, source='manual', seq=index, timestamp_ms=wall_start + offset)
                 # Keep the scheduled timestamp: a delayed event must go through
                 # the usual stale gate rather than arriving as a fresh toggle.
-                router.ingest(json.dumps(event))
+                accepted = router.ingest(json.dumps(event))
                 self.state['position'] = index + 1
+                if not accepted:
+                    self.state.update(active=False, status='error')
+                    LOG.error('REPLAY CONTROL MODE stopped at event %d/%d (%s %s): '
+                              'control rejected; inspect state.controls drop counters. '
+                              'Audio and manual controls remain independent.',
+                              index + 1, len(self.entries), event['type'], event['control'])
+                    return
             self.state.update(active=False, status='completed')
             LOG.warning('REPLAY CONTROL MODE completed; replay label remains in state')
         except asyncio.CancelledError:
