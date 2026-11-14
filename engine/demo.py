@@ -46,6 +46,31 @@ def _ws_port(engine_args: list[str]) -> int:
     return p.parse_known_args(engine_args)[0].ws_port
 
 
+def _udp_port(engine_args: list[str]) -> int:
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--udp-port", type=int, default=47800)
+    return p.parse_known_args(engine_args)[0].udp_port
+
+
+def vision_command(vision_args: list[str], engine_args: list[str]) -> list[str]:
+    """Command for the vision child: always aimed at THIS engine's UDP port.
+
+    If --vision-args already names --port, it is kept, with a warning if it
+    differs from the engine's (then vision would feed some other engine).
+    """
+    udp = _udp_port(engine_args)
+    cmd = [sys.executable, "-m", "vision", *vision_args]
+    given = argparse.ArgumentParser(add_help=False)
+    given.add_argument("--port", type=int)
+    explicit = given.parse_known_args(vision_args)[0].port
+    if explicit is None:
+        cmd += ["--port", str(udp)]
+    elif explicit != udp:
+        print(f"demo: WARNING vision --port {explicit} differs from the engine's --udp-port {udp}; "
+              "its gestures will not reach this engine", flush=True)
+    return cmd
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         prog="python -m engine.demo",
@@ -73,7 +98,7 @@ def main(argv=None) -> int:
         if importlib.util.find_spec("vision.__main__") is None:
             print("demo: vision/ is not installed on this branch (pending PR #13); continuing without it", flush=True)
         else:
-            vision = start_vision([sys.executable, "-m", "vision", *a.vision_args.split()])
+            vision = start_vision(vision_command(a.vision_args.split(), engine_args))
             if vision:
                 print(f"demo: vision started (pid {vision.pid})", flush=True)
     if a.open:

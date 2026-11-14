@@ -9,7 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from engine.demo import _ws_port, main, start_vision, stop_process  # noqa: E402
+import engine.demo as demo  # noqa: E402
+from engine.demo import _ws_port, main, start_vision, stop_process, vision_command  # noqa: E402
 
 
 def free_port(kind=socket.SOCK_STREAM):
@@ -62,6 +63,29 @@ class DemoLauncherTests(unittest.TestCase):
     def test_ws_port_is_read_from_engine_args(self):
         self.assertEqual(_ws_port(["--headless", "--ws-port", "48001"]), 48001)
         self.assertEqual(_ws_port(["--headless"]), 47801)
+
+    def test_vision_is_pointed_at_this_engines_udp_port(self):
+        cmd = vision_command(["--model", "m.task"], ["--headless", "--udp-port", "48720"])
+        self.assertEqual(cmd[cmd.index("--port") + 1], "48720")
+        self.assertEqual(vision_command([], ["--headless"])[-2:], ["--port", "47800"])
+        explicit = vision_command(["--port", "49000"], ["--udp-port", "48720"])
+        self.assertEqual(explicit.count("--port"), 1)  # user's choice kept (a warning is printed)
+
+    def test_launcher_passes_the_port_to_the_vision_child(self):
+        import importlib.util
+        seen = {}
+        original_start, original_find = demo.start_vision, importlib.util.find_spec
+        demo.start_vision = lambda cmd: seen.setdefault("cmd", cmd) and None
+        importlib.util.find_spec = lambda name, *a: object() if name == "vision.__main__" else original_find(name, *a)
+        try:
+            ws, udp = free_port(), free_port(socket.SOCK_DGRAM)
+            rc = main(["--http-port", "0", "--vision", "--vision-args", "--model m.task", "--headless",
+                       "--no-keyboard", "--duration", "0.5", "--ws-port", str(ws), "--udp-port", str(udp)])
+        finally:
+            demo.start_vision, importlib.util.find_spec = original_start, original_find
+        self.assertEqual(rc, 0)
+        cmd = seen["cmd"]
+        self.assertEqual(cmd[cmd.index("--port") + 1], str(udp))
 
 
 if __name__ == "__main__":
