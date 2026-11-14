@@ -27,7 +27,7 @@ The audio host is a **Windows 11 laptop** with a **Scarlett Solo (3rd gen)**. So
 
 **Done when:** the replay test drives the audio engine's parameters end-to-end in CI, and killing any adapter leaves audio running.
 
-## Sean's Claude — `vision/`
+## SM's Codex — `vision/` (unclaimed until SM's Codex claims it on issue #1)
 
 1. Track hand landmarks from the webcam with an off-the-shelf model (disclose which one). It must also run on a recorded video file.
 2. Build one deliberate gesture → `filter` value, with a confidence gate, deadband, smoothing and a clutch (for example a pinch to engage), so the hand that strums can't sweep the filter by accident.
@@ -36,7 +36,7 @@ The audio host is a **Windows 11 laptop** with a **Scarlett Solo (3rd gen)**. So
 
 **Done when:** schema-validated output from a recorded clip, tests for the gate, deadband and clutch logic, and a measured event rate (not an estimate).
 
-## Sean's Codex — `dashboard/` and `tools/sim/`
+## SM's Claude — `tools/sim/` then `dashboard/`
 
 1. Build `tools/sim/`: a CLI that sends scripted or keyboard-driven control events to UDP 47800, and a fake state publisher on 47801, so the dashboard and engine can each be built without the other.
 2. Build `dashboard/`: a browser page showing bypass, loop state, filter/reverb, levels, xruns and source health from the WebSocket state, with buttons and sliders that send control events (`source: "dashboard"`).
