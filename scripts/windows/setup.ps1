@@ -2,8 +2,11 @@
 # Uses the venv's Python directly; does not change PowerShell execution policy.
 # From the repository root (execution-policy bypass applies to this process only):
 # powershell -ExecutionPolicy Bypass -File .\scripts\windows\setup.ps1
+# Add -Coach to also install the practice coach's dependencies (coach/requirements.txt).
 [CmdletBinding()]
-param()
+param(
+    [switch]$Coach
+)
 
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
@@ -31,6 +34,11 @@ try {
 
     & $venvPython -m pip install -r engine/requirements.txt -r vision/requirements.txt
     if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed; fix the pip error above and rerun.' }
+    if ($Coach) {
+        & $venvPython -m pip install -r coach/requirements.txt
+        if ($LASTEXITCODE -ne 0) { throw 'Coach dependency installation failed; fix the pip error above and rerun.' }
+        Write-Host 'Coach dependencies installed. Put ANTHROPIC_API_KEY in a gitignored .env (see coach/README.md).'
+    }
 
     Write-Host 'Dependencies installed. Running device, model and port preflight (no audio stream).'
     & $venvPython -m engine --check
