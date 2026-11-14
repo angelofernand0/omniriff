@@ -9,9 +9,11 @@ logo. One motion model (`pose`, `letter_offsets`) drives two outputs:
   dashboard/brand/logo-animated-light.gif  light background
   dashboard/brand/logo-animated.svg        dark, tiny, scales crisply, for the site
   dashboard/brand/logo-animated-light.svg  light background
+  dashboard/brand/logo-animated-bar.svg    dark, low hop, for the dashboard header (--bar)
 
 Usage (Pillow is only needed for the GIFs):
-  python tools/brand/animate_logo.py
+  python tools/brand/animate_logo.py          # GIFs + SVGs
+  python tools/brand/animate_logo.py --bar    # logo-animated-bar.svg, the dashboard header (low hop)
 
 Brand rules kept (BRAND_SPEC.md): pixel grid, three colours, no decorative particles, letters
 move in whole cells (the machine moves in steps), only Riff moves smoothly (squash and stretch).
@@ -366,7 +368,22 @@ def write_svg(body, letters, name, theme):
     print(f"{out.relative_to(ROOT)}  {len(svg) // 1024} KB")
 
 
+def configure_bar():
+    """Dashboard header variant: the bar sits a few px from the window top, so the hop is low.
+    The landing and the shove are unchanged."""
+    global HEAD, H, GROUND, BIG_H, SMALL_H
+    HEAD, BIG_H, SMALL_H = 5, 2.0, 1.0
+    H = HEAD + LOGO_H + MB
+    GROUND = HEAD + LOGO_H
+
+
 def main():
+    import sys
+    if "--bar" in sys.argv:
+        configure_bar()
+        body, letters = split(read_logo())
+        write_svg(body, letters, "-bar", THEMES[""])
+        return
     body, letters = split(read_logo())
     for name, theme in THEMES.items():
         write_svg(body, letters, name, theme)
