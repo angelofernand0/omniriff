@@ -381,6 +381,43 @@
               "minimum": 0
             }
           }
+        },
+        "coach": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "last_seen_ms",
+            "last_accepted_ms",
+            "accepted",
+            "dropped",
+            "session"
+          ],
+          "properties": {
+            "last_seen_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "last_accepted_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "accepted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dropped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "session": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         }
       }
     },
