@@ -206,3 +206,42 @@ python -m vision.spatial --model models/hand_landmarker.task
    - Synchronized filter/reverb pairs are emitted at 10 pairs/s (strictly bounded to $\le 20$ events/s).
 4. **Dashboard Hand View**: Normalized 21-point hand skeleton streams simultaneously to `ws://127.0.0.1:47802` for the dashboard live HAND panel.
 
+## Air FX Spatial Canvas (`vision/canvas.py`)
+
+Transforms the performance airspace above the guitar body into a continuous 2D soundpad matrix. As the guitarist's hand moves through space, the controller bilinearly interpolates between four distinct spatial sonic quadrant presets:
+
+| Quadrant | Physical Position | Filter Cutoff | Reverb Wetness | Sonic Character |
+|---|---|---|---|---|
+| **Top-Left (TL)** | High Left | `0.95` | `0.85` | Cosmic Shimmer (Dreamy synth swell) |
+| **Top-Right (TR)** | High Right | `0.90` | `0.10` | Crisp Lead (Biting treble solo) |
+| **Bottom-Left (BL)** | Low Left | `0.25` | `0.75` | Submerged Wash (Underwater ambient) |
+| **Bottom-Right (BR)** | Low Right | `0.35` | `0.05` | Warm Acoustic (Mellow jazz clean) |
+
+- **Clutching**: Open hand arms the canvas; pinching index+thumb clutches into the 2D plane and drags across the soundscape. Releasing holds the current effect coordinates in space.
+- **ASCII Spatial Radar**: Terminal HUD renders a real-time radar grid pinpointing hand location within the sound matrix.
+- **Run Demo**: `python -m vision.canvas --demo`
+
+## Gesture-Modulated Rhythmic LFO (`vision/lfo.py`)
+
+Provides beat-synchronized expressive parameter modulation (auto-wah, rhythmic tremolo chop, tempo-locked filter sweeps) without tap-dancing on physical pedals:
+- **Hand Elevation**: Selects musical tempo subdivisions:
+  - Bottom ($y \ge 0.70$): Whole note (`1/1`, $0.5$ Hz @ 120 BPM)
+  - Mid-low ($y \approx 0.55$): Half note (`1/2`, $1.0$ Hz)
+  - Center ($y \approx 0.45$): Quarter note (`1/4`, $2.0$ Hz)
+  - Mid-high ($y \approx 0.35$): Eighth note (`1/8`, $4.0$ Hz)
+  - High ($y \le 0.25$): Sixteenth note (`1/16`, $8.0$ Hz) or Thirty-second (`1/32`, $16.0$ Hz)
+- **Hand Tilt / Pinch**: Modulates LFO depth ($0.0 \rightarrow 1.0$).
+- **Waveforms**: Sine (smooth vibrato), Triangle (wah), Square (killswitch tremolo chop), Saw (plucks).
+- **Run Demo**: `python -m vision.lfo --demo --bpm 120 --waveform square`
+
+## Duet & Collaborative Two-Hand Mode (`vision/duet.py`)
+
+Takes advantage of MediaPipe's multi-hand tracking (`num_hands=2`) to enable collaborative two-person or two-handed musical expression:
+- **Hand A (Left / Guitarist)**: Dedicated to **Filter Cutoff** ($0.0 \rightarrow 1.0$).
+- **Hand B (Right / Guest / Judge)**: Dedicated to **Reverb Wetness** ($0.0 \rightarrow 1.0$).
+- **Interactive Judge Jam**: A hackathon judge can step up to the table, reach their hand into the frame, and shape the ambient reverb while the guitarist plays chords!
+- **Strict Budget Balancing**: Allocates 10 Hz to Hand A and 10 Hz to Hand B ($\le 20$ events/s combined), ensuring total protocol compliance.
+- **Independent Clutching**: Each hand must open-then-pinch independently; zero parameter crosstalk.
+- **Run Demo**: `python -m vision.duet --demo`
+
+
