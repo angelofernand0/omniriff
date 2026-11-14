@@ -26,14 +26,14 @@ ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = Draft202012Validator(json.loads((ROOT / 'protocol/coach.schema.json').read_text()))
 
 SKILL = 'keep-the-hand-moving'
-TAKE_CUE = ("You're late on the G to C change, about 430 milliseconds, because your strumming hand "
-            "stops. Keep it swinging through the change.")
-APPROVE_CUE = "Effects off so you hear your timing. Tap the pedal when you're ready."
-DRILL_CUE = 'Four times through the change, slowly. Keep the hand moving.'
-PASS_CUE = "Your longest gap went from 430 to 120 milliseconds. That's the change."
-DECLINE_CUE = "No problem, I'll leave your sound as it is."
-IDLE_CUE = 'Play me something. Tap the pedal to record.'
-AGAIN_CUE = 'Again? Tap the pedal to record.'
+# Riff's voice: a laid-back session player who teaches (BRAND_SPEC.md section 7, "Riff's voice").
+TAKE_CUE = "Ooh, close. Your strumming hand stops right at the G to C change. Keep it swinging, even if you miss a string."
+APPROVE_CUE = "Okay, I'll take the effects off so you can hear the timing. Tap the pedal when you're ready."
+DRILL_CUE = 'Just the change, four times, no rush. Let the hand keep moving.'
+PASS_CUE = "Nice. That gap went from almost half a second to about a tenth. That's the change."
+DECLINE_CUE = "All good, I'll leave your sound as it is."
+IDLE_CUE = "Play me something. Tap the pedal when you're ready."
+AGAIN_CUE = 'Want to run it again? Tap the pedal.'
 PAUSE_S = 0.9   # a beat of silence after Riff finishes a line, before the next thing happens
 WORDS_PER_S = 2.6
 TODOS = ['Check timing (ears)', 'Check strumming hand (eyes)', 'Pick one drill', 'Set up the rig']

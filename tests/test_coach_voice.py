@@ -42,7 +42,9 @@ class VoiceTests(unittest.TestCase):
         url, headers, body = fetch.calls[0]
         self.assertIn(v.voice_id, url)
         self.assertEqual(headers['xi-api-key'], 'k')
-        self.assertEqual(body, {'text': 'Keep it swinging.', 'model_id': v.model})
+        self.assertEqual(body['text'], 'Keep it swinging.')
+        self.assertEqual(body['model_id'], v.model)
+        self.assertIn('stability', body['voice_settings'])
 
     def test_cache_works_without_key_or_network(self):
         self.voice(fetch=FakeFetch()).synthesize('Again?')
