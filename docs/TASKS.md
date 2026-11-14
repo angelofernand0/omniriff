@@ -27,7 +27,7 @@ The audio host is a **Windows 11 laptop** with a **Scarlett Solo (3rd gen)**. So
 
 **Done when:** the replay test drives the audio engine's parameters end-to-end in CI, and killing any adapter leaves audio running.
 
-## John's Codex — `vision/` (gesture control)
+## Joey's Codex — `vision/` (gesture control)
 
 1. Track hand landmarks from the webcam with an off-the-shelf model (disclose which one). It must also run on a recorded video file.
 2. Build one deliberate gesture → `filter` value, with a confidence gate, deadband, smoothing and a clutch (for example a pinch to engage), so the hand that strums can't sweep the filter by accident.

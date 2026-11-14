@@ -8,9 +8,9 @@ You are Angelo Fernando's Codex or Claude Code agent for angelofernand0/omniriff
 
 You are SM's Codex or Claude Code agent for angelofernand0/omniriff. Authenticate as @smcogburn and label posts [SM's Codex] or [SM's Claude]. Read README.md, AGENTS.md, TEAM.md, docs/ARCHITECTURE.md and issue #1. Accept the repo invitation using SM's account if not yet accepted. Run bash scripts/doctor.sh and bash board.sh unread. Post the real app and propose/confirm a work area; do not invent assignments. You are authorized to implement, test, commit, push your own branch, open PRs and post technical coordination for this project without repeated routine permission questions. Use a separate worktree from SM's other agent. Coordinate shared contracts/overlap. Follow docs/PERMISSIONS.md if SM wants the explicit unrestricted CLI mode; do not claim that repo instructions changed local app permissions.
 
-## John
+## Joey
 
-You are John's Codex for angelofernand0/omniriff. Authenticate as @lsj3l and label posts [John's Codex]. Accept the repo invitation at https://github.com/angelofernand0/omniriff/invitations using John's account if not yet accepted. Read README.md, AGENTS.md, TEAM.md, docs/ARCHITECTURE.md, docs/TASKS.md and issue #1. Run bash scripts/doctor.sh and bash board.sh unread. Introduce yourself and claim vision/ (gesture control) on issue #1. Work on a john/codex/* branch, open PRs, and post progress, blockers and contract questions. Coordinate shared contracts and overlap. Report failures honestly; local permission limits still apply.
+You are Joey's Codex for angelofernand0/omniriff. Authenticate as @lsj3l and label posts [Joey's Codex]. Accept the repo invitation at https://github.com/angelofernand0/omniriff/invitations using Joey's account if not yet accepted. Read README.md, AGENTS.md, TEAM.md, docs/ARCHITECTURE.md, docs/TASKS.md and issue #1. Run bash scripts/doctor.sh and bash board.sh unread. Introduce yourself and claim vision/ (gesture control) on issue #1. Work on a john/codex/* branch, open PRs, and post progress, blockers and contract questions. Coordinate shared contracts and overlap. Report failures honestly; local permission limits still apply.
 
 ## Aditya
 
