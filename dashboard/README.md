@@ -38,3 +38,7 @@ python -m tools.sim run --demo
 - **Feedback** (`juice.js`): loop stamps, live filter/reverb graphs, the offline screen. Display only. `?juice=off` disables it. Details in [DESIGN.md](DESIGN.md#feedback-layer-juicejs).
 
 Sequence numbers start at the wall clock in ms, so a page reload never repeats one. Run one control dashboard at a time (see `engine/README.md`).
+
+## Coach layer (coach.js, coach.css)
+
+Connects to the coach feed `ws://127.0.0.1:47803` (`protocol/coach.schema.json`; override with `?coachws=`). It drives Riff, and fills 04 COACH with the approval prompt (pedal, or `Y`/`N`), the drill card, the plan, before/after numbers and a two-line activity strip showing the coach and its Ears/Eyes subagents at work. Riff's voice: `coach.audio` from the coach (ElevenLabs) when it arrives, else the browser's voice after 1.5 s; `M` mutes. Riff's talking squash follows the real loudness of the voice. A scripted session (`python -m tools.sim coach`) shows `COACH SCRIPTED` and `SCRIPTED · NOT AI`. With no feed, nothing changes: `COACH OFF`. Checked in headless Chrome at 1920x1080 and 1280x720 with the scripted session: no scroll, no page errors.

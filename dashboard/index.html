@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="juice.css">
 <link rel="stylesheet" href="riff.css">
+<link rel="stylesheet" href="coach.css">
 </head>
 <body>
 <div class="app" id="app" data-conn="offline" data-boot="true" data-bypass="false" data-loop="idle" data-fx="idle">
@@ -102,6 +103,17 @@
           <div class="riff-socket" aria-hidden="true"></div>
           <div class="coach-text"><b id="coachLine">COACH OFF</b><span id="coachSub">Not running. The rig plays without it.</span></div>
         </div>
+        <!-- filled by coach.js from the coach feed (ws 47803); hidden when there is nothing to show -->
+        <div class="coach-detail" id="coachDetail" hidden>
+          <div class="coach-ask" id="coachAsk" role="alert" hidden>
+            <b>TAP PEDAL TO START</b><span id="coachAskText"></span>
+            <span class="ask-keys"><button type="button" class="key" id="coachYes"><kbd>Y</kbd>YES</button><button type="button" class="key" id="coachNo"><kbd>N</kbd>NO</button></span>
+          </div>
+          <ul class="coach-plan" id="coachPlan" hidden></ul>
+          <div class="coach-drill" id="coachDrill" hidden></div>
+          <div class="coach-ba" id="coachBA" hidden></div>
+          <ul class="coach-acts" id="coachActs" aria-label="What the coach is doing" hidden></ul>
+        </div>
       </section>
 
       <!-- 05 MANUAL: the fallback. Pedal and hand come first. -->
@@ -121,7 +133,7 @@
 
   <footer class="foot">
     <span id="diag">No engine yet</span>
-    <span class="keys" aria-label="Keyboard shortcuts"><kbd>F</kbd>FULLSCREEN<kbd>L</kbd>LOOP<kbd>B</kbd>BYPASS</span>
+    <span class="keys" aria-label="Keyboard shortcuts"><kbd>F</kbd>FULLSCREEN<kbd>L</kbd>LOOP<kbd>B</kbd>BYPASS<kbd>Y</kbd><kbd>N</kbd>ANSWER RIFF<kbd>M</kbd>MUTE RIFF</span>
   </footer>
 </div>
 <script src="brand.js"></script>
@@ -129,5 +141,6 @@
 <script src="app.js"></script>
 <script src="juice.js"></script>
 <script src="riff.js"></script>
+<script src="coach.js"></script>
 </body>
 </html>
