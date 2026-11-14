@@ -112,8 +112,16 @@ def check_serial(ports: list) -> list[Row]:
                 "plug in the pedal (optional: the keyboard l/b keys and the dashboard cover loop/bypass)")]
 
 
+def check_model(path: str = "models/hand_landmarker.task") -> list[Row]:
+    from pathlib import Path
+    ok = Path(path).is_file()
+    return [Row("vision hand model", PASS if ok else WARN, path if ok else f"{path} not found",
+                "" if ok else "download the MediaPipe Hand Landmarker model (vision/README.md#setup); only needed for gesture control")]
+
+
 def run_checks(udp_port=47800, ws_port=47801, hand_port=47802, http_port=8080, input_channel=2) -> list[Row]:
     rows = check_packages()
+    rows += check_model()
     rows += check_ports({"controls": ("udp", udp_port), "state": ("tcp", ws_port),
                          "hand view": ("tcp", hand_port), "dashboard": ("tcp", http_port)})
     try:

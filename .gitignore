@@ -16,3 +16,5 @@ recordings/
 *.wav
 *.aiff
 *.mp3
+models/
+*.task

@@ -7,7 +7,7 @@ from types import SimpleNamespace
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from engine.check import FAIL, PASS, WARN, check_audio, check_packages, check_port, check_ports, check_serial, format_rows  # noqa: E402
+from engine.check import FAIL, PASS, WARN, check_audio, check_model, check_packages, check_port, check_ports, check_serial, format_rows  # noqa: E402
 
 HOSTAPIS = [{"name": "MME"}, {"name": "Windows WASAPI"}, {"name": "ASIO"}]
 
@@ -79,6 +79,14 @@ class PortAndPackageTests(unittest.TestCase):
     def test_summary_line(self):
         rows = check_ports({"state": ("tcp", 1)}, probe=lambda k, p: (True, "free"))
         self.assertIn("READY: 0 fail", format_rows(rows))
+
+
+class ModelCheckTests(unittest.TestCase):
+    def test_missing_model_warns_present_model_passes(self):
+        import tempfile
+        self.assertEqual(check_model("/nonexistent/hand_landmarker.task")[0].status, WARN)
+        with tempfile.NamedTemporaryFile(suffix=".task") as f:
+            self.assertEqual(check_model(f.name)[0].status, PASS)
 
 
 if __name__ == "__main__":
