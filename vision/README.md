@@ -88,6 +88,37 @@ Unit tests cover activation, loss/rearm, confidence rejection, rate limiting, de
 
 Unit coverage includes reordered two-hand detections, implausible wrist jumps, track expiry, and clutch re-arm. Live webcam and audible integration still require validation on the target camera and audio hardware. Do not treat synthetic unit tests as a hardware acceptance check.
 
+### Measure this camera/clip (R16)
+
+```bash
+python -m vision --model models/hand_landmarker.task --video YOUR_HAND_CLIP.mp4 --no-overlay --metrics-json timing.json
+```
+
+Stop a live run with `q` or Ctrl-C to write the summary. The destination must be
+new. `--dry-run` measures validation/printing instead of UDP sending and is
+labeled accordingly. No raw video, audio or landmarks go into this summary.
+It reports processed FPS, actual event rate, hand-present frame count, mean
+processing time, and p50/p95 over the most recent 2048 frames. Rate denominators
+span the first processed frame to the last completed frame (including interframe
+waits, excluding model initialization). Processing spans frame availability to
+last send/print, excluding camera exposure, delivery and audio latency. Scene
+pairs count as two events. Zero hand activity can legitimately give 0 events/s.
+
+The browser play room exposes the same measurement under `camera.metrics` in
+its existing `/api/state` response; its processing starts at worker dequeue and
+excludes JPEG transmission/queue waiting. Browser and native timing numbers are
+therefore not interchangeable end-to-end latency measurements.
+
+**Measured diagnostic, not a real-hand acceptance result:** on 2026-11-14, a
+150-frame 640×480, 30 FPS MJPEG clip repeating the existing sample hand image was
+processed by the real MediaPipe model on this Mac. It produced 150
+hand-present frames, 30.87 processed FPS, 9.27 ms mean / 10.07 ms p95 processing,
+and 0.00 controls/s in dry-run mode. Static-image playback has no deliberate
+pinch/movement and does not establish live gesture rate or camera accuracy.
+The separate blank-clip baseline measured 8.68 ms mean / 9.68 ms p95 and zero
+controls. **V5's live/recorded moving-hand control-rate result remains pending**;
+do not substitute these baselines into the Devpost live-gesture placeholder.
+
 ## Scene Morph: one gesture, two effects
 
 `--scene bloom` turns wrist height into a continuous blend from **Clear to Cosmos**: bright/dry to darker/ambient. `--scene rise` blends **Underwater to Spotlight**: dark/wet to bright/drier. Open, pinch, then sweep upward; opening the hand holds the current scene. Hand loss emits no events. The same camera calibration applies. Single-effect and relative modes remain available separately.
