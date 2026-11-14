@@ -92,6 +92,8 @@ def main(argv=None) -> int:
     p.add_argument("--latency", default="low", help="'low', 'high' or seconds")
     p.add_argument("--exclusive", action="store_true", help="WASAPI exclusive mode")
     p.add_argument("--gain-db", type=float, default=0.0, help="input gain in dB")
+    p.add_argument("--gate-db", type=float, default=None,
+                   help="optional noise gate open threshold in dBFS (e.g. -50); off by default")
     p.add_argument("--sweep", type=float, metavar="SECONDS", help="automate a filter sweep with this period")
     p.add_argument("--reverb", type=float, default=0.0, help="initial reverb amount 0..1")
     p.add_argument("--loop-at", default="", help="file modes: comma-separated loop toggle times (s)")
@@ -109,7 +111,7 @@ def main(argv=None) -> int:
 
     if a.input_wav and a.output_wav:
         data, sr = read_wav(a.input_wav)
-        engine = Engine(EngineConfig(samplerate=sr, input_gain_db=a.gain_db))
+        engine = Engine(EngineConfig(samplerate=sr, input_gain_db=a.gain_db, gate_open_db=a.gate_db))
         engine.set_reverb(a.reverb)
         out = render(engine, data.mean(axis=1), a.blocksize, a.out_channels, a.sweep, _parse_times(a.loop_at))
         write_wav(a.output_wav, out, sr)
@@ -140,11 +142,11 @@ def main(argv=None) -> int:
 
     if a.input_wav:
         data, sr = read_wav(a.input_wav)
-        engine = Engine(EngineConfig(samplerate=sr, input_gain_db=a.gain_db))
+        engine = Engine(EngineConfig(samplerate=sr, input_gain_db=a.gain_db, gate_open_db=a.gate_db))
         target = lambda: stream.play(engine, data.mean(axis=1), out_dev, a.out_channels, a.blocksize, stop)
     else:
         in_dev = stream.resolve_device(a.in_dev, a.hostapi, "input")
-        engine = Engine(EngineConfig(samplerate=a.samplerate, input_gain_db=a.gain_db))
+        engine = Engine(EngineConfig(samplerate=a.samplerate, input_gain_db=a.gain_db, gate_open_db=a.gate_db))
         name = stream.sd.query_devices(in_dev, "input")["name"]
         if "scarlett" in name.lower() and a.input_channel == 1:
             print("Note: on a Scarlett Solo the guitar jack is input 2; pass --input-channel 2.", flush=True)

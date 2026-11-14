@@ -118,3 +118,56 @@ class PeakLimiter:
                     r += g
                     seg *= r
                     self.gain = float(r[-1])
+
+
+class NoiseGate:
+    """Downward gate on the dry input, stepped per sub-block (off unless configured).
+
+    Opens when a sub-block's RMS rises above `open_db`; closes after `hold_ms`
+    once RMS falls below `close_db` (hysteresis stops chatter on decaying notes).
+    Gain ramps linearly within each sub-block: fast attack, slower release, so
+    notes don't click on and tails fade instead of chopping.
+    """
+
+    def __init__(self, open_db: float, close_db: float, samplerate: float, step_frames: int,
+                 attack_ms: float = 2.0, release_ms: float = 120.0, hold_ms: float = 60.0):
+        if close_db > open_db:
+            raise ValueError("close_db must be at or below open_db")
+        self.open_level = 10 ** (open_db / 20)
+        self.close_level = 10 ** (close_db / 20)
+        self.step = int(step_frames)
+        step_s = self.step / samplerate
+        self.attack = min(1.0, step_s / max(attack_ms / 1000.0, 1e-6))
+        self.release = min(1.0, step_s / max(release_ms / 1000.0, 1e-6))
+        self.hold_steps = int(round(hold_ms / 1000.0 / step_s))
+        self.gain = 0.0
+        self.is_open = False
+        self._hold = 0
+        self._lin = np.linspace(0.0, 1.0, self.step + 1, dtype=np.float32)[1:]
+        self._ramp = np.zeros(self.step, np.float32)
+
+    def process(self, x: np.ndarray) -> None:
+        """Gate `x` in place."""
+        n, st = len(x), self.step
+        for s in range(0, n, st):
+            seg = x[s:s + st]
+            k = len(seg)
+            rms = float(np.sqrt(np.dot(seg, seg) / k)) if k else 0.0
+            if rms >= self.open_level:
+                self.is_open, self._hold = True, self.hold_steps
+            elif rms < self.close_level and self.is_open:
+                if self._hold > 0:
+                    self._hold -= 1
+                else:
+                    self.is_open = False
+            target = 1.0 if self.is_open else 0.0
+            g = self.gain
+            rate = self.attack if target > g else self.release
+            new = g + (target - g) * rate if abs(target - g) > 1e-6 else target
+            if g == 1.0 and new == 1.0:
+                continue
+            r = self._ramp[:k]
+            np.multiply(self._lin[:k], new - g, out=r)
+            r += g
+            seg *= r
+            self.gain = float(r[-1]) if k else g
