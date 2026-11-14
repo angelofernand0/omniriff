@@ -40,8 +40,12 @@ class CoachSchemaTests(unittest.TestCase):
     def test_rejects_bad_messages(self):
         no_todos = frame()
         del no_todos['todos']
+        unlabelled = frame()
+        del unlabelled['scripted']
         bad = [
             no_todos,                                          # full snapshot: every field required
+            unlabelled,                                        # a frame must say whether a live agent is behind it
+            frame(scripted='yes'),
             frame(state='dancing'),
             frame(mood='angry'),
             frame(target='.loop-card'),                        # logical names, not CSS selectors

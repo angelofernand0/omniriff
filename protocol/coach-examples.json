@@ -13,7 +13,8 @@
   "drill_card": null,
   "before_after": null,
   "awaiting_approval": null,
-  "activity": []
+  "activity": [],
+  "scripted": false
  },
  {
   "version": 1,
@@ -57,7 +58,8 @@
     "what": "get_hand_report",
     "status": "running"
    }
-  ]
+  ],
+  "scripted": false
  },
  {
   "version": 1,
@@ -135,7 +137,8 @@
     "what": "rig_control bypass",
     "status": "waiting"
    }
-  ]
+  ],
+  "scripted": false
  },
  {
   "version": 1,
@@ -199,7 +202,8 @@
     "what": "edit /memories/player.md",
     "status": "done"
    }
-  ]
+  ],
+  "scripted": false
  },
  {
   "version": 1,

@@ -32,7 +32,8 @@
         "drill_card",
         "before_after",
         "awaiting_approval",
-        "activity"
+        "activity",
+        "scripted"
       ],
       "properties": {
         "version": {
@@ -349,6 +350,10 @@
               }
             }
           }
+        },
+        "scripted": {
+          "type": "boolean",
+          "description": "true when no live agent is behind this frame (tools.sim's scripted coach session, a replayed session). The dashboard must label it on screen; never present a scripted session as live."
         }
       }
     },
