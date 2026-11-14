@@ -559,6 +559,37 @@
           "minimum": 1
         }
       }
+    },
+    "live": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional recent-input onset measurements (input may be synthetic). Omitted during warm-up, stalled input, disabled analysis or errors. Not a technique score or hardware latency result.",
+      "required": [
+        "strums_last_s",
+        "last_strum_ms",
+        "steady"
+      ],
+      "properties": {
+        "strums_last_s": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "last_strum_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Host-aligned Unix milliseconds for the last detected onset; null when none was detected in the last input-audio second."
+        },
+        "steady": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Null until three onsets in the recent two-second window; otherwise interval CV <=0.2 and no gap >1.6x median. Intended rests can look unsteady."
+        }
+      }
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",

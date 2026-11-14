@@ -16,6 +16,12 @@ v1 has no sender session ID: one active producer per source is supported. A UDP 
 
 The state snapshot is best effort across audio/control threads. Missing source entries mean no valid envelope has arrived. An adapter in error/retrying records the last failure (not a current audio failure). Old errors remain for diagnosis after recovery. Stopping a source leaves its last parameter value in place; it does not create a sweep or mute audio. Manual bypass stays available.
 
+## Recent input / live strum measurements
+
+When the audio engine provides `snapshot_input`, an independent worker analyzes the most recent two seconds with `tools.ears.detect_onsets` at up to 10 Hz. It retains onset frame numbers and scalar summaries, not sample recordings. No onset analysis runs in the audio callback. The optional `live` state object contains `strums_last_s` (count in the last input-audio second), `last_strum_ms` (host-aligned Unix milliseconds, or null when that second has no detection), and `steady` (boolean or null). Input may be synthetic; this is no hardware or gesture-accuracy claim.
+
+Analysis waits for advancing input, settles the last 50 ms of each window, and deduplicates overlapping detections by frame position. The object is omitted on startup, errors, insufficient history, shutdown or input that stops advancing for more than 500 ms. No detections in the last input second reports `{strums_last_s:0,last_strum_ms:null,steady:null}`; `steady` also stays null until at least three recent onsets (two intervals). Otherwise it checks interval coefficient of variation <= 0.2 and a last-onset gap <= 1.6 times the median interval. Intended rests can look unsteady: this is a cadence indicator, not a technique score. Timestamps are aligned from the snapshot receipt time, not an independently measured ADC clock or I/O latency. Programmatic users can opt out with `Runtime(..., live_analysis=False)`.
+
 Tests: `python -m unittest discover -s engine/tests -v` after installing requirements. tests/test_engine.py bridges this suite into the repository CI discovery. No callback or DSP changes are included here.
 
 ## Windows 11 quickstart — Scarlett Solo (3rd gen)

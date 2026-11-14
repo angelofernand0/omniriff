@@ -75,11 +75,15 @@ class SerialDecoder:
 
 
 class Runtime:
-    def __init__(self, audio, *, udp_port=47800, ws_port=47801, serial_port=None, hz=20, stale_ms=250, replay=None):
+    def __init__(self, audio, *, udp_port=47800, ws_port=47801, serial_port=None, hz=20, stale_ms=250, replay=None, live_analysis=True):
         if not 0 < hz <= 60: raise ValueError('state rate must be in (0, 60]')
         self.audio = audio
         self.replay = replay
         self.router = Router(audio, stale_ms=stale_ms)
+        self.live = None
+        if live_analysis and callable(getattr(audio,'snapshot_input',None)):
+            from .live import LiveAnalysis
+            self.live = LiveAnalysis(audio,clock=self.router.clock)
         if replay is not None and serial_port:
             raise ValueError('replay cannot be combined with serial input')
         self.udp_port, self.ws_port = None if replay is not None else udp_port, ws_port
@@ -110,6 +114,9 @@ class Runtime:
                     adapters={k: dict(v) for k, v in self.adapters.items()})
         if self.replay is not None:
             state['replay'] = dict(self.replay.state)
+        if self.live is not None:
+            live = self.live.snapshot()
+            if live is not None: state['live'] = live
         return state
 
     async def supervise(self, name, factory):
@@ -129,6 +136,8 @@ class Runtime:
             self.adapters[name]['status'] = 'stopped'
 
     async def start(self):
+        if self.live is not None:
+            self.tasks['live'] = asyncio.create_task(self.live.run(),name='omniriff-live-analysis')
         if self.replay is not None:
             self.tasks['replay'] = asyncio.create_task(self.replay.run(self.router), name='omniriff-replay')
         for name, enabled, factory in [('udp', self.udp_port is not None, self.run_udp),
@@ -137,6 +146,7 @@ class Runtime:
             if enabled: self.tasks[name] = asyncio.create_task(self.supervise(name, factory), name=f'omniriff-{name}')
 
     async def close(self):
+        if self.live is not None: self.live.stop()
         for task in self.tasks.values(): task.cancel()
         await asyncio.gather(*self.tasks.values(), return_exceptions=True)
         self.tasks.clear()

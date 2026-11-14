@@ -173,7 +173,7 @@ class GateTests(unittest.TestCase):
 class NetworkTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.audio = Engine()
-        self.runtime = Runtime(self.audio, udp_port=0, ws_port=0)
+        self.runtime = Runtime(self.audio, udp_port=0, ws_port=0, live_analysis=False)
         await self.runtime.start()
         await self.ready()
 
