@@ -139,6 +139,8 @@ class CoachRunnerTests(unittest.TestCase):
             self.assertEqual(len(rig.sent), 2)
             self.assertEqual(feed.frame["before_after"]["worst_gap_ms"], [900.0, 620.0])
             self.assertTrue(feed.frame["before_after"]["improved"])
+            self.assertEqual(feed.frame["state"], "pleased")
+            self.assertEqual(feed.frame["mood"], "proud")
             self.assertTrue(VALIDATOR.is_valid(feed.frame))
             self.assertEqual(len((root / "usage.jsonl").read_text().splitlines()), 2)
 
