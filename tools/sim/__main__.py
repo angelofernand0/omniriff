@@ -66,7 +66,7 @@ def _run(a) -> int:
         if a.coach_sim:
             from .coach import run_scripted_coach
             coach_task = asyncio.create_task(run_scripted_coach(
-                a.coach_port, f'ws://127.0.0.1:{runtime.ws_port}', runtime.udp_port))
+                a.coach_port, f'ws://127.0.0.1:{runtime.ws_port}', runtime.udp_port, voice=_voice(a)))
             print(f'[sim] SCRIPTED coach session ws://127.0.0.1:{a.coach_port} (no AI)')
         start = time.monotonic()
         try:
@@ -119,10 +119,12 @@ def main(argv=None) -> int:
     r.add_argument('--coach-sim', action='store_true',
                    help='serve a SCRIPTED coach session on --coach-port (no AI; labelled on screen)')
     r.add_argument('--coach-port', type=int, default=47803)
+    r.add_argument('--no-voice', action='store_true', help="with --coach-sim: browser voice only, no ElevenLabs")
     c = sub.add_parser('coach', help='SCRIPTED coach session against a running engine (no AI; labelled on screen)')
     c.add_argument('--port', type=int, default=47803)
     c.add_argument('--engine-ws', default='ws://127.0.0.1:47801')
     c.add_argument('--udp-port', type=int, default=47800, help='where approved bypass goes (0: never touch the rig)')
+    c.add_argument('--no-voice', action='store_true', help="don't render cues with ElevenLabs (browser voice only)")
     s = sub.add_parser('send', help='send one control event over UDP')
     s.add_argument('control', choices=['loop', 'bypass', 'filter', 'reverb'])
     s.add_argument('value', type=float, nargs='?')
@@ -139,11 +141,20 @@ def main(argv=None) -> int:
     return _run(a)
 
 
+def _voice(a):
+    if a.no_voice:
+        return None
+    from coach.voice import Voice
+    v = Voice.from_env()
+    print('[sim] coach voice: ' + ('ElevenLabs (cached)' if v.api_key else 'no ELEVENLABS_API_KEY, browser voice only'))
+    return v
+
+
 def _coach(a) -> int:
     from .coach import run_scripted_coach
     print(f'[sim] SCRIPTED coach session ws://127.0.0.1:{a.port} (no AI) following {a.engine_ws}. Ctrl-C to stop.')
     try:
-        asyncio.run(run_scripted_coach(a.port, a.engine_ws, a.udp_port or None))
+        asyncio.run(run_scripted_coach(a.port, a.engine_ws, a.udp_port or None, voice=_voice(a)))
     except KeyboardInterrupt:
         pass
     return 0

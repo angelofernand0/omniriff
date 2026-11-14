@@ -250,9 +250,16 @@ class ScriptedSession:
 
 
 async def run_scripted_coach(port: int = 47803, engine_ws: str = 'ws://127.0.0.1:47801', udp_port: int | None = 47800,
-                             pace: float = 1.0, speak=None, states=None, ready=None) -> None:
-    """Serve the scripted session until cancelled. `states` overrides the engine feed (tests)."""
+                             pace: float = 1.0, speak=None, states=None, ready=None, voice=None) -> None:
+    """Serve the scripted session until cancelled. `states` overrides the engine feed (tests).
+    `voice` (coach.voice.Voice) speaks each new cue as coach.audio; no voice means the browser's."""
     feed = CoachFeed()
+    if voice is not None and speak is None:
+        async def _speak(text: str) -> None:
+            msg = await voice.render(text)
+            if msg and feed.frame.get('cue') == text:   # don't play a cue that's already been replaced
+                feed._broadcast(msg)
+        speak = lambda text: asyncio.ensure_future(_speak(text))  # noqa: E731
     sender = Sender('coach', port=udp_port) if udp_port else None
     session = ScriptedSession(feed, sender, pace=pace, speak=speak)
     server = asyncio.create_task(feed.serve(port, ready=ready))
