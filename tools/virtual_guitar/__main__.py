@@ -8,7 +8,9 @@ Examples:
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
+import math
 from pathlib import Path
 
 from audio.fileio import read_wav, write_wav
@@ -42,12 +44,40 @@ def main(argv=None) -> int:
     parser.add_argument("--play", action="store_true", help="play the rendered result through laptop speakers")
     parser.add_argument("--out", dest="out_dev", help="with --play: output device index/name substring")
     parser.add_argument("--hostapi", help="with --play: host API filter")
+    parser.add_argument("--live", action="store_true", help="audible interactive demo + dashboard; no input device")
+    parser.add_argument("--headless", action="store_true", help="with --live: process audio without speaker output")
+    parser.add_argument("--http-port", type=int, default=8080)
+    parser.add_argument("--ws-port", type=int, default=47801)
+    parser.add_argument("--udp-port", type=int, default=47800)
+    parser.add_argument("--hand-port", type=int, default=47802, help="real hand-view WebSocket")
+    parser.add_argument("--model", default="models/hand_landmarker.task", help="MediaPipe hand model for browser webcam")
+    parser.add_argument("--scene", choices=("bloom", "rise"), default="bloom", help="Joey's live Scene Morph preset")
+    parser.add_argument("--volume", type=float, default=0.35, help="live listening level, 0..1; after DSP")
+    parser.add_argument("--duration", type=float, help="stop live demo after this many seconds")
+    parser.add_argument("--open", action="store_true", help="open the live demo in the default browser")
     args = parser.parse_args(argv)
 
     if args.demo and args.controls:
         parser.error("choose --demo or --controls, not both")
-    if args.seconds is not None and args.seconds <= 0:
-        parser.error("--seconds must be positive")
+    for name in ('seconds', 'duration', 'bpm'):
+        value = getattr(args, name)
+        if value is not None and (not math.isfinite(value) or value <= 0):
+            parser.error(f"--{name} must be finite and positive")
+    for name in ('level', 'volume', 'filter', 'reverb'):
+        if not 0 <= getattr(args, name) <= 1:
+            parser.error(f"--{name} must be in [0, 1]")
+    if not math.isfinite(args.gain_db) or not -60 <= args.gain_db <= 24:
+        parser.error('--gain-db must be finite and in [-60, 24]')
+    if not math.isfinite(args.tail_seconds) or args.tail_seconds < 0:
+        parser.error('--tail-seconds must be finite and nonnegative')
+    if not 8000 <= args.samplerate <= 192000 or not 32 <= args.blocksize <= 4096:
+        parser.error('samplerate must be 8000..192000 and blocksize 32..4096')
+    if args.live and (args.demo or args.controls or args.play):
+        parser.error('--live uses interactive controls; omit --demo, --controls and --play')
+    if not args.live and (args.headless or args.open or args.duration is not None):
+        parser.error('--headless, --open and --duration require --live')
+    if any(not 1 <= port <= 65535 for port in (args.http_port, args.ws_port, args.udp_port, args.hand_port)):
+        parser.error('ports must be in 1..65535')
     if not 0 <= args.level <= 1:
         parser.error("--level must be in [0, 1]")
 
@@ -59,9 +89,18 @@ def main(argv=None) -> int:
         input_label = str(Path(args.input_wav))
     else:
         samplerate = args.samplerate
-        seconds = args.seconds if args.seconds is not None else 8.0
+        seconds = args.seconds if args.seconds is not None else (16 * 60 / args.bpm if args.live else 8.0)
         mono = synthetic_signal(seconds, samplerate, args.bpm, args.seed, args.level, args.blocksize)
         input_label = f"deterministic synthesis (seed={args.seed})"
+
+    if args.live:
+        from .live import run_live
+        try:
+            return asyncio.run(run_live(args, mono, samplerate, input_label))
+        except KeyboardInterrupt:
+            return 0
+        except Exception as exc:
+            parser.error(f'live demo could not run: {exc}')
 
     control_path = ROOT / "engine" / "demo-controls.jsonl" if args.demo else args.controls
     controls = load_control_script(control_path) if control_path else []
