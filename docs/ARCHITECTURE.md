@@ -15,9 +15,26 @@ A guitarist can keep playing while switching a loop/effect with a physical contr
 
 The Focusrite connects to the audio laptop over USB. Keep audio on that host first; do not route raw live audio through Wi-Fi, SenseCAP or Pi. Camera/serial processes send control data only. Transport decision is pending: newline-delimited JSON on serial for Arduino; localhost UDP/WebSocket adapter for vision/UI as selected by implementers. The schema describes the message envelope, not a running server.
 
+## Confirmed hardware
+
+Confirmed by Angelo on 2026-11-13:
+
+- Audio host: Windows 11 laptop.
+- Audio interface: Focusrite Scarlett Solo (3rd gen).
+
+Everything else is unconfirmed: the guitar cable, headphones or monitors, webcam, Arduino, SenseCAP, Pi and Grove parts.
+
+Notes for the audio owner, to verify on the actual device:
+- Plug the guitar into the Solo's instrument input with INST enabled.
+- Install Focusrite's driver.
+- Compare ASIO with WASAPI for device selection and buffer behavior.
+- Turn the Solo's Direct Monitor off when listening to processed audio, to avoid hearing the guitar doubled.
+
+Use any Windows-specific setup steps from the official Focusrite and audio-library docs, not from assumptions.
+
 ## MVP gates
 
-1. Confirm Focusrite model/generation, audio-host OS, guitar cable, headphones/monitor output, device borrowing, and exact SenseCAP/Pi/Grove parts.
+1. Confirm the remaining hardware: guitar cable, headphones/monitor output, device borrowing, and exact SenseCAP/Pi/Grove parts.
 2. Get clean guitar pass-through, explicit device selection, gain control and manual bypass. Measure actual input-to-output timing and xruns; buffer size/sample rate alone are not measured round-trip latency. Avoid monitoring both direct and processed audio at once unless deliberate.
 3. Add one effect (e.g. low-pass sweep) and one debounced physical bypass/loop control. One reliable loop mode only after pass-through works.
 4. Add one calibrated gesture with confidence gate, deadband and smooth control. A guitar-playing hand must not modulate accidentally. Use clutch/gesture activation rather than constant mapping if necessary.
