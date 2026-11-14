@@ -9,6 +9,7 @@ from .control import Controller
 from .tracking import HandSelector
 from .scenes import SceneMorph, SCENES
 from .hand_view import HandView
+from .take import TakeRecorder
 
 
 def main():
@@ -18,6 +19,7 @@ def main():
     p.add_argument('--camera', type=int, default=0)
     p.add_argument('--max-hand-jump', type=float, default=0.30,
                    help='maximum normalized wrist movement per frame before tracking fails closed')
+    p.add_argument('--record-take', type=Path, help='save control events as replay JSONL; refuses overwrite')
     p.add_argument('--no-hand-view', action='store_true', help='disable local dashboard landmark feed')
     p.add_argument('--hand-view-port', type=int, default=47802)
     p.add_argument('--host', default='127.0.0.1')
@@ -68,9 +70,13 @@ def main():
     last_stamp = -1
     pending = {}
     last_sent = minimum_interval = None
+    take = None
+    take_error_reported = False
     hand_view = None if args.no_hand_view else HandView(args.hand_view_port).start()
     hand_view_error_reported = False
     try:
+        if args.record_take:
+            take = TakeRecorder(args.record_take)
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock, mp.tasks.vision.HandLandmarker.create_from_options(options) as detector:
             while True:
                 ok, frame = cap.read()
@@ -121,6 +127,12 @@ def main():
                         print(payload, flush=True)
                     else:
                         sock.sendto(payload.encode(), (args.host, args.port))
+                    if take:
+                        take.record(event)
+                        if take.error and not take_error_reported:
+                            import sys
+                            print('Take recording: ' + take.error, file=sys.stderr)
+                            take_error_reported = True
                     count += 1
                     emitted = time.monotonic()
                     if last_sent is not None:
@@ -142,6 +154,11 @@ def main():
                             args.calibration.write_text(json.dumps(pending) + '\n')
                             break
     finally:
+        if take:
+            take.close()
+            if take.error:
+                import sys
+                print('Take recording: ' + take.error, file=sys.stderr)
         if hand_view:
             hand_view.close()
         cap.release()

@@ -25,6 +25,10 @@ class HandViewTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(frame['landmarks'], [])
                 with self.assertRaises(asyncio.TimeoutError):
                     await asyncio.wait_for(ws.recv(), .15)  # Never refresh stale data by retransmitting.
+            await asyncio.sleep(.3)
+            async with connect(f'ws://127.0.0.1:{feed.port}') as ws:
+                with self.assertRaises(asyncio.TimeoutError):
+                    await asyncio.wait_for(ws.recv(), .15)  # New viewers must not get stale hands.
             feed.publish(frame)  # No client is required for publishing.
         finally:
             feed.close()

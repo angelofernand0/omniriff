@@ -4,6 +4,7 @@ import json
 import queue
 import re
 import threading
+import time
 
 
 class HandView:
@@ -23,7 +24,7 @@ class HandView:
         except queue.Empty:
             pass
         try:
-            self.mailbox.put_nowait(payload)
+            self.mailbox.put_nowait((time.monotonic(), payload))
         except queue.Full:
             pass
 
@@ -47,8 +48,8 @@ class HandView:
             last_payload = None
             try:
                 while not self.stop.is_set():
-                    if latest is not None and latest != last_payload:
-                        payload = latest
+                    if latest is not None and time.monotonic() - latest[0] < .25 and latest[1] != last_payload:
+                        payload = latest[1]
                         await asyncio.wait_for(ws.send(payload), .1)
                         last_payload = payload
                     await asyncio.sleep(.05)
