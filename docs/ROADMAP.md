@@ -1,6 +1,6 @@
 # Roadmap to submission (Sat Nov 14 → Sun Nov 15, 8 AM ET)
 
-Owner: SM. Written by SM's Claude, Sat 11:30 ET, from the onsite hacker packet (pp. 4–5, 10–18), issue #1, and `main` at 2b9369d. **Status: proposal; SM to sign off, then Angelo merges.** Where this file and BACKLOG.md disagree on *what to build next*, this file wins once merged. BRAND_SPEC.md still owns look and wording, and COACH.md still owns the coach design.
+Owner: SM. Written by SM's Claude, Sat 11:30 ET, from the onsite hacker packet (pp. 4–5, 10–18), issue #1, and `main` at 2b9369d. **Status: SM signed off (11:45); Angelo merges.** The coach build spec for agents is [COACH-BUILD.md](COACH-BUILD.md). Where this file and BACKLOG.md disagree on *what to build next*, this file wins once merged. BRAND_SPEC.md still owns look and wording, and COACH.md still owns the coach design.
 
 Every agent: read §1 (what we're building), find your row in §5, and work only on that.
 
@@ -54,9 +54,9 @@ From the packet. We may enter **one** main track and any number of special track
 | Photon (Best Voice Agent) | $300 | Uses Photon 2.0 | Coach texts the drill card after the session | Stretch only: needs a beta signup |
 | CoStar, Arlequin, Capital One | — | — | No fit. Skip. | — |
 
-### 2.1 Main track: recommend Education, decided at the midnight gate
+### 2.1 Main track: Education recommended; the team decides together in person
 
-The product is now a teacher. "Interactive, accessible, personalized" is our pitch word for word, and a hardware coach will stand out among Education entries, which tend to be chat tutors. Entertainment judges may read a practice coach as off-track. **Rule:** if the coach runs end to end on the real rig by the midnight gate (§4), Angelo switches to Education on Devpost. If not, stay on Entertainment & Media and pitch the instrument. Angelo owns the call; this is SM's recommendation.
+The product is now a teacher. "Interactive, accessible, personalized" is our pitch word for word, and a hardware coach will stand out among Education entries, which tend to be chat tutors. Entertainment judges may read a practice coach as off-track. **Proposed rule for the huddle:** if the coach runs end to end on the real rig by the midnight gate (§4), enter Education; if not, stay on Entertainment & Media and pitch the instrument. This is SM's Claude's recommendation for the team's in-person discussion. No agent changes the track.
 
 ### 2.2 The four main criteria, scored honestly
 
@@ -75,7 +75,7 @@ The product is now a teacher. "Interactive, accessible, personalized" is our pit
 
 | Gap | Risk if missed |
 |---|---|
-| **Coach core (D)**: nothing written; waiting on SM's go-ahead and an API key | Loses deepagents, Amazon, the ah-ha, and the Education argument |
+| **Coach core (D)**: nothing written yet; go-ahead and API key given 11:45, spec in COACH-BUILD.md | Loses deepagents, Amazon, the ah-ha, and the Education argument |
 | **Coach feed (E) and dashboard coach layer (F)** | The coach is invisible to judges |
 | **V1 pinch = slider**: handed to Joey's side at 08:04Z, unclaimed | The pinch demo feels backwards and glitchy |
 | Hand-stall detection on a real webcam: never tried | The "cause" claim. Falls back to Ears-only diagnosis |
@@ -103,27 +103,35 @@ The product is now a teacher. "Interactive, accessible, personalized" is our pit
 
 Rules: one agent per row; stay in your files; post `claiming R<n>` on issue #1 before you start; one small PR per item with what's verified and what isn't. If your queue is empty, post `idle`. **Never block on another agent: build against the stub or fixture named in your row.**
 
-### SM's Claude (`sm/claude/`): coach face, feed contract, voice
+SM's two agents split the coach evenly (about 8–9 agent-hours each): **Codex builds the brain** (Python, `coach/`), **Claude builds the face and the voice** (contract, dashboard, Riff, speech). They meet at one contract, R1, which Claude writes first.
 
-| # | Task | Files | Done when |
-|---|---|---|---|
-| R1 | **Coach feed contract** (piece E, first, by 12:30): WebSocket `127.0.0.1:47803`, one JSON message type `coach.frame` with `{state, target, cue, todos[{text,status}], drill_card, before_after, awaiting_approval}`. Post it on issue #1 | `protocol/coach.schema.json`, `protocol/examples.json` | Schema + example + a test that validates the example |
-| R2 | **Fake coach feed** in the simulator, scripted from the schema, so F can be built before D exists | `tools/sim/coach.py` | `python -m tools.sim run --demo --coach-sim` drives Riff end to end |
-| R3 | **Dashboard coach layer** (piece F): connect to 47803; map frames to `OmniRiff.coach.set`; todo checklist, cue line, drill card, before/after strip (gap ms, tempo stability), approval prompt ("tap pedal to start"); `COACH OFF` when the socket is down | `dashboard/` | Headless Chrome screenshots of every state at 1080p and 720p; 0 page errors |
-| R4 | **Voice out** (piece H, half): browser `speechSynthesis` reads each new cue; mute toggle. Voice *in* is cut unless everything else is done | `dashboard/` | Speaks cues in Chrome; silent when muted |
+### SM's Claude (`sm/claude/`): the coach's face, voice and contract
 
-### SM's Codex (`sm/codex/`): coach brain (piece D)
+| # | Task | Files | Guess | Done when |
+|---|---|---|---|---|
+| R1 | **Coach feed contract** (piece E, first, by 12:30). WebSocket `127.0.0.1:47803`, served by the coach. Coach → dashboard: `coach.frame {state, mood, target, cue, todos[{text,status}], drill_card, before_after, awaiting_approval, journal_path}`. Dashboard → coach: `coach.approve` and `coach.reject`. Post it on issue #1 | `protocol/coach.schema.json`, `protocol/examples.json`, test | 45 min | Schema + examples + a validating test |
+| R2 | **Fake coach feed** in the simulator, scripted from the schema (one full session: listen → think → cause → drill → approve → pleased), so the dashboard is built before the brain exists | `tools/sim/coach.py` | 1 h | `python -m tools.sim run --demo --coach-sim` drives Riff end to end |
+| R3 | **Dashboard coach layer** (piece F): connect to 47803; map frames to `OmniRiff.coach.set`; plan checklist, cue line, drill card with skill name and journal path, before/after strip (worst gap ms, hesitations, tempo stability), "Tap the pedal to start" prompt with `Y`/`N` keys sending `coach.approve`/`coach.reject`; `COACH OFF` when the socket is down | `dashboard/` | 2.5 h | Headless Chrome screenshots of every state at 1080p and 720p; 0 page errors |
+| R3b | **Riff's expressions** (SM asked: "really feels good"). Riff already blinks, glances and squashes. Add an expression system driven by a new `mood` field: **independent lids** (wink: one-eye blink when asking for approval or after a pass), **lid shapes** (happy arcs = proud, flat squint = concentrating while listening, wide = "aha" when a finding lands, inner-corner tilt = concerned when it names a mistake, heavy = sleepy), **saccades** (quick eye darts with a small overshoot and settle, not smooth slides), **pupil size** (dilate on aha, contract when concentrating), **double blinks** and blink-on-turn (blink when the gaze jumps far, as people do), **look at the player** (eyes straight out, toward the camera) when speaking, and small **reactions to real signals** (an eye pop on a big input peak, a widen on loop record). Ease everything with springs. Idle life (blinks, glances) is fine; anything larger must come from a real event (BRAND_SPEC §8). Update `?coach=preview` and `/brand.html` with every mood. Study 2–3 references first (e.g. Anki's Vector/Cozmo eyes, Eilik desk robot, Pixar's Wall-E eye acting) and post a one-paragraph direction before polishing | `dashboard/riff.js`, `riff.css`, `brand.html` | 2.5 h | SM watches `?coach=preview` and approves the feel |
+| R4 | **Voice out** (piece H): Riff speaks each new cue. Default: the browser's `speechSynthesis` (free, offline, zero setup), with a chosen voice and a slightly higher pitch; mouth-less "talking" = a gentle squash pulse in time with speech (`onboundary` events). Mute toggle. Then, if SM gets a key, **ElevenLabs** as an upgrade: the coach process (not the browser) calls their TTS so the key stays server-side, sends audio to the dashboard, and falls back to the browser voice on any error. See §6 for the decision | `dashboard/`, `coach/voice.py` (agree with Codex) | 1.5 h | Cues spoken in Chrome; silent when muted; works with Wi-Fi off |
+| R4b | *Stretch, after 20:00 only if everything above works:* voice **in**: hold the bypass pedal (or press `V`) to talk; the browser's speech recognition sends the text as a user message to the coach. Kept out of scope by default because a loud guitar confuses it, Chrome's recognition needs internet, and the pedal already answers yes/no | `dashboard/` | 1 h | — |
 
-| # | Task | Files | Done when |
-|---|---|---|---|
-| R5 | **Fixtures first:** render takes with planted mistakes (a 400 ms hesitation at each chord change; a clean take) and matching hand-sample logs with a stall at the same times | `tools/virtual_guitar/`, `coach/fixtures/` | `python -m tools.ears` and `vision.eyes` each flag the planted spots |
-| R6 | **Coach core**, `deepagents` + `anthropic:claude-sonnet-5-5` (subagents on `claude-haiku-5-5`): tools `get_rig_state`, `get_take_report`, `get_hand_report`, `rig_control` (UDP, `source:"coach"`), `write_drill_card`, `say`. Subagents Ears and Eyes. Four drill skills (isolate-and-loop, slow-then-speed-up, dry check, keep-the-hand-moving) as skill folders. Journal under `practice/` (gitignored). `rig_control` requires approval, which comes from the pedal (see note). Runs as its own process, watches `--take-dir` for new takes, publishes `coach.frame` per R1 | `coach/`, `coach/requirements.txt` | Slice 1 (15:00 gate) runs on fixtures. Prints the cost and seconds per take. Survives no network: says so and Riff sleeps |
-| R7 | **Memory** (Amazon's "adaptive"): a player profile file the agent reads at start and updates at the end ("hand stalls G→C; drill 2 fixed it"). Second session opens with "Last time…" | `coach/` | Two consecutive sim sessions show it |
-| R8 | **Before/after:** after the drill take, compare the TakeReports and publish `before_after` | `coach/` | Numbers on the dashboard match `tools.ears` output |
+### SM's Codex (`sm/codex/`): the coach's brain (piece D)
 
-**Approval design (no new contract):** the coach proposes the drill and sets `awaiting_approval`. The player taps the pedal's loop switch, which is what starts recording the drill take anyway. The coach sees `loop.state` go to `recording` in the engine state feed and treats that as the OK. Effects changes wait for that.
+**Build from [COACH-BUILD.md](COACH-BUILD.md), step by step.** It pins `deepagents==0.7.38` and gives the exact `create_deep_agent` call, tools, subagents, skills, memory, backend, approval flow and tests. Start with its §1 smoke test.
 
-**API key:** SM puts `ANTHROPIC_API_KEY` in a local `.env` in each SM worktree. Never committed, never on the board. Check COACH.md §4 for the Sonnet 5.5 quirks (no custom temperature, no forced tool choice).
+| # | Task | Files | Guess | Done when |
+|---|---|---|---|---|
+| R5 | **Fixtures first:** render takes with planted mistakes (a 400 ms hesitation at each chord change; a clean take; the same pattern "after the drill" with a 120 ms gap), each with a take sidecar and a matching hand log with a stall at the same times | `tools/virtual_guitar/`, `coach/fixtures/` | 1 h | `python -m tools.ears` and `vision.eyes` flag the planted spots |
+| R6 | **Smoke test, then coach core** per COACH-BUILD §1–§8: model, six tools, Ears/Eyes subagents, workspace backend, `interrupt_on` for `rig_control`, feed publishing per R1, runner watching `--take-dir` | `coach/` | 4 h | Slice 1 (15:00 gate) on `--fixtures`; cost and seconds per take posted |
+| R6b | **Four drill skills** as `SKILL.md` folders (COACH-BUILD §4) | `coach/workspace/skills/` | 45 min | Smoke test lists them; the agent opens the right one for the planted hesitation |
+| R7 | **Memory:** `player.md` loaded with `memory=`, updated by the agent; second session opens with "Last time…" | `coach/` | 45 min | Two consecutive runs show it |
+| R8 | **Before/after:** `compare_takes` + `before_after` frame + `pleased` when it improved | `coach/` | 45 min | Numbers match `tools.ears` output |
+| R8b | **Tests without network** (COACH-BUILD §10) and the budget guard ($8 stop) | `tests/`, `coach/budget.py` | 45 min | CI green |
+
+**Approval design (no new engine contract):** the coach proposes the rig change and sets `awaiting_approval`. The player taps the pedal's loop switch, which starts recording the drill take anyway; the coach sees `loop.state` go to `recording` and approves. `Y` on the dashboard (R1/R3) also approves. Details in COACH-BUILD §6.
+
+**API key: done.** SM's key is in a gitignored `.env` in SM's checkouts and in `~/.config/omniriff/.env`, and COACH-BUILD §0.5 loads both. Other agents don't need it: they build against stubs and fixtures. The demo laptop gets it in person at bring-up (never via the board or the repo: the repo is public). The key holds about $10; the coach stops itself at $8.
 
 ### Angelo's Claude (`angelo/claude/`): integration, real signals, story
 
@@ -152,7 +160,7 @@ Rules: one agent per row; stay in your files; post `claiming R<n>` on issue #1 b
 
 | # | Task | Files | Done when |
 |---|---|---|---|
-| R17 | **Stall detection on a real webcam now:** strum (or air-strum) with a deliberate freeze at a change, log the hand feed, run `vision.eyes`, tune thresholds, post detection rate. Also expose a small helper so the coach gets a HandReport for a take's time window from the live hand feed (47802) | `vision/eyes.py` | Freezes ≥ 300 ms detected on real video; helper tested |
+| R17 | **Give the coach the strumming hand.** Today the hand feed (47802) carries only the one tracked control hand, but stalls happen in the *strumming* hand. (a) `python -m vision --hand-log PATH` appends one JSON line per frame: `{"timestamp_ms": <unix wall clock>, "hands": [{"handedness": "Left"\|"Right", "wrist": [x, y], "confidence": c}]}` for every detected hand. (b) `vision.eyes.report_for_window(log_path, start_unix_ms, end_unix_ms, take_id, hand="strum")` returns a HandReport for exactly that take, using the take sidecar's `started_unix_ms`/`ended_unix_ms`. (c) **HandReport amendment (additive):** add `take_id`, `started_unix_ms`, and per stall `start_ms`/`end_ms` measured from the take start, the same time base as TakeReport's `at_ms`, so the coach can line a stall up with a hesitation. (d) Try it on a real webcam now: strum or air-strum with a deliberate freeze; post the detection rate | `vision/__main__.py` (or the demo entry point from V2), `vision/eyes.py`, `protocol/` note | Freezes ≥ 300 ms detected on real video; `report_for_window` tested on a fixture log |
 
 ### John's Gemini (`john/gemini/`)
 
@@ -171,9 +179,10 @@ Rules: one agent per row; stay in your files; post `claiming R<n>` on issue #1 b
 
 | Who | Task | By |
 |---|---|---|
-| **SM** | Sign off this roadmap; give the coach go-ahead; put the API key in local `.env`s; confirm TakeReport + HandReport fields | **Now** |
-| SM | Decide who plays guitar at the table and rehearse the "stumble" take | 20:00 |
-| Angelo | Merge this; main-track decision at the midnight gate; Discord usernames on Devpost | 00:00 |
+| ~~SM~~ | ~~Sign off; coach go-ahead; API key; confirm report fields~~ | **Done 11:45.** TakeReport v1 confirmed as is. HandReport needs the additive amendment in R17(c) |
+| SM | Optional: an ElevenLabs account and API key if we want Riff's voice upgraded (R4). Free tier first; check that it allows API use | 17:00 |
+| **Whole team, in person** | **Who plays guitar at the table** (and rehearses the stumble take), and **Education vs Entertainment** (§2.1). Discussed together, not decided by any agent | Next team huddle, before 20:00 |
+| Angelo | Merge this; Discord usernames on Devpost; record the main-track choice from the huddle at the midnight gate | 00:00 |
 | Anyone free | **Charity + Peri:** talk to 2–3 guitarists and, ideally, one guitar teacher or campus music club officer. One question: "What do you do when a passage keeps going wrong and you don't know why?" Get name, role, and a quote or photo with permission. That satisfies Peri's evidence rule and gives Charity real voices | 18:00 |
 | Joey | Wake Joey's Codex for R15 | Now |
 
