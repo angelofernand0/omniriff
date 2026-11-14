@@ -31,6 +31,9 @@ recordings must be captured/trimmed into a correctly aligned take first.
 Take/start timestamps are never invented from filenames or current time.
 An existing output folder is rejected before any analysis runs.
 
+For a folder of completed takes, use the [session index](SESSION-EVIDENCE.md).
+It preserves valid pages and lists rejected files explicitly.
+
 ## From existing coach reports
 
 Use completed reports from the coach workspace (`takes/<take_id>/take.json` and
