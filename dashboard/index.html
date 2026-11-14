@@ -86,6 +86,12 @@
 
     <!-- COACH COLUMN: Riff's home. Never covers the instrument. Filled by coach.js from the coach feed. -->
     <aside class="coach-col" id="coachDock" data-state="asleep" aria-label="Coach">
+      <!-- the practice loop: where you are, and what the pedal does right now (hands-free) -->
+      <div class="steps" id="steps" data-step="1">
+        <div class="steps-head"><span class="mode" id="modeBadge" data-mode="practice">PRACTICE</span></div>
+        <ol><li data-n="1">GOAL</li><li data-n="2">DRILL 1</li><li data-n="3">DRILL 2</li><li data-n="4">DONE</li></ol>
+        <p class="pedal" id="pedalNext"><b>PEDAL</b><span>Tap, play, tap again</span></p>
+      </div>
       <div class="booth">
         <div class="riff-socket riff-stage" aria-hidden="true"></div>
         <div class="say" aria-live="polite">
@@ -111,6 +117,7 @@
           <div class="p-chart" id="pChart" aria-label="Every take this session"></div>
         </div>
         <div class="p-next" id="pNextRow" hidden><b>NEXT</b><span id="pNext"></span></div>
+        <div class="p-summary" id="pSummary" hidden><b>SESSION</b><span></span></div>
         <p class="p-last" id="pLast" hidden></p>
       </section>
       <ol class="plan" id="coachPlan" aria-label="Coach's plan for this take"></ol>

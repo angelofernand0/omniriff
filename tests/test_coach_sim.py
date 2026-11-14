@@ -105,6 +105,53 @@ class ScriptedCoachTests(unittest.TestCase):
         self.assertGreaterEqual(waited, 0.2 + PAUSE_S - 0.05)
         self.assertLess(waited, 0.2 + PAUSE_S + 0.3)
 
+    def test_full_session_flow(self):
+        # ROADMAP §1 "How you use it": take → drill 1 → drill 2 → wrap-up → PLAY → Y → new round
+        async def go():
+            from websockets.asyncio.client import connect
+            q: asyncio.Queue = asyncio.Queue()
+
+            async def states():
+                while True:
+                    yield await q.get()
+            port = asyncio.get_running_loop().create_future()
+            task = asyncio.create_task(run_scripted_coach(0, udp_port=None, pace=0, states=states(), ready=port.set_result))
+            seen = []
+            async with connect(f'ws://127.0.0.1:{await port}') as ws:
+                async def until(pred):
+                    while True:
+                        f = json.loads(await asyncio.wait_for(ws.recv(), 2))
+                        if f['type'] != 'coach.frame':
+                            continue
+                        seen.append(f)
+                        if pred(f):
+                            return f
+                take = lambda: [q.put_nowait(state(s)) for s in ('recording', 'playing')]  # noqa: E731
+                q.put_nowait(state('idle'))
+                take()
+                await until(lambda f: f['awaiting_approval'])                       # drill 1 proposed
+                take()                                                              # pedal = yes, drill 1 take
+                d2 = await until(lambda f: (f.get('session') or {}).get('drill', {}) and f['session']['drill']['step'] == 2)
+                take()                                                              # drill 2 take
+                play = await until(lambda f: (f.get('session') or {}).get('mode') == 'play')
+                take()                                                              # PLAY: the pedal just loops
+                await asyncio.sleep(0.05)
+                await ws.send(json.dumps({'version': 1, 'type': 'coach.approve', 'timestamp_ms': 1, 'approval_id': 'again'}))
+                again = await until(lambda f: f.get('session') is None and f['state'] == 'idle')
+            task.cancel()
+            return seen, d2, play, again
+
+        seen, d2, play, again = asyncio.run(go())
+        for f in seen:
+            self.assertEqual([e.message for e in COACH.iter_errors(f)], [], f)
+        self.assertEqual([p['status'] for p in d2['session']['plan']], ['done', 'now'])
+        self.assertEqual([p['status'] for p in play['session']['plan']], ['done', 'done'])
+        self.assertTrue(play['session']['summary'])
+        self.assertTrue(play['session']['last_time'])
+        self.assertEqual(play['session']['metric']['history'], [430.0, 120.0, 110.0])
+        from tools.sim.coach import ROUND_CUE
+        self.assertEqual(again['cue'], ROUND_CUE)
+
     def test_pedal_approves(self):
         self.check(*self.run_session('pedal'))
 

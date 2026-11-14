@@ -176,3 +176,82 @@
 .fx-power { grid-column: 3; }
 /* the pinch readout replaces the cards completely, FX on or off */
 .app[data-fx="engaged"] .cards { opacity: 0 !important; }
+
+/* ---------- sizing that can't overflow (measured review, SM 2026-11-14) ----------
+   Every big readout sizes itself to its own box (container query units), so a 3-digit value or a
+   narrow window can never push text out of its panel. */
+.card, .loop-state, .fx-power, .engaged-text, .practice, .p-now, .coach-col { container-type: inline-size; }
+.pct { font-size: clamp(32px, 26cqi, 112px); line-height: 1.05; white-space: nowrap; }
+.card h3 { font-size: clamp(14px, 7cqi, 24px); }
+.readout { flex-wrap: wrap; row-gap: var(--s1); }
+.sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.engaged-name { font-size: clamp(16px, 9cqi, 48px); }
+.engaged-pct { font-size: clamp(40px, 34cqi, 144px); line-height: 1.05; white-space: nowrap; }
+.loop-word { font-size: clamp(24px, 17cqi, 72px); line-height: 1.1; }
+.loop-dot { width: 0.5em; height: 0.5em; }
+.fx-power b { font-size: clamp(16px, 14cqi, 32px); line-height: 1.1; }
+.fx-glyph { font-size: clamp(32px, 30cqi, 72px); line-height: 1.1; }
+.fx-word { font-size: clamp(14px, 11cqi, 24px); line-height: 1.1; }
+
+/* the coach column: Riff on top, its line under it at full column width, so long lines have room */
+.booth { grid-template-columns: 1fr; justify-items: start; gap: var(--s3); min-height: 0; flex: none; }
+.booth .riff-socket { width: clamp(96px, 22cqi, 144px); height: clamp(96px, 22cqi, 144px); }
+.say { width: 100%; }
+.spot-cue { font-size: clamp(18px, 5.4cqi, 30px); }        /* coach.js shrinks it further if a line won't fit */
+.spot-ask, .practice, .spot-ba { flex: none; }
+.plan { flex: 0 1 auto; min-height: 0; overflow: hidden; }
+.p-read { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: var(--s1) var(--s3); }
+.p-read > span:first-child { white-space: nowrap; }
+.p-read b { font-size: clamp(20px, 9cqi, 32px); white-space: nowrap; }
+.p-target { grid-column: 1 / -1; margin-left: 0; }
+.p-now { grid-template-columns: auto minmax(0, 1fr); }
+.p-attempt { grid-column: 1 / -1; }
+.p-drill { white-space: normal; }
+/* a result reads as three rows: label left, before → after right */
+.spot-ba { grid-template-columns: 1fr; gap: var(--s2); }
+.spot-ba div { flex-direction: row; justify-content: space-between; align-items: baseline; }
+.spot-ba b { font-size: clamp(16px, 6cqi, 24px); flex-wrap: nowrap; white-space: nowrap; }
+#coachDock[data-away="true"] .riff-socket { outline: 0; }   /* no empty dashed box while Riff is out */
+/* the pixel font's glyphs are ~1.15em tall: big pixel numbers get a line box that contains them */
+.pct, .engaged-pct, .loop-word, .p-read b, .spot-ba b, .fx-glyph, .fx-power b, .fx-word, .engaged-name { line-height: 1.2; }
+.engaged-text { min-width: 0; overflow: hidden; }
+
+/* the practice loop strip: four steps, the current one lit, and what the pedal does now */
+.steps { flex: none; display: flex; flex-direction: column; gap: var(--s2); }
+.steps ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.steps li { font: 400 clamp(10px, 2.6cqi, 14px)/1.2 var(--font-pixel); color: var(--faint); background: var(--bg); border: var(--stroke) solid var(--line); padding: var(--s1) var(--s2); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.steps li::before { content: attr(data-n) ' '; color: var(--dim); }
+.steps[data-step="1"] li[data-n="1"], .steps[data-step="2"] li[data-n="2"], .steps[data-step="3"] li[data-n="3"], .steps[data-step="4"] li[data-n="4"] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.steps[data-step="1"] li[data-n="1"]::before, .steps[data-step="2"] li[data-n="2"]::before, .steps[data-step="3"] li[data-n="3"]::before, .steps[data-step="4"] li[data-n="4"]::before { color: var(--accent-ink); }
+.pedal { margin: 0; display: flex; align-items: baseline; gap: var(--s3); }
+.pedal b { font: 400 var(--p1)/1.2 var(--font-pixel); color: var(--accent); }
+.pedal span { font: 600 clamp(14px, 3.6cqi, 20px)/1.3 var(--font-mono); color: var(--text); }
+
+/* crowded moments stay inside the screen: the prompt is one slim row, the result one line,
+   and the plan steps aside while either is showing */
+.spot-ask { padding: var(--s2) var(--s3); gap: var(--s2); }
+.spot-ask > b { font-size: clamp(14px, 4cqi, 20px); }
+.spot-ba { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); padding: var(--s2) 0 0; border-top: var(--stroke) solid var(--line); }
+.spot-ba div { gap: var(--s2); }
+.spot-ba span { font-size: 12px; }
+.spot-ba b { font-size: clamp(14px, 4cqi, 18px); }
+.coach-col[data-ask="true"] .plan, .coach-col:has(#coachBA:not([hidden])) .plan { display: none; }
+.coach-col { overflow: hidden; }
+@media (max-height: 820px) { .booth .riff-socket { width: 88px; height: 88px; } .steps li { padding: 2px var(--s1); } }
+.app[data-fx="engaged"] .cards { visibility: hidden; transition: none; }
+
+/* session map + mode (ROADMAP §1 "How you use it") */
+.steps-head { display: flex; justify-content: flex-end; }
+.mode { font: 400 clamp(11px, 2.8cqi, 14px)/1.2 var(--font-pixel); padding: 2px var(--s2); border: var(--stroke) solid var(--accent); color: var(--accent); }
+.mode[data-mode="play"] { border-color: var(--ok); color: var(--ok); }
+.steps li::before { content: none; }
+.steps[data-mode="play"] li { color: var(--dim); }
+.steps[data-mode="play"] li[data-n] { background: var(--bg) !important; border-color: var(--line) !important; color: var(--dim) !important; }
+.p-summary { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3); border: var(--stroke) solid var(--ok); }
+.p-summary b { font: 400 var(--p1)/1.2 var(--font-pixel); color: var(--ok); }
+.p-summary span { font: 600 clamp(14px, 3.6cqi, 18px)/1.35 var(--font-mono); color: var(--text); }
+/* the pinch readout swaps in instantly, so the tone area never flashes empty */
+.app[data-fx="engaged"] .engaged { animation: none; }
+/* at DONE the session summary is the result; the before/after line steps aside */
+.coach-col:has(#pSummary:not([hidden])) #coachBA { display: none !important; }
+@media (max-height: 820px) { #coachBA { display: none !important; } }   /* short screens: the line, the number and the chart already say it */

@@ -103,8 +103,18 @@
     window.OmniRiff.coach.set({ state: f.state, target, cue: f.cue || '', mood: f.mood, stage: false });
     mark(target);
     if (dock) dock.dataset.state = f.state;
-    if (els.cue) els.cue.textContent = f.cue || '';
+    if (els.cue) { els.cue.textContent = f.cue || ''; fitCue(); }
   }
+  // Riff's line always fits: it may use about a third of the column, then the type steps down
+  function fitCue() {
+    const el = els.cue;
+    if (!el || !dock) return;
+    el.style.fontSize = '';
+    let size = parseFloat(getComputedStyle(el).fontSize) || 24;
+    const room = dock.clientHeight * 0.34;
+    while (el.scrollHeight > room && size > 14) { size -= 1; el.style.fontSize = size + 'px'; }
+  }
+  window.addEventListener('resize', fitCue);
   function releaseHeld() { if (held) { const f = held; held = null; riff(f); } }
 
   function apply(f) {
@@ -151,7 +161,43 @@
       }
     }
     practice(f);
+    steps();
   }
+
+  // ---------- the practice loop, hands-free: which step, and what the pedal does now ----------
+  // From the real loop state (app.js writes data-loop) and the coach frame; never a guess.
+  function steps() {
+    const box = $('steps'), word = $('pedalNext'), badge = $('modeBadge');
+    if (!box || !word) return;
+    const f = frame, loop = app ? app.dataset.loop : 'idle';
+    const ses = f && f.session;
+    const mode = !f || f.state === 'asleep' ? 'play' : ses && ses.mode === 'play' ? 'play' : 'practice';
+    // where we are in the session map: GOAL → DRILL 1 → DRILL 2 → DONE
+    let step = 1;
+    if (ses && ses.plan && ses.plan.length) {
+      const now = ses.plan.findIndex((d) => d.status === 'now');
+      step = now >= 0 ? now + 2 : 4;
+    } else if (ses && ses.drill) step = ses.drill.step + 1;
+    box.dataset.step = String(step);
+    box.dataset.mode = mode;
+    if (badge) { badge.dataset.mode = mode; badge.textContent = mode === 'play' ? 'PLAY' : 'PRACTICE'; }
+    // what the pedal does right now
+    let say;
+    if (mode === 'play') say = loop === 'recording' ? 'Tap to close the loop' : 'Loop and play freely. Hold for another round (Y here)';
+    else if (loop === 'recording') say = step === 1 ? 'Tap to stop when you\'ve played it' : 'Tap to stop the drill take';
+    else if (f && f.awaiting_approval) say = 'Tap to start the drill (or wait to skip)';
+    else if (f && (f.state === 'thinking' || f.state === 'speaking' || f.state === 'pointing')) say = 'Nothing yet, Riff is on it';
+    else if (step === 1) say = 'Tap, play what you\'re working on, tap again';
+    else if (step === 4) say = 'Nothing yet, Riff is wrapping up';
+    else say = `Tap to play drill ${step - 1}`;
+    word.querySelector('span').textContent = say;
+    // in PLAY the pedal belongs to the looper, so another round is asked for differently
+    if (els.ask) {
+      const b = els.ask.querySelector('b');
+      if (b) b.textContent = mode === 'play' ? 'ANOTHER ROUND? PRESS Y' : 'TAP PEDAL TO START';
+    }
+  }
+  if (app) new MutationObserver(steps).observe(app, { attributes: true, attributeFilter: ['data-loop'] });
 
   // PRACTICE: the session the coach is running. From `session` when the coach sends it; otherwise
   // the best the frame allows (the drill card), and never an invented number.
@@ -181,6 +227,12 @@
         `<i class="${pass(v) ? 'pass' : ''}${i === m.history.length - 1 ? ' last' : ''}" style="height:${Math.max(4, (v / top) * 100).toFixed(1)}%" title="${Math.round(v)} ${esc(m.unit)}"></i>`).join('')
         + `<span class="goal" style="bottom:${((m.target / top) * 100).toFixed(1)}%" data-label="${Math.round(m.target)} ${esc(m.unit)}"></span>`;
     }
+    const sum = $('pSummary');
+    if (sum) {
+      sum.hidden = !(ses && ses.summary);
+      if (ses && ses.summary) sum.querySelector('span').textContent = ses.summary;
+    }
+    if (ses && !ses.drill) els.now.hidden = true;
     const next = ses && ses.next;
     els.nextRow.hidden = !next;
     if (next) els.next.textContent = next;
@@ -249,7 +301,7 @@
   }
   function start(item) {
     if (held && held.cue === item.text) releaseHeld();   // the line starts: Riff moves with it
-    else if (els.cue) els.cue.textContent = item.text;
+    else if (els.cue) { els.cue.textContent = item.text; fitCue(); }
     if (item.browser) speakBrowser(item.text); else playAudio(item);
   }
   function finished() {
