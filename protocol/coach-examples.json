@@ -1,0 +1,60 @@
+[
+  {
+    "version": 1, "type": "coach.frame", "timestamp_ms": 1794700000000, "session_id": "s1", "take_id": null,
+    "state": "idle", "mood": "neutral", "target": "player",
+    "cue": "Play me something. Tap the pedal to record.",
+    "todos": [], "drill_card": null, "before_after": null, "awaiting_approval": null
+  },
+  {
+    "version": 1, "type": "coach.frame", "timestamp_ms": 1794700012000, "session_id": "s1", "take_id": "take-20261114-120000-1",
+    "state": "thinking", "mood": "concentrating", "target": "hand", "cue": null,
+    "todos": [
+      { "text": "Check timing (ears)", "status": "completed" },
+      { "text": "Check strumming hand (eyes)", "status": "in_progress" },
+      { "text": "Pick one drill", "status": "pending" },
+      { "text": "Set up the rig", "status": "pending" }
+    ],
+    "drill_card": null, "before_after": null, "awaiting_approval": null
+  },
+  {
+    "version": 1, "type": "coach.frame", "timestamp_ms": 1794700020000, "session_id": "s1", "take_id": "take-20261114-120000-1",
+    "state": "pointing", "mood": "encouraging", "target": "bypass",
+    "cue": "You're late on the change because your strumming hand stops. Keep it swinging.",
+    "todos": [
+      { "text": "Check timing (ears)", "status": "completed" },
+      { "text": "Check strumming hand (eyes)", "status": "completed" },
+      { "text": "Pick one drill", "status": "completed" },
+      { "text": "Set up the rig", "status": "in_progress" }
+    ],
+    "drill_card": {
+      "skill": "keep-the-hand-moving", "title": "Keep the hand moving", "passage": "G to C change, bars 2-3",
+      "reps": 4, "pass_rule": "longest gap under 150 ms", "rig": { "bypass": true },
+      "journal_path": "/journal/s1/take-20261114-120000-1.md"
+    },
+    "before_after": null,
+    "awaiting_approval": {
+      "id": "a1", "summary": "Effects off so you hear your timing dry.",
+      "actions": [{ "control": "bypass" }], "expires_unix_ms": 1794700080000
+    }
+  },
+  {
+    "version": 1, "type": "coach.frame", "timestamp_ms": 1794700060000, "session_id": "s1", "take_id": "take-20261114-120100-2",
+    "state": "pleased", "mood": "proud", "target": "player",
+    "cue": "Your longest gap went from 430 to 120 milliseconds. That's the change.",
+    "todos": [
+      { "text": "Check timing (ears)", "status": "completed" },
+      { "text": "Check strumming hand (eyes)", "status": "completed" },
+      { "text": "Pick one drill", "status": "completed" },
+      { "text": "Set up the rig", "status": "completed" },
+      { "text": "Compare with last take", "status": "completed" }
+    ],
+    "drill_card": null,
+    "before_after": {
+      "before_take_id": "take-20261114-120000-1", "after_take_id": "take-20261114-120100-2",
+      "hesitations": [3, 0], "worst_gap_ms": [430, 120], "tempo_stability": [0.71, 0.93], "improved": true
+    },
+    "awaiting_approval": null
+  },
+  { "version": 1, "type": "coach.approve", "timestamp_ms": 1794700025000, "approval_id": "a1" },
+  { "version": 1, "type": "coach.reject", "timestamp_ms": 1794700025000, "approval_id": "a1" }
+]
