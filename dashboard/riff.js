@@ -109,6 +109,12 @@
           const ink = eyePixel(qx - e.x, qy - e.y, e, f, p);
           if (ink) { c = ink === 2 ? PAL.paper : PAL.ink; break; }
         }
+        // mouth: only while Riff talks; it opens with the loudness of its own voice
+        if (p.mouth > 0.05 && !p.asleep) {
+          const mx = qx - p.lookX * 1.2, my = qy - (4.9 + p.lookY * 0.8);
+          const mw = 1.5 + 1.1 * p.mouth, mh = 0.45 + 1.9 * p.mouth;
+          if ((mx / mw) ** 2 + (my / mh) ** 2 <= 1) c = PAL.ink;
+        }
         data[i] = c[0]; data[i + 1] = c[1]; data[i + 2] = c[2]; data[i + 3] = 255;
       }
     }
@@ -153,7 +159,7 @@
     if (state === 'pleased') Object.assign(face, FACE.proud);
     const look = { thinking: [0.6, -0.7], listening: [-0.4, 0.5], pointing: [-0.8, 0.4] }[state] || [0, 0];
     return { spin: 0, d: 0, a: 0, v: 0, tilt: face.head || 0, hop: 0, lookX: look[0], lookY: look[1],
-      lidL: 0, lidR: 0, face, asleep: state === 'asleep', glint: m === 'aha' ? 1 : 0 };
+      lidL: 0, lidR: 0, face, asleep: state === 'asleep', glint: m === 'aha' ? 1 : 0, mouth: state === 'speaking' ? 0.5 : 0 };
   }
 
   // a still portrait of one state (and mood), for the brand sheet and docs. No behaviour.
@@ -201,7 +207,8 @@
       fx.fillStyle = ch === '#' ? `rgb(${PAL.ink})` : `rgb(${PAL.paper})`;
       fx.fillRect(x, y, 1, 1);
     })); }
-  let pressAt = -1e9, lastBypass = null;
+  let pressAt = -1e9, contactDone = true, lastBypass = null;
+  const PRESS = { back: 170, hit: 250, end: 640 };   // ms: wind-up until back, lunge until hit, recoil until end
   // a press that happened while Riff was still on its way: it keeps that target, arrives, then presses
   let lockEl = null, lockUntil = 0, pendingPress = false;
   const curTarget = () => (performance.now() < lockUntil && lockEl ? lockEl : resolve(st.target));
@@ -214,6 +221,35 @@
   const socket = document.querySelector('.riff-socket');
   const stageEl = document.querySelector('.riff-stage');
   const dockLine = document.getElementById('coachLine');
+  // while Riff is out, its home keeps a dotted outline and says where it went, so the bubble
+  // still points at someone
+  let ghost = null, ghostLabel = null, ghostText = '';
+  if (socket) {
+    ghost = document.createElement('div');
+    ghost.className = 'riff-ghost';
+    ghost.setAttribute('aria-hidden', 'true');
+    const gc = makeCanvas(0);
+    gc.className = 'riff-px riff-ghost-px';
+    const gx = gc.getContext('2d'), gi = gx.createImageData(G, G);
+    const inside = (x, y) => { const qx = x + 0.5 - G / 2, qy = y + 0.5 - G / 2 - 0.5, r = Math.hypot(qx, qy);
+      return r <= 10.4 + 0.62 * Math.cos(8 * Math.atan2(qy, qx)); };
+    const col = hex('--muted', '#8A8A9A');
+    for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) {
+      const edge = inside(x, y) && (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1));
+      const i = (y * G + x) * 4;
+      if (edge && (x + y) % 2 === 0) { gi.data[i] = col[0]; gi.data[i + 1] = col[1]; gi.data[i + 2] = col[2]; gi.data[i + 3] = 255; }
+    }
+    gx.putImageData(gi, 0, 0);
+    ghostLabel = document.createElement('span');
+    ghostLabel.className = 'riff-gone';
+    ghost.append(gc);
+    socket.appendChild(ghost);
+    (socket.parentElement || socket).appendChild(ghostLabel);   // beside the socket, inside the row
+  }
+  const placeName = (t) => {
+    const n = t && (t.dataset.riffName ? t : t.closest('[data-riff-name]'));
+    return n ? n.dataset.riffName : 'work';
+  };
   const dockSub = document.getElementById('coachSub');
 
   const st = { state: 'asleep', target: null, cue: '', mood: 'sleepy', moodSet: false };
@@ -226,7 +262,7 @@
   let windupUntil = 0, lastGoal = null;
   let blinkStart = -1e9, blinkAt = performance.now() + 2500, doubleBlink = false;
   let winkStart = -1e9, winkSide = 1, ahaUntil = 0, peekUntil = 0;
-  let level = 0, voice = 0, voiceAt = 0, hopPhase = 0;
+  let level = 0, voice = 0, voiceAt = 0, hopPhase = 0, mouth = 0, syl = false;
   let lastLoop = null, lastStrum = null;
 
   // real signals: the guitar's level, Riff's own voice, loop record, strums (G live layer)
@@ -252,11 +288,17 @@
     voice = typeof v === 'number' ? Math.max(0, Math.min(1, v)) : 0;
     voiceAt = performance.now();
   });
-  function press() {                      // Riff pushes the control it is standing at
-    pressAt = performance.now();
+  function press() {                      // Riff winds up, lunges and pushes the control it is standing at
+    pressAt = performance.now(); contactDone = false;
+    def.vv += 1.4;                         // gathers itself
+  }
+  function contact() {                   // the finger lands: the control moves now, not before
     const t = curTarget();
-    if (t) { t.classList.add('pressed'); setTimeout(() => t.classList.remove('pressed'), 200); }
-    def.dv -= 2.2;                         // a little squash into the push
+    if (t) {
+      t.classList.add('pressed'); setTimeout(() => t.classList.remove('pressed'), 220);
+      window.dispatchEvent(new CustomEvent('omniriff:riffpress', { detail: { el: t } }));
+    }
+    def.dv -= 4.5; def.vv -= 1.2;          // squash on impact, wobble out
   }
   function pop(strength) { def.vv += 3.2 * strength; ahaUntil = performance.now() + 260 * strength; }
 
@@ -283,6 +325,9 @@
     if (!r.width) return homePoint();
     const perch = t.dataset.perch || 'tr';
     // a control (a button): stand beside it and reach over with the finger; a panel: perch in a corner
+    if (t.dataset.reach === 'down') {     // stand over the spot inside its panel, point down at it
+      return { x: Math.min(window.innerWidth - box() / 2 - 8, Math.max(box() / 2 + 8, r.left + r.width / 2)), y: r.top + box() * 0.5 };
+    }
     if (t.dataset.reach) {
       const left = t.dataset.reach === 'left';
       return { x: left ? r.left - box() * 0.85 : r.right + box() * 0.85, y: r.top + r.height / 2 };
@@ -393,7 +438,12 @@
     if (now - voiceAt > 300) voice *= Math.pow(0.02, dt);                       // boundary pulses decay
     let vTarget = 0;
     if (st.state === 'listening') vTarget += level * 0.07;
-    if (voice > 0.02) vTarget += voice * 0.13;                                   // talks with its body
+    // talking: the mouth follows the voice (fast open, slower close), each syllable bobs the body
+    // and nods the head, so it reads as speech and not as the idle breathing
+    mouth += (voice - mouth) * Math.min(1, dt * (voice > mouth ? 40 : 16));
+    if (!syl && voice > 0.42) { syl = true; if (motion) { def.vv += 1.5; def.tv += (Math.random() - 0.5) * 0.9; } }
+    else if (syl && voice < 0.22) syl = false;
+    if (voice > 0.02) vTarget += voice * 0.2;                                    // talks with its body
     if (st.state !== 'asleep' && !moving) vTarget += 0.012 * Math.sin(now / 650); // breathing
     if (st.state === 'asleep') vTarget -= 0.05 + 0.02 * Math.sin(now / 1100);
     // pleased: hop. Squash at contact, stretch in the air, all through the spring
@@ -468,25 +518,58 @@
     const B = box();
     el.style.width = el.style.height = B + 'px';
     canvas.style.width = canvas.style.height = G * cssPx + 'px';
-    el.style.transform = `translate(${(pos.x - B / 2).toFixed(1)}px, ${(pos.y - B / 2).toFixed(1)}px)`;
 
-    // the finger: out while Riff is at a control; it pushes in when Riff presses
+    // the finger: out while Riff is at a control or a spot. A press is wind-up, lunge, contact, recoil
     const tgt = curTarget();
     const locked = now < lockUntil && lockEl;
     const arrived = tgt && !moving && dist < 14 && (st.state === 'pointing' || locked);
-    if (pendingPress && arrived) { pendingPress = false; press(); lockUntil = now + 380; }   // press, a beat, then go
-    const reachLeft = tgt && (tgt.getBoundingClientRect().left + tgt.getBoundingClientRect().width / 2) < pos.x;
-    const push = Math.max(0, 1 - Math.abs((now - pressAt) - 90) / 90);   // 0..1..0 over 180 ms
-    const fs = cssPx * 0.9;
-    finger.style.width = finger.width * fs + 'px';
-    finger.style.height = finger.height * fs + 'px';
-    finger.dataset.on = String(!!arrived);
-    finger.style.transform = `translate(${reachLeft ? -(finger.width * fs + B * 0.32) - push * fs * 2 : B * 0.32 + push * fs * 2}px, ${(-finger.height * fs / 2).toFixed(1)}px) scaleX(${reachLeft ? -1 : 1})`;
+    if (pendingPress && arrived) { pendingPress = false; press(); lockUntil = now + PRESS.end + 200; }   // press, a beat, then go
+    const tr = tgt && tgt.getBoundingClientRect();
+    const down = !!tgt && tgt.dataset.reach === 'down';
+    const reachLeft = !down && !!tgt && (tr.left + tr.width / 2) < pos.x;
+    const dir = down ? [0, 1] : reachLeft ? [-1, 0] : [1, 0];
+    const tp = now - pressAt;
+    let lunge = 0;
+    if (tp >= 0 && tp < PRESS.end && motion) {
+      if (tp < PRESS.back) lunge = -0.4 * Math.sin((tp / PRESS.back) * Math.PI / 2);
+      else if (tp < PRESS.hit) lunge = -0.4 + 1.4 * ((tp - PRESS.back) / (PRESS.hit - PRESS.back));
+      else lunge = (1 - (tp - PRESS.hit) / (PRESS.end - PRESS.hit)) ** 2;
+      if (tp > PRESS.back && tp < PRESS.hit) { def.a = Math.atan2(dir[1], dir[0]); def.d += (0.3 - def.d) * Math.min(1, dt * 30); }
+    }
+    if (!contactDone && tp >= PRESS.hit) { contactDone = true; contact(); }
+    const off = lunge * B * 0.3;
+    el.style.transform = `translate(${(pos.x - B / 2 + dir[0] * off).toFixed(1)}px, ${(pos.y - B / 2 + dir[1] * off).toFixed(1)}px)`;
+    const push = Math.max(0, lunge) * 2.5;
+    const fs = cssPx * 0.9, fw = finger.width * fs, fh = finger.height * fs;
+    finger.style.width = fw + 'px';
+    finger.style.height = fh + 'px';
+    finger.dataset.on = String(!!arrived || (tp >= 0 && tp < PRESS.end));
+    finger.style.transform = down
+      ? `translate(${(-fw / 2).toFixed(1)}px, ${(B * 0.3 + fw / 2 - fh / 2 + push * fs).toFixed(1)}px) rotate(90deg)`
+      : `translate(${reachLeft ? -(fw + B * 0.32) - push * fs : B * 0.32 + push * fs}px, ${(-fh / 2).toFixed(1)}px) scaleX(${reachLeft ? -1 : 1})`;
+
+    // home: while Riff is out, the ghost says where it went
+    if (ghost) {
+      const hp = homePoint();
+      const out = Math.hypot(pos.x - hp.x, pos.y - hp.y) > B * 0.6;   // really left, not just told to
+      if (dock && dock.dataset.home !== String(!out)) dock.dataset.home = String(!out);
+      if (out) {
+        const sr = socket.getBoundingClientRect();
+        const gcv = ghost.firstChild;
+        const gpx = (sr.width / 24) * G;
+        if (gcv.style.width !== gpx + 'px') gcv.style.width = gcv.style.height = gpx + 'px';
+        const dx = pos.x - (sr.left + sr.width / 2), dy = pos.y - (sr.top + sr.height / 2);
+        const arrow = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? '←' : '→') : (dy < 0 ? '↑' : '↓');
+        const text = tgt ? `${arrow} at ${placeName(tgt)}` : `${arrow} on the way back`;
+        if (text !== ghostText) { ghostText = text; ghostLabel.textContent = text; }
+      }
+    }
     const scale = 1 + 0.12 * ahaK;
     render(ctx, img, {
       spin: spin - twist, d: Math.max(-0.3, Math.min(0.4, def.d)), a: def.a, v: Math.max(-0.25, Math.min(0.25, def.v)), tilt: def.tilt, hop: def.hop,
       lookX: look.x, lookY: look.y, lidL, lidR, asleep: st.state === 'asleep' && !(now < peekUntil),
       face: { ...face, l: face.l * scale, r: face.r * scale }, glint: ahaK || st.mood === 'aha' ? 1 : 0,
+      mouth: Math.min(1, mouth * 1.25),
     });
     el.dataset.shut = String(st.state === 'asleep');
     el.dataset.side = pos.x > window.innerWidth / 2 ? 'left' : 'right';

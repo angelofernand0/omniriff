@@ -3,7 +3,9 @@
 //   ws://127.0.0.1:47803 (?coachws= overrides)   served by coach/ or by tools/sim's scripted session
 //
 // One column, one reading order: the session map, Riff with what it is saying (a speech bubble
-// that types out in step with the voice), then GOAL / NOW / GAP / NEXT, then what the pedal does.
+// that types out in step with the voice), the deep agent at work (plan, subagents, skills, files,
+// memory: only what the brain reports in todos/activity), then GOAL / NOW / GAP / NEXT (or the
+// session result at DONE), then what the pedal does right now, as keycaps.
 // Riff, the bubble and the voice start together: a new line waits (up to 2.5 s) for its audio,
 // and Riff never moves or starts a new line while the current one is still being said.
 // Keys exist only because the simulator has no pedal: Y / N answer Riff, M mutes.
@@ -17,12 +19,16 @@
   const $ = (id) => document.getElementById(id);
   const app = $('app'), dock = $('coachDock'), led = $('led-coach');
   const ui = {
-    map: $('steps'), line: $('coachLine'), pedal: $('pedalNext'),
+    map: $('steps'), line: $('coachLine'), pedal: $('pedalNext'), pedalActs: document.querySelector('#pedalNext .acts'),
     goalRow: $('pGoalRow'), goal: $('pGoal'), nowRow: $('pNow'), drill: $('pDrill'), attempt: $('pAttempt'),
     gapRow: $('pMetric'), gapName: $('pMetricName'), gap: $('pMetricNow'), target: $('pTarget'), bar: $('pChart'),
-    nextRow: $('pNextRow'), next: $('pNext'), doneRow: $('pSummary'), done: $('pSummaryText'), last: $('pLast'),
+    nextRow: $('pNextRow'), next: $('pNext'), last: $('pLast'),
+    agent: $('agent'), agentPlan: $('agentPlan'), agentSteps: $('agentSteps'),
+    result: $('pResult'), rDrills: $('rDrills'), rName: $('rName'), rFrom: $('rFrom'), rTo: $('rTo'), rTarget: $('rTarget'),
+    rSaved: $('rSaved'), rNext: $('rNext'), rNextRow: $('rNextRow'), mark: $('waveMark'),
   };
   const TARGET = { loop: '.wave', filter: '#card-filter', reverb: '#card-reverb', bypass: '#fxPower', input: '.loop-state', hand: '#handPanel' };
+  const targetOf = (f) => (f.target === 'loop' && markOn ? '#waveMark' : f.target ? TARGET[f.target] || null : null);
   // what each tool is, said by Riff while it works (the raw names are in the coach's LangSmith trace)
   const DOING = [
     [/^get_take_report/, 'Listening back to your timing'], [/^get_hand_report/, 'Watching your strumming hand'],
@@ -58,7 +64,7 @@
     window.OmniRiff.coach.set({ state: 'asleep', target: null, cue: '', mood: 'sleepy', stage: false });
     mark(null); type('', 0); setLed('off', 'OFF');
     if (dock) dock.dataset.state = 'asleep';
-    renderRows(null); renderMap();
+    renderRows(null); renderAgent(null); renderMark(null); renderMap();
   }
   function setLed(kind, word) {
     if (led) { led.classList.toggle('online', kind === 'live'); led.classList.toggle('warn', kind === 'scripted'); led.querySelector('span').textContent = word; }
@@ -74,7 +80,7 @@
   }
   let held = null, waitTimer = 0, lineShown = '';
   function show(f, secs) {                   // apply a frame to Riff and the bubble
-    const target = f.target ? TARGET[f.target] || null : null;
+    const target = targetOf(f);
     window.OmniRiff.coach.set({ state: f.state, target, cue: f.cue || '', mood: f.mood, stage: false });
     mark(target);
     if (dock) dock.dataset.state = f.state;
@@ -104,7 +110,7 @@
     const prevCue = frame && frame.cue;
     frame = f;
     setLed(f.scripted ? 'scripted' : 'live', f.state === 'asleep' ? 'OFF' : f.scripted ? 'SCRIPTED' : 'LIVE');
-    renderRows(f); renderMap();
+    renderMark(f); renderRows(f); renderAgent(f); renderMap();
     if (joined) { joined = false; spoken = f.cue || ''; show(f, 0); return; }   // joined mid-line: no voice, no typing
     const newLine = !!f.cue && f.cue !== prevCue;
     if (newLine) {
@@ -152,12 +158,109 @@
       ui.bar.style.setProperty('--goal', `${((m.target / top) * 100).toFixed(1)}%`);
     }
     const summary = ses && ses.summary;
-    ui.doneRow.hidden = !summary;
-    if (summary) ui.done.textContent = summary;
     ui.nextRow.hidden = !(ses && ses.next) || !!summary;
     if (ses && ses.next) ui.next.textContent = ses.next;
     ui.last.hidden = !(ses && ses.last_time) || !!summary;
     if (ses && ses.last_time) ui.last.textContent = `Last time: ${ses.last_time}`;
+    renderResult(f, !!summary);
+  }
+
+  // DONE: the session as a result, not a paragraph. Each drill, the number first → last against
+  // its target, where the coach saved it, and what's next time.
+  function renderResult(f, done) {
+    ui.result.hidden = !done;
+    if (!done) return;
+    const ses = f.session, m = ses.metric;
+    ui.gapRow.hidden = true; ui.nowRow.hidden = true;
+    ui.rDrills.replaceChildren(...(ses.plan || []).map((d) => {
+      const li = document.createElement('li');
+      li.dataset.s = d.status;
+      li.textContent = d.title;
+      return li;
+    }));
+    const h = m && m.history.length ? m.history : null;
+    ui.rName.parentElement.hidden = !h;
+    if (h) {
+      const first = h[0], last = h[h.length - 1];
+      const pass = m.lower_is_better ? last <= m.target : last >= m.target;
+      ui.rName.textContent = m.name === 'longest gap' ? 'GAP' : m.name.toUpperCase();
+      ui.rFrom.textContent = `${Math.round(first)}`;
+      ui.rTo.textContent = `${Math.round(last)} ${m.unit}`;
+      ui.rTo.dataset.pass = String(pass);
+      ui.rTarget.textContent = `${h.length} take${h.length === 1 ? '' : 's'} · target ${m.lower_is_better ? '<' : '>'}${Math.round(m.target)}`;
+    }
+    const mem = [...(f.activity || [])].reverse().find((a) => /memor/.test(a.what) && a.status === 'done');
+    const path = mem && (mem.what.match(/\/\S+/) || [])[0];
+    ui.rSaved.textContent = path ? `SAVED ${path}` : 'SAVED TO MEMORY';
+    let next = ses.next_time || null;
+    if (!next && ses.summary) { const mm = /next(?: time)?:\s*(.+)$/i.exec(ses.summary); next = mm ? mm[1] : ses.summary; }
+    ui.rNextRow.hidden = !next;
+    if (next) ui.rNext.textContent = next.replace(/\.$/, '');
+  }
+
+  // ---------- the deep agent at work: plan, subagents, skills, files, memory ----------
+  // Only what the brain reports (todos = write_todos, activity = its tool calls). Nothing invented.
+  function kindOf(a, f) {
+    const w = a.what, strip = (s) => s.replace(/^(write|edit|read)(_file)?\s+/, '');
+    let m;
+    if (a.who !== 'coach') return ['SUBAGENT', `${a.who} · ${w}`];
+    if ((m = /^open skill (.+)/.exec(w))) return ['SKILL', m[1]];
+    if (/memor/.test(w)) return ['MEMORY', strip(w)];
+    if (/^write_todos/.test(w)) return ['PLAN', 'write_todos'];
+    if (/^write_drill_card/.test(w)) return ['FILE', (f.drill_card && f.drill_card.journal_path) || 'drill card'];
+    if (/^task\b/.test(w)) return ['SUBAGENT', w];
+    if (/^(write|edit|read)/.test(w) || w.includes('/')) return ['FILE', strip(w)];
+    if ((m = /^rig_control\s*(.*)/.exec(w))) return ['RIG', m[1] || 'rig'];
+    return ['TOOL', w];
+  }
+  const GLYPH = { running: '▸', done: '✓', failed: '✗', waiting: '…' };
+  function renderAgent(f) {
+    const acts = (f && f.activity) || [], todos = (f && f.todos) || [];
+    const play = !f || f.state === 'asleep' || (f.session && f.session.mode === 'play');
+    ui.agent.hidden = play || (!acts.length && !todos.length);
+    if (ui.agent.hidden) return;
+    const done = todos.filter((t) => t.status === 'completed').length;
+    const now = todos.find((t) => t.status === 'in_progress');
+    ui.agentPlan.textContent = todos.length ? `PLAN ${done}/${todos.length}${now ? ' · ' + now.text : ''}` : '';
+    const max = innerHeight < 820 ? 3 : 4;
+    ui.agentSteps.replaceChildren(...acts.slice(-max).map((a) => {
+      const [k, text] = kindOf(a, f);
+      const li = document.createElement('li');
+      li.dataset.s = a.status;
+      li.innerHTML = '<i></i><span></span><em></em>';
+      li.children[0].textContent = k;
+      li.children[1].textContent = text;
+      li.children[2].textContent = a.status === 'waiting' ? 'you' : GLYPH[a.status] || '';
+      return li;
+    }));
+  }
+
+  // ---------- the spot in your loop the coach is talking about ----------
+  let markOn = false, loopSecs = 0, lastMark = null;
+  window.addEventListener('omniriff:frame', (e) => {
+    const s = e.detail && e.detail.loop && e.detail.loop.seconds;
+    if (typeof s === 'number' && Math.abs(s - loopSecs) > 0.01) { loopSecs = s; renderMark(frame); }
+  });
+  function renderMark(f) {
+    const mk = f && f.mark;
+    markOn = !!(mk && loopSecs > 0 && mk.start_s < loopSecs);
+    if (!ui.mark) return;
+    ui.mark.hidden = !markOn;
+    if (!markOn) { lastMark = null; return; }
+    const key = `${mk.start_s}|${mk.end_s}|${loopSecs}|${mk.label || ''}`;
+    if (key === lastMark) return;
+    lastMark = key;
+    const a = Math.max(0, mk.start_s / loopSecs), b = Math.min(1, Math.max(mk.end_s, mk.start_s + 0.05) / loopSecs);
+    ui.mark.style.left = `calc(12px + (100% - 24px) * ${a.toFixed(4)})`;
+    ui.mark.style.width = `calc((100% - 24px) * ${(b - a).toFixed(4)})`;
+    const tag = ui.mark.querySelector('span');
+    tag.textContent = mk.label || `${Math.round((mk.end_s - mk.start_s) * 1000)} ms`;
+    requestAnimationFrame(() => {            // the tag centres on the band but never leaves the waveform
+      const w = ui.mark.parentElement.getBoundingClientRect(), b = ui.mark.getBoundingClientRect(), tw = tag.offsetWidth;
+      const want = b.left + b.width / 2 - tw / 2;
+      const left = Math.min(Math.max(want, w.left + 8), w.right - 8 - tw);
+      tag.style.left = `${(left - b.left).toFixed(1)}px`;
+    });
   }
 
   // ---------- the map and the pedal: where you are, and what one tap does now ----------
@@ -167,20 +270,42 @@
     let step = 1;
     if (ses && ses.plan && ses.plan.length) { const i = ses.plan.findIndex((d) => d.status === 'now'); step = i >= 0 ? i + 2 : 4; }
     if (ui.map) { ui.map.dataset.step = String(step); ui.map.dataset.mode = play ? 'play' : 'practice'; }
-    let say;
-    if (play) say = loop === 'recording' ? 'tap to close the loop' : 'free play · hold for another round (Y)';
-    else if (loop === 'recording') say = 'tap to stop';
-    else if (f && f.awaiting_approval) say = 'tap to start the drill';
-    else if (f && ['thinking', 'speaking', 'pointing'].includes(f.state)) say = 'wait for Riff';
-    else if (step === 1) say = 'tap, play it, tap again';
-    else if (step === 4) say = 'wait for Riff';
-    else say = 'tap to play the drill';
-    if (ui.pedal) ui.pedal.querySelector('span').textContent = say;
+    // what one press does right now, as keycaps: TAP / HOLD, or WAIT while Riff has the floor
+    let acts;
+    const awake = f && f.state !== 'asleep';
+    if (play) {
+      acts = [['TAP', loop === 'recording' ? 'close the loop' : loop === 'playing' ? 'clear the loop' : 'record a loop']];
+      if (awake && loop !== 'recording') acts.push(['HOLD', 'practice with Riff', 'Y']);
+    } else if (loop === 'recording') acts = [['TAP', 'stop, Riff listens']];
+    else if (f && f.awaiting_approval) acts = [['TAP', 'yes, start the drill', 'Y'], ['', 'no', 'N']];
+    else if (f && f.state === 'thinking') acts = [['WAIT', 'Riff is working on it']];
+    else if (f && ['speaking', 'pointing'].includes(f.state)) acts = [['WAIT', 'Riff is talking']];
+    else if (step === 4) acts = [['WAIT', 'Riff is wrapping up']];
+    else if (step === 1) acts = [['TAP', 'record what you\u2019re working on']];
+    else acts = [['TAP', 'record the drill take']];
+    if (ui.pedal) {
+      const key = JSON.stringify(acts);
+      if (ui.pedal.dataset.acts !== key) {
+        ui.pedal.dataset.acts = key;
+        ui.pedal.dataset.wait = String(acts[0][0] === 'WAIT');
+        ui.pedalActs.replaceChildren(...acts.map(([cap, does, kbd]) => {
+          const s = document.createElement('span');
+          s.className = 'act';
+          s.innerHTML = '<span class="cap"></span><span class="does"></span><kbd></kbd>';
+          s.children[0].textContent = cap; s.children[0].hidden = !cap;
+          s.children[1].textContent = does;
+          s.children[2].textContent = kbd || ''; s.children[2].hidden = !kbd;
+          return s;
+        }));
+      }
+    }
+    if (ui.line) ui.line.dataset.empty = play ? (awake ? 'Free play. I\u2019ll stay quiet.' : 'Coach off. The rig plays without it.')
+      : step === 1 ? 'Play me what you\u2019re working on.' : '';
   }
   if (app) new MutationObserver(renderMap).observe(app, { attributes: true, attributeFilter: ['data-loop'] });
 
   // ---------- voice: never cut off, never late ----------
-  let actx = null, analyser = null, audioEl = null, spoken = '', hasCoachVoice = false, queued = null, locked = null;
+  let actx = null, analyser = null, audioEl = null, spoken = '', hasCoachVoice = false, queued = null, locked = null, routed = false;
   const pendingAudio = new Map();
   const busy = () => (audioEl && !audioEl.paused && !audioEl.ended) || ('speechSynthesis' in window && speechSynthesis.speaking);
   function unlock() {
@@ -224,7 +349,8 @@
       const url = URL.createObjectURL(new Blob([bytes], { type: m.mime }));
       const a = new Audio(url);
       audioEl = a;
-      if (actx && analyser) { try { actx.createMediaElementSource(a).connect(analyser); } catch (e) { /* unanalysed */ } }
+      routed = false;
+      if (actx && analyser && actx.state === 'running') { try { actx.createMediaElementSource(a).connect(analyser); routed = true; } catch (e) { /* unanalysed */ } }
       a.onended = () => { URL.revokeObjectURL(url); if (audioEl === a) audioEl = null; finished(); };
       a.play().then(() => {
         talking(true);
@@ -239,7 +365,6 @@
     u.rate = 1.02; u.pitch = 1.15;
     u.onstart = () => { talking(true, true); release(text, text.split(' ').length / 2.6); };
     u.onend = finished;
-    u.onboundary = () => window.dispatchEvent(new CustomEvent('omniriff:voice', { detail: { level: 0.8 } }));
     speechSynthesis.speak(u);
   }
   function stopVoice() {
@@ -250,18 +375,36 @@
   }
   let talkRaf = 0;
   const buf = new Uint8Array(256);
+  // Riff's mouth and body follow its voice. With the real audio routed through an analyser, the
+  // level is measured; otherwise (browser speech, audio started before the page was clicked) a
+  // syllable rhythm is generated for as long as the voice is actually playing.
   function talking(on, browser) {
     cancelAnimationFrame(talkRaf);
     if (!on) { window.dispatchEvent(new CustomEvent('omniriff:voice', { detail: { level: 0 } })); return; }
-    if (browser || !analyser) return;
-    const tick = () => {
-      analyser.getByteTimeDomainData(buf);
-      let peak = 0;
-      for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i] - 128));
-      window.dispatchEvent(new CustomEvent('omniriff:voice', { detail: { level: Math.min(1, peak / 64) } }));
+    const measured = !browser && analyser && routed;
+    let t0 = performance.now(), quietFor = 0, sylAt = t0, sylLen = 190, amp = 0.8, n = 0;
+    const tick = (now) => {
+      let level;
+      if (measured) {
+        analyser.getByteTimeDomainData(buf);
+        let peak = 0;
+        for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i] - 128));
+        level = Math.min(1, peak / 48);
+      } else {
+        if (now - sylAt > sylLen) {            // next syllable; a short breath every few words
+          sylAt = now; n += 1;
+          const breath = n % (5 + (n % 3)) === 0;
+          sylLen = breath ? 260 : 150 + Math.random() * 110; amp = breath ? 0 : 0.55 + Math.random() * 0.45;
+        }
+        const ph = (now - sylAt) / sylLen;
+        level = amp * Math.sin(Math.PI * Math.min(1, ph)) ** 0.7;
+      }
+      window.dispatchEvent(new CustomEvent('omniriff:voice', { detail: { level } }));
+      if (!busy()) { quietFor += 1; if (quietFor > 3) { talking(false); return; } } else quietFor = 0;
       talkRaf = requestAnimationFrame(tick);
     };
-    tick();
+    void t0;
+    talkRaf = requestAnimationFrame(tick);
   }
 
   // ---------- keys (the simulator has no pedal) ----------

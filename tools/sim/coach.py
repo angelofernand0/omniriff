@@ -33,6 +33,8 @@ DRILL_CUE = 'Just the change, four times, no rush. Let the hand keep moving.'
 PASS_CUE = "Nice. That gap went from almost half a second to about a tenth. Now play the whole pattern over your loop."
 WRAP_CUE = "That's the session. Your change went from half a second to about a tenth; next time let's push the tempo to 100."
 WRAP_SUMMARY = 'G to C change: longest gap 430 to 110 ms. Next: push the tempo to 100 bpm.'
+NEXT_TIME = 'Push the tempo to 100 bpm'
+MARK_AT = (0.55, 0.66)   # where in the loop the scripted stall is, as a fraction of its length
 PLAY_CUE = "Free play. I'll stay quiet. Press Y for another round."
 ROUND_CUE = "Okay, what are we working on? Tap, play it, tap again."
 DECLINE_CUE = "All good, I'll leave your sound as it is."
@@ -152,6 +154,7 @@ class ScriptedSession:
         self.last_time = None
         self.summary = None
         self.cue_at = 0.0
+        self.loop_seconds = 0.0
 
     async def wait(self, seconds: float) -> None:
         await asyncio.sleep(seconds * self.pace)
@@ -196,6 +199,7 @@ class ScriptedSession:
             self.loop = 'offline'
             return
         self.bypass = bool(st.get('bypass'))
+        self.loop_seconds = float((st.get('loop') or {}).get('seconds') or self.loop_seconds)
         new = (st.get('loop') or {}).get('state', 'idle')
         old, self.loop = self.loop, new
         if old == 'offline':
@@ -210,7 +214,7 @@ class ScriptedSession:
             self.takes += 1
             if self.phase in ('drill1', 'drill2'):
                 self.tries += 1
-            self.say(state='listening', mood='concentrating', target='input', take_id=self.take_id(),
+            self.say(state='listening', mood='concentrating', target='input', take_id=self.take_id(), mark=None,
                      session=self.session() if self.phase != 'first' else self.feed.frame.get('session'))
         elif old == 'recording':                   # a take just finished
             if self.phase == 'drill1':
@@ -250,7 +254,7 @@ class ScriptedSession:
                     attempt=None if done else dict(n=self.tries if attempt is None else attempt, of=3),
                     metric=dict(name='longest gap', unit='ms', target=150, lower_is_better=True, history=self.history[-12:]),
                     next=None if done else ('Full pattern over your loop' if step == 1 else 'Wrap up'),
-                    last_time=self.last_time, summary=self.summary)
+                    last_time=self.last_time, summary=self.summary, next_time=NEXT_TIME if self.summary else None)
 
     async def diagnose(self) -> None:
         """Step 1-2: the first take sets the goal; drill 1 is proposed."""
@@ -269,12 +273,14 @@ class ScriptedSession:
                     journal_path=f'/journal/scripted/{self.take_id()}.md')
         self.history.append(430.0)
         self.drill_step, self.tries, self.summary = 1, 0, None
-        self.say(state='speaking', mood='concerned', target='player', cue=TAKE_CUE, drill_card=card, todos=_todos(3),
+        secs = self.loop_seconds or 4.0           # Riff points at the stall in the loop while it names it
+        mark = dict(start_s=round(secs * MARK_AT[0], 2), end_s=round(secs * MARK_AT[1], 2), label='430 ms gap')
+        self.say(state='pointing', mood='concerned', target='loop', mark=mark, cue=TAKE_CUE, drill_card=card, todos=_todos(3),
                  session=self.session(0),
                  activity=_act(f, 'coach', f'open skill {SKILL}', 'done') + [dict(who='coach', what='write_drill_card', status='done')])
         await self.until_quiet()
         self.awaiting, self.awaiting_kind = f'a{self.takes}', 'drill'
-        self.say(state='pointing', mood='encouraging', target='bypass', cue=APPROVE_CUE,
+        self.say(state='pointing', mood='encouraging', target='bypass', cue=APPROVE_CUE, mark=None,
                  awaiting_approval=dict(id=self.awaiting, summary='Effects off so you hear your timing dry.',
                                         actions=[dict(control='bypass')], expires_unix_ms=now_ms() + 60_000),
                  activity=_act(f, 'coach', 'rig_control bypass', 'waiting'))

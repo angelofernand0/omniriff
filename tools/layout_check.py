@@ -8,6 +8,8 @@ from websockets.asyncio.client import connect
 
 URL, SECS, STEP = sys.argv[1], float(sys.argv[2]), float(sys.argv[3])
 SIZES = [(1288, 734), (1280, 720), (1440, 900), (1920, 1080)]
+if len(sys.argv) > 4:   # optional: '1288x734,1440x900' (run each size against a fresh session)
+    SIZES = [tuple(int(v) for v in s.split('x')) for s in sys.argv[4].split(',')]
 CH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 PROBE = r"""
@@ -18,15 +20,15 @@ PROBE = r"""
   const name = (e) => (e.id ? '#' + e.id : e.className && typeof e.className === 'string' ? '.' + e.className.split(' ')[0] : e.tagName);
   // 1. text that spills out of its own box
   for (const e of document.querySelectorAll('.app *')) {
-    if (!vis(e) || e.closest('.drawer') || e.tagName === 'CANVAS' || e.closest('.riff')) continue;
+    if (!vis(e) || e.closest('.drawer') || e.tagName === 'CANVAS' || e.closest('.riff') || e.classList.contains('wave-mark')) continue;   // the mark's tag overhangs its band by design; 2. checks it stays in the waveform
     const s = getComputedStyle(e);
     if (s.overflow === 'visible' && (e.scrollWidth > e.clientWidth + 2 || e.scrollHeight > e.clientHeight + 6) && e.clientWidth > 0 && e.children.length < 6 && e.textContent.trim())
       out.push('OVERFLOW ' + name(e) + ' ' + JSON.stringify(e.textContent.trim().slice(0, 40)));
   }
   // 2. text boxes that leave their panel
-  for (const e of document.querySelectorAll('.pct, .bubble, .row, .row dd, .map, .pedal, .talk, .loop-word, .fx-power b')) {
+  for (const e of document.querySelectorAll('.pct, .bubble, .row, .row dd, .map, .pedal, .talk, .loop-word, .fx-power b, .wave-mark span, .agent, .result, .knob')) {
     if (!vis(e)) continue;
-    const p = e.parentElement && e.parentElement.closest('.card, .coach-col, .loop-state, .fx-power');
+    const p = e.parentElement && e.parentElement.closest('.card, .coach-col, .loop-state, .fx-power, .wave');
     if (!p || p === e) continue;
     const a = e.getBoundingClientRect(), b = p.getBoundingClientRect();
     if (a.left < b.left - 1 || a.right > b.right + 1 || a.top < b.top - 1 || a.bottom > b.bottom + 1)

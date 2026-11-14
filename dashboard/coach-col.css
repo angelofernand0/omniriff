@@ -76,3 +76,144 @@
   .row { padding: var(--s2) 0; }
   .row dd, .coach-col .pedal span { font-size: 16px; }
 }
+
+/* ======== SM review 2, 2026-11-14: a buddy, not a readout ======== */
+
+/* Riff's home while it's out: a dotted outline and where it went, so the bubble points at someone */
+.talk { position: relative; }
+.talk .riff-socket { position: relative; }
+.riff-ghost, .riff-gone { display: none; }
+.riff-ghost .riff-ghost-px { opacity: 0.9; }
+.coach-col[data-home="false"] .riff-ghost { display: block; }
+.coach-col[data-home="false"] .riff-gone {
+  display: block; position: absolute; left: calc(96px + var(--s3)); top: 48px; transform: translateY(-50%);
+  font: 400 12px/1.2 var(--font-pixel); color: var(--muted); white-space: nowrap;
+}
+.coach-col[data-home="false"] .bubble { border-style: dashed; }
+
+/* the bubble's empty text depends on where you are (coach.js sets data-empty) */
+.bubble:empty::after, .coach-col[data-state="asleep"] .bubble:empty::after { content: attr(data-empty); }
+
+/* the deep agent at work: plan progress, then each call tagged by the part of the harness it is */
+.agent { flex: none; display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2) 0 0; border-top: 1px solid var(--line); }
+.agent[hidden] { display: none; }
+.agent header { display: flex; align-items: baseline; gap: var(--s3); min-width: 0; }
+.agent header b { font: 400 12px/1.4 var(--font-pixel); color: var(--accent); flex: none; }
+.agent header span { font: 400 13px/1.4 var(--font-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.agent ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.agent li { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; align-items: baseline; gap: var(--s2); font: 400 14px/1.4 var(--font-mono); color: var(--muted); }
+.agent li i { font: 400 10px/1.6 var(--font-pixel); font-style: normal; color: var(--faint); border: 1px solid var(--line-2); padding: 0 4px; text-align: center; }
+.agent li span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agent li em { font-style: normal; font-weight: 600; }
+.agent li[data-s="done"] em { color: var(--ok); }
+.agent li[data-s="failed"] em { color: var(--rec); }
+.agent li[data-s="running"] { color: var(--text); }
+.agent li[data-s="running"] i { color: var(--accent); border-color: var(--accent); }
+.agent li[data-s="running"] em { color: var(--accent); animation: blink 1s steps(2) infinite; }
+.agent li[data-s="waiting"] em { color: var(--warn); font: 400 10px/1.6 var(--font-pixel); }
+
+/* DONE: a result card, not a paragraph */
+.result { flex: none; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); border: var(--stroke) solid var(--ok); background: var(--bg); }
+.result[hidden] { display: none; }
+.result header { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); min-width: 0; }
+.result header b { font: 400 12px/1.4 var(--font-pixel); color: var(--ok); flex: none; }
+.result header span { font: 400 12px/1.4 var(--font-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.r-drills { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.r-drills li { font: 600 16px/1.35 var(--font-mono); color: var(--text); }
+.r-drills li::before { content: '✓ '; color: var(--ok); }
+.r-drills li[data-s="skipped"] { color: var(--muted); }
+.r-drills li[data-s="skipped"]::before { content: '– '; color: var(--muted); }
+.r-drills li[data-s="now"]::before, .r-drills li[data-s="next"]::before { content: '· '; color: var(--muted); }
+.r-num { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s2); padding-top: var(--s2); border-top: 1px solid var(--line); }
+.r-num[hidden] { display: none; }
+.r-num span { font: 400 12px/1.4 var(--font-pixel); color: var(--muted); margin-right: var(--s1); }
+.r-num b { font: 400 22px/1.2 var(--font-pixel); color: var(--muted); font-variant-numeric: tabular-nums; }
+.r-num b + i + b { color: var(--warn); }
+.r-num b[data-pass="true"] { color: var(--ok) !important; }
+.r-num i { font-style: normal; color: var(--faint); }
+.r-num small { flex-basis: 100%; font: 400 13px/1.4 var(--font-mono); color: var(--muted); }
+.r-next { margin: 0; display: flex; align-items: baseline; gap: var(--s3); padding-top: var(--s2); border-top: 1px solid var(--line); }
+.r-next[hidden] { display: none; }
+.r-next span { font: 400 12px/1.4 var(--font-pixel); color: var(--accent); flex: none; }
+.r-next b { font: 600 16px/1.35 var(--font-mono); color: var(--text); }
+
+/* the pedal: keycaps for what one press does now; WAIT while Riff has the floor */
+.coach-col .pedal { align-items: center; flex-wrap: wrap; row-gap: var(--s2); }
+.pedal .acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); min-width: 0; }
+.pedal .act { display: inline-flex; align-items: center; gap: var(--s2); }
+.pedal .cap { font: 400 14px/1 var(--font-pixel); color: var(--accent-ink); background: var(--accent); padding: 5px 8px 4px; box-shadow: 0 3px 0 var(--accent-low); }
+.pedal .cap[hidden], .pedal kbd[hidden] { display: none; }
+.pedal .does { font: 600 17px/1.3 var(--font-mono); color: var(--text); }
+.pedal kbd { font: 400 11px/1 var(--font-pixel); color: var(--faint); border: 1px solid var(--line-2); padding: 3px 5px 2px; }
+.pedal[data-wait="true"] .cap { background: var(--off); color: var(--muted); box-shadow: 0 3px 0 var(--shadow); animation: blink 1.6s steps(2) infinite; }
+.pedal[data-wait="true"] .does { color: var(--muted); font-weight: 400; }
+
+/* levels in the bar, always visible */
+.top-meters { display: flex; align-items: center; gap: var(--s2); }
+.top-meters .segs { gap: 2px; }
+.top-meters .segs i { width: 5px; height: 14px; }
+.top-meters .db { min-width: 64px; font-size: 13px; }
+.top-meters .clip { font-size: 11px; padding: 2px 6px; }
+.top-meters .meter-label { font-size: 12px; }
+.top-meters .meter-label + .segs { margin-right: var(--s1); }
+.top-meters .segs + .db { margin-left: 0; }
+.top-meters .clip + .meter-label { margin-left: var(--s3); }
+
+/* the spot in your loop the coach found: a band on the waveform; Riff stands over it and points down */
+.wave-mark { position: absolute; top: 0; bottom: 0; z-index: 2; pointer-events: none; min-width: 8px;
+  background: rgba(255, 92, 203, 0.16); border-left: 2px solid var(--accent); border-right: 2px solid var(--accent);
+  animation: popin var(--bar) var(--step); }
+.wave-mark[hidden] { display: none; }
+.wave-mark span { position: absolute; left: 50%; bottom: var(--s2); transform: translateX(-50%); white-space: nowrap;
+  font: 400 12px/1 var(--font-pixel); color: var(--accent-ink); background: var(--accent); padding: 4px 6px 3px; }
+.app[data-loop="recording"] .wave-mark { display: none; }
+
+/* FX: a real toggle switch. The lever flips, the box jolts and settles */
+.fx-toggle { position: relative; width: 64px; height: 96px; display: block; }
+.fx-nut { position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; margin: -18px 0 0 -18px; background: var(--off); border: 4px solid var(--line-2); box-sizing: border-box; }
+.fx-lever { position: absolute; left: 50%; bottom: 50%; width: 12px; height: 42px; margin-left: -6px; transform-origin: 50% 100%; background: var(--muted); }
+.fx-lever::before { content: ""; position: absolute; left: -6px; top: -8px; width: 24px; height: 12px; background: inherit; }
+.fx-power[data-on="true"] .fx-lever { background: var(--accent); transform: scaleY(1); }
+.fx-power[data-on="false"] .fx-lever { transform: scaleY(-1); }
+.fx-power.snap { animation: fxsnap 380ms steps(7); }
+.fx-power[data-on="true"].snap .fx-lever { animation: leveron 240ms steps(4); }
+.fx-power[data-on="false"].snap .fx-lever { animation: leveroff 240ms steps(4); }
+@keyframes fxsnap {
+  0% { transform: translateY(6px); box-shadow: 0 2px 0 var(--shadow); }
+  20% { transform: translateY(-3px) rotate(-1.6deg); }
+  40% { transform: translateY(1px) rotate(1.2deg); }
+  60% { transform: rotate(-0.7deg); }
+  80% { transform: rotate(0.3deg); }
+  100% { transform: none; }
+}
+@keyframes leveron { 0% { transform: scaleY(-1); } 45% { transform: scaleY(0.15); } 75% { transform: scaleY(1.25); } 100% { transform: scaleY(1); } }
+@keyframes leveroff { 0% { transform: scaleY(1); } 45% { transform: scaleY(-0.15); } 75% { transform: scaleY(-1.25); } 100% { transform: scaleY(-1); } }
+
+/* effects as analog units: a stepped knob and four screws. Light touch: the numbers still lead */
+.card > header { min-height: 0; }
+.knob { width: 54px; height: 54px; flex: none; image-rendering: pixelated; image-rendering: crisp-edges; }
+.card {
+  background-image: linear-gradient(var(--line-2), var(--line-2)), linear-gradient(var(--line-2), var(--line-2)),
+    linear-gradient(var(--line-2), var(--line-2)), linear-gradient(var(--line-2), var(--line-2));
+  background-size: 6px 6px; background-repeat: no-repeat;
+  background-position: 6px 6px, calc(100% - 6px) 6px, 6px calc(100% - 6px), calc(100% - 6px) calc(100% - 6px);
+}
+
+@media (max-height: 820px) {
+  .coach-col[data-home="false"] .riff-gone { left: calc(72px + var(--s3)); top: 36px; }
+  .agent li { font-size: 13px; grid-template-columns: 70px minmax(0, 1fr) auto; }
+  .r-drills li, .r-next b { font-size: 15px; }
+  .r-num b { font-size: 18px; }
+  .pedal .does { font-size: 15px; }
+  .knob { width: 40px; height: 40px; }
+  .fx-toggle { width: 52px; height: 76px; }
+  .fx-lever { height: 32px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-power.snap, .fx-power.snap .fx-lever, .wave-mark { animation: none !important; }
+}
+/* layout check fixes: the knob sizes to its card; the mark's tag stays inside the waveform panel */
+.knob { width: clamp(28px, 16cqi, 54px); height: clamp(28px, 16cqi, 54px); }
+.card > header h3 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wave-mark { overflow: visible; }
+.wave-mark span { left: auto; right: auto; transform: none; }
