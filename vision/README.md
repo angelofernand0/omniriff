@@ -35,14 +35,20 @@ Exit metrics on stderr report actual elapsed runtime, emitted event count, avera
 ## Demo-table calibration and setup
 
 ### 60-second rehearsal & calibration routine
-Run through this quick 4-step sequence before each judge approaches:
-1. **Frame check (15s)**: Sit with guitar. Check webcam angle: ensure your control hand has an unobstructed path from picking/belt height up to mid-chest. Verify no harsh backlight silhouettes the hand.
-2. **Launch (10s)**: Start the demo vision process:
-   ```bash
-   python -m vision --model models/hand_landmarker.task --scene bloom
-   ```
-3. **Range tap (15s)**: If the player's natural height range is taller/shorter than the default $y \in [0.8, 0.2]$ normalized window, run with `--calibrate`: wrist at lowest rest position $\rightarrow$ press `l`, wrist at highest comfortable sweep $\rightarrow$ press `h`, press `s` to save `calibration.json`.
-4. **Physical dry check (20s)**: Open hand (disarmed), pinch index+thumb (HUD turns green, engaged), sweep upward (filter opens, reverb blooms), open hand (disengages, scene holds). Strum a chord to verify StrumGuard suppresses accidental sweeps. You are ready to demo!
+Run through this quick 4-step sequence before each judge approaches, or run the automated pre-flight audit via `python -m vision.rehearsal --demo`:
+
+```bash
+# Automated instant pre-flight rehearsal audit
+python -m vision.rehearsal --demo --output calibration.json
+```
+
+The rehearsal studio executes a full 4-stage preflight check:
+1. **Range Calibration (15s)**: Measures the performer's comfortable vertical travel ($y \in [\text{high}, \text{low}]$) and calculates optimal bounds with 5% safety margin.
+2. **Clutch Hysteresis Verification (10s)**: Confirms pinch clutching transitions properly (open $\ge 0.45$ arms, pinch $\le 0.25$ engages).
+3. **StrumGuard Spatial Isolation (15s)**: Simulates/monitors 15–45 picking strokes inside the guitar zone ($y \ge 0.55$) to mathematically prove 100% false-positive rejection while playing.
+4. **Expression Quality Audit (20s)**: Evaluates a sample swell with `GestureScorer` (minimum jerk, dynamic range, and efficiency) and prints an objective letter grade (`S`, `A`, `B`, `C`).
+
+Exports a clean, validated `calibration.json` ready for `--calibration calibration.json`. Existing calibration files are never overwritten unless `--overwrite` is explicitly provided.
 
 ### Camera placement and lighting
 - **Distance**: Place the webcam 2–3 feet (0.6–1.0 m) from the player, facing them directly.
