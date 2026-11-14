@@ -1,5 +1,16 @@
 import unittest
 from vision.control import Controller
+import asyncio
+import json
+from pathlib import Path
+import socket
+import time
+
+import numpy as np
+from jsonschema import Draft202012Validator
+from websockets.asyncio.client import connect
+from audio import Engine
+from engine.runtime import Runtime
 
 
 class GestureTests(unittest.TestCase):
@@ -45,3 +56,40 @@ class GestureTests(unittest.TestCase):
                 count += 1
         self.assertGreater(count, 0)
         self.assertLessEqual(count, 20)
+
+
+class VisionRuntimeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_controller_udp_engine_and_dashboard_state(self):
+        audio = Engine()
+        runtime = Runtime(audio, udp_port=0, ws_port=0)
+        await runtime.start()
+        for _ in range(100):
+            if runtime.server and runtime.udp:
+                break
+            await asyncio.sleep(.01)
+        self.assertIsNotNone(runtime.server)
+        self.assertIsNotNone(runtime.udp)
+        signal = np.zeros(128, np.float32)
+        output = np.zeros((128, 2), np.float32)
+        schema = json.loads((Path(__file__).resolve().parents[1] / 'protocol/state.schema.json').read_text())
+        validator = Draft202012Validator(schema)
+        control = Controller(rate=60, deadband=0)
+        base = time.monotonic()
+        control.update(.8, .6, .9, base, int(time.time() * 1000))
+        event = control.update(.4, .1, .9, base + .05, int(time.time() * 1000))
+        self.assertIsNotNone(event)
+        try:
+            async with connect(f'ws://127.0.0.1:{runtime.ws_port}') as ws:
+                with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sender:
+                    sender.sendto(json.dumps(event).encode(), ('127.0.0.1', runtime.udp_port))
+                for _ in range(20):
+                    audio.process(signal, output)
+                    state = json.loads(await asyncio.wait_for(ws.recv(), 1))
+                    validator.validate(state)
+                    if state['controls']['accepted']:
+                        break
+                self.assertEqual(state['controls']['accepted'], 1)
+                self.assertEqual(state['filter']['target'], event['value'])
+                self.assertIn('vision', state['sources'])
+        finally:
+            await runtime.close()
