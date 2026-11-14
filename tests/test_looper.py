@@ -4,6 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
+from engine.replay import Replay
 from vision.looper import GestureLooper, LoopState
 
 
@@ -136,25 +137,30 @@ class GestureLooperTests(unittest.TestCase):
             self.assertTrue(out_file.exists())
             self.assertGreater(count, 0)
 
+            # Round-trip through engine.replay.Replay.load to guarantee replay compatibility
+            replay = Replay.load(out_file)
+            self.assertEqual(len(replay.entries), count)
+
             # Read back lines and verify schema compliance
             lines = out_file.read_text().strip().split('\n')
             self.assertEqual(len(lines), count)
 
-            prev_ts = -1.0
-            prev_seq = 0
+            prev_ts = -1
+            prev_seq = -1
 
             for line in lines:
                 event = json.loads(line)
                 self.assertEqual(event['version'], 1)
                 self.assertEqual(event['source'], 'vision')
-                self.assertIn(event['action'], ('filter', 'reverb'))
+                self.assertEqual(event['type'], 'parameter')
+                self.assertIn(event['control'], ('filter', 'reverb'))
                 self.assertGreaterEqual(event['value'], 0.0)
                 self.assertLessEqual(event['value'], 1.0)
-                self.assertGreater(event['sequence'], prev_seq)
-                self.assertGreaterEqual(event['timestamp'], prev_ts)
+                self.assertGreater(event['seq'], prev_seq)
+                self.assertGreaterEqual(event['timestamp_ms'], prev_ts)
 
-                prev_seq = event['sequence']
-                prev_ts = event['timestamp']
+                prev_seq = event['seq']
+                prev_ts = event['timestamp_ms']
 
             # Overwrite protection
             with self.assertRaises(FileExistsError):

@@ -278,7 +278,7 @@ class GestureLooper:
 
         path.parent.mkdir(parents=True, exist_ok=True)
         events_written = 0
-        seq = 1
+        seq = 0
 
         interval_s = 1.0 / max(1.0, self.target_rate_hz)
 
@@ -290,16 +290,21 @@ class GestureLooper:
                 while t_cursor < self.duration_s:
                     params = self._interpolate_keyframes(t_cursor)
                     event_time = base_time + t_cursor
+                    timestamp_ms = int(round(event_time * 1000))
 
-                    # Emit each parameter as a validated v1 event
-                    for param_name, param_val in params.items():
+                    # Emit each parameter as a schema-validated v1 parameter event
+                    for param_name in sorted(params.keys()):
+                        if param_name not in ('filter', 'reverb'):
+                            continue
+                        param_val = params[param_name]
                         envelope = {
                             "version": 1,
                             "source": source,
-                            "sequence": seq,
-                            "timestamp": round(event_time, 4),
-                            "action": param_name,
-                            "value": round(param_val, 4),
+                            "seq": seq,
+                            "timestamp_ms": timestamp_ms,
+                            "type": "parameter",
+                            "control": param_name,
+                            "value": float(max(0.0, min(1.0, round(param_val, 4)))),
                             "confidence": 1.0
                         }
                         f.write(json.dumps(envelope) + '\n')
