@@ -13,6 +13,7 @@ from .take import TakeRecorder
 from .setlist import Setlist
 from .metrics import FrameMetrics
 from .hand_log import HandLog, hand_record
+from .zones import Rect, StrumGuard
 
 
 def main(argv=None):
@@ -26,6 +27,7 @@ def main(argv=None):
     p.add_argument('--metrics-json', type=Path, help='save measured processing/rate summary on exit; refuses overwrite')
     p.add_argument('--hand-log', type=Path, help='append both wrist positions and Unix timestamps for coach take alignment')
     p.add_argument('--strum-hand', choices=('Left', 'Right'), default='Right', help='MediaPipe label of the strumming hand for hand-log analysis; verify camera orientation')
+    p.add_argument('--strum-guard', action='store_true', help='suppress control in lower camera zone y>=0.55 and during rapid reversals; rehearse framing first')
     p.add_argument('--no-hand-view', action='store_true', help='disable local dashboard landmark feed')
     p.add_argument('--hand-view-port', type=int, default=47802)
     p.add_argument('--host', default='127.0.0.1')
@@ -85,6 +87,9 @@ def main(argv=None):
         raise ValueError('Recorded video must report a positive frame rate')
     start = time.monotonic()
     selector = HandSelector(max_jump=args.max_hand_jump)
+    guard = StrumGuard(strum_zone=Rect(ymin=.55, xmin=0., ymax=1., xmax=1.)) if args.strum_guard else None
+    guard_reason = 'off'
+    suppressed_frames = 0
     frame_number = count = 0
     last_stamp = -1
     pending = {}
@@ -140,7 +145,18 @@ def main(argv=None):
                     if not args.no_overlay:
                         for point in points:
                             cv2.circle(frame, (int(point.x * width), int(point.y * height)), 3, (0, 255, 0), -1)
-                event = controller.update(y, pinch, confidence, now, int(time.time() * 1000))
+                control_y, control_pinch = y, pinch
+                if guard:
+                    if y is not None and confidence >= controller.confidence:
+                        suppressed, guard_reason = guard.update(points[0].x, y, now)
+                        if suppressed:
+                            control_y = control_pinch = None
+                            suppressed_frames += 1
+                    else:
+                        guard.reset()
+                        guard_reason = 'no_hand' if y is None else 'low_confidence'
+                # Suppression disarms without discarding native relative pickup history.
+                event = controller.update(control_y, control_pinch, confidence, now, int(time.time() * 1000))
                 if hand_view:
                     if hand_view.error and not hand_view_error_reported:
                         import sys
@@ -175,6 +191,8 @@ def main(argv=None):
                 metrics.record(now, time.monotonic(), frame_events, hand_present=y is not None)
                 if not args.no_overlay:
                     label = 'CALIBRATE: l low, h high, s save' if args.calibrate else f'{scene.name if scene else args.control}: {controller.value} active={controller.active} events={count}'
+                    if guard:
+                        label += f' guard={guard_reason}'
                     cv2.putText(frame, label, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 255, 255), 1)
                     if setlist:
                         cue = f'SCENE {setlist.index + 1}/{len(setlist.scenes)} | 1-9 select, n/p cycle | open hand then pinch'
@@ -218,7 +236,8 @@ def main(argv=None):
                 json.dump(report, file, indent=2)
                 file.write('\n')
         print(json.dumps(dict(events=count, elapsed_seconds=elapsed, average_hz=count / max(elapsed, .001),
-                              minimum_interval_seconds=minimum_interval)), file=sys.stderr)
+                              minimum_interval_seconds=minimum_interval, strum_guard=args.strum_guard,
+                              suppressed_frames=suppressed_frames)), file=sys.stderr)
 
 
 if __name__ == '__main__':
