@@ -3,6 +3,7 @@
 
 constexpr unsigned long kBaudRate = 115200;
 constexpr unsigned long kDebounceMs = 25;
+constexpr unsigned long kPracticeHoldMs = 700;
 // TODO(Aditya): Confirm the switch count, board pin labels and action mapping.
 constexpr uint8_t kLoopPin = 2;
 constexpr uint8_t kBypassPin = 3;
@@ -20,6 +21,8 @@ Switch switches[] = {
     {kBypassPin, "bypass", false, false, 0},
 };
 unsigned long nextSequence = 0;
+unsigned long loopPressedAt = 0;
+bool loopActionPending = false;
 
 void sendAction(const char* control) {
   Serial.print(F("{\"seq\":"));
@@ -50,9 +53,26 @@ void loop() {
     }
     if (pressed != button.stablePressed && now - button.changedAt >= kDebounceMs) {
       button.stablePressed = pressed;
-      if (pressed) {
+      if (button.pin == kLoopPin) {
+        if (pressed) {
+          loopPressedAt = button.changedAt;
+          loopActionPending = true;
+        } else if (loopActionPending) {
+          // Measure from the accepted edges, excluding the debounce delay.
+          sendAction(button.changedAt - loopPressedAt < kPracticeHoldMs
+                         ? button.control
+                         : "practice");
+          loopActionPending = false;
+        }
+      } else if (pressed) {
         sendAction(button.control);
       }
+    }
+    // Let a release awaiting debounce determine the action on its own edge.
+    if (button.pin == kLoopPin && loopActionPending && pressed &&
+        now - loopPressedAt >= kPracticeHoldMs) {
+      sendAction("practice");
+      loopActionPending = false;
     }
   }
 }
