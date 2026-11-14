@@ -40,6 +40,8 @@ h2 { margin: 0; font-weight: 400; }
 .app[data-conn="live"] .conn { color: var(--accent-ink); background: var(--ok); border-color: var(--ok); }
 .app[data-conn="stale"] .conn { color: var(--accent-ink); background: var(--warn); border-color: var(--warn); }
 .bypass-chip { display: none; }
+.replay-chip { display: none; }
+.app[data-replay="true"] .replay-chip { display: inline-block; background: var(--warn); color: var(--accent-ink); border-color: var(--warn); }
 .app[data-bypass="true"] .bypass-chip { display: inline-block; background: var(--warn); color: var(--accent-ink); border-color: var(--warn); }
 
 .meter { display: flex; align-items: center; gap: 10px; }

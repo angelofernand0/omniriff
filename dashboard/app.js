@@ -119,6 +119,16 @@
       const s = state;
       app.dataset.bypass = String(!!s.bypass);
 
+      // replay: optional state.replay (PR #18). Keep the label up after it ends so
+      // scripted controls are never mistaken for live sensors.
+      const r = s.replay;
+      app.dataset.replay = r ? 'true' : 'false';
+      if (r) {
+        $('replayChip').textContent = r.status === 'playing'
+          ? `REPLAY ${r.position}/${r.total}`
+          : `REPLAY · ${String(r.status).toUpperCase()}`;
+      }
+
       // meters
       renderMeter(inSegs, meters.in, s.input_peak_dbfs, now);
       renderMeter(outSegs, meters.out, s.output_peak_dbfs, now);
