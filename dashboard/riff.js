@@ -336,7 +336,7 @@
     if (!dock) return;
     const [line, sub] = COPY[st.state];
     dock.dataset.state = st.state;
-    if (dockLine) dockLine.textContent = st.cue;
+    if (dockLine && mode === 'preview') dockLine.textContent = st.cue;   // live: coach.js types it in step with the voice
     void line; void sub;
     if (led && mode === 'preview') {
       led.classList.add('warn');
