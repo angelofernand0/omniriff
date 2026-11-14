@@ -42,7 +42,7 @@ Check the board at start, before edits/commits, and after integration. This is c
 
 ## Work areas and checks
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for proposed modules and MVP gates, and [protocol/control.schema.json](protocol/control.schema.json) for the shared control event contract. Folder assignments are unclaimed until confirmed on the board. Angelo coordinates integration; Sean and Aditya are not assigned skills by assumption.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for proposed modules and MVP gates, and [protocol/control.schema.json](protocol/control.schema.json) for the shared control event contract. Ownership and first tasks are in [TEAM.md](TEAM.md) and [docs/TASKS.md](docs/TASKS.md). Angelo coordinates integration.
 
 ```bash
 python3 -m venv .venv
