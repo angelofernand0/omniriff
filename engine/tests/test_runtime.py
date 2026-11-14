@@ -234,6 +234,58 @@ class NetworkTests(unittest.IsolatedAsyncioTestCase):
                 await asyncio.gather(task, return_exceptions=True)
         self.assertTrue(all(port.closed for port in ports))
 
+    async def test_stop_during_serial_open_closes_late_handle(self):
+        import threading
+        from unittest.mock import patch
+        entered, release, closed = threading.Event(), threading.Event(), threading.Event()
+        class Port:
+            def close(self): closed.set()
+        port = Port()
+        def slow_open(*args, **kwargs):
+            entered.set()
+            if not release.wait(2): raise TimeoutError('test did not release serial open')
+            return port
+        runtime = Runtime(self.audio,udp_port=None,ws_port=None,serial_port='SIMULATED')
+        with patch('serial.Serial',side_effect=slow_open):
+            try:
+                await runtime.start()
+                self.assertTrue(await asyncio.to_thread(entered.wait,1))
+                await asyncio.wait_for(runtime.close(),.5)
+                self.assertFalse(closed.is_set())  # Open is still blocked; shutdown didn't wait for it.
+                release.set()
+                self.assertTrue(await asyncio.to_thread(closed.wait,1))
+                self.assertIsNone(runtime.serial)
+                self.assertEqual(runtime.adapters['serial']['status'],'stopped')
+                self.audio.toggle_bypass(); process(self.audio)
+                self.assertTrue(self.audio.snapshot()['bypass'])
+            finally:
+                release.set()
+                await runtime.close()
+
+    async def test_cancel_after_serial_open_before_result_delivery_closes_handle(self):
+        from unittest.mock import patch
+        opened = asyncio.Event()
+        original_to_thread = asyncio.to_thread
+        class Port:
+            closes = 0
+            def close(self): self.closes += 1
+        port = Port()
+        async def hold_result(function, *args, **kwargs):
+            result = await original_to_thread(function,*args,**kwargs)
+            opened.set()
+            await asyncio.Future()  # Constructor finished; result delivery is still pending.
+            return result
+        runtime = Runtime(self.audio,udp_port=None,ws_port=None,serial_port='SIMULATED')
+        with patch('serial.Serial',return_value=port), patch('engine.runtime.asyncio.to_thread',side_effect=hold_result):
+            task = asyncio.create_task(runtime.run_serial())
+            try:
+                await asyncio.wait_for(opened.wait(),1)
+            finally:
+                task.cancel()
+                await asyncio.gather(task,return_exceptions=True)
+        self.assertEqual(port.closes,1)
+        self.assertIsNone(runtime.serial)
+
     async def test_replay_labels_state_rebases_controls_and_completes(self):
         import tempfile
         from engine.replay import Replay
