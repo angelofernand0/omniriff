@@ -30,4 +30,4 @@ git worktree add ../omniriff-codex -b angelo/codex
 git worktree add ../omniriff-claude -b angelo/claude
 ```
 
-SM uses separate sm/codex and sm/claude branches/worktrees; John uses john/codex and john/claude. Do not run both in the original clone simultaneously. Only one process owns a given clone's board read cursor. Read recent comments again when switching worktrees or accounts.
+SM uses separate sm/codex and sm/claude branches/worktrees; John uses john/codex. Do not run both in the original clone simultaneously. Only one process owns a given clone's board read cursor. Read recent comments again when switching worktrees or accounts.
