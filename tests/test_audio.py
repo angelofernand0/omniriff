@@ -356,5 +356,53 @@ class NoiseGateTests(unittest.TestCase):
         self.assertGreater(e.snapshot()["input_peak_dbfs"], -55)
 
 
+class InputHistoryTests(unittest.TestCase):
+    def test_snapshot_returns_the_latest_input_across_wraps(self):
+        e = Engine(EngineConfig(samplerate=SR, input_history_seconds=0.5))
+        ramp = (np.arange(int(1.7 * SR), dtype=np.float32) / 1e6)
+        out = np.zeros((300, 2), np.float32)
+        for s in range(0, len(ramp), 300):  # odd block size so writes straddle the wrap
+            chunk = ramp[s:s + 300]
+            e.process(chunk, out[:len(chunk)])
+        snap, end, sr = e.snapshot_input(0.25)
+        self.assertEqual((end, sr, len(snap)), (len(ramp), SR, SR // 4))
+        np.testing.assert_array_equal(snap, ramp[end - SR // 4:end])
+        full, _, _ = e.snapshot_input()
+        np.testing.assert_array_equal(full, ramp[-SR // 2:])
+
+    def test_snapshot_before_the_ring_fills_is_zero_padded(self):
+        e = Engine(EngineConfig(samplerate=SR, input_history_seconds=1.0))
+        run(e, np.ones(1000, np.float32) * 0.1)
+        snap, end, _ = e.snapshot_input(0.1)
+        self.assertEqual((end, len(snap)), (1000, SR // 10))
+        np.testing.assert_allclose(snap[-1000:], 0.1)
+        self.assertTrue(np.all(snap[:-1000] == 0))
+
+    def test_concurrent_snapshots_are_never_torn(self):
+        import threading
+        e = Engine(EngineConfig(samplerate=SR, input_history_seconds=0.2))
+        stop = threading.Event()
+
+        def audio_thread():
+            out = np.zeros((128, 2), np.float32)
+            t = 0
+            while not stop.is_set():
+                e.process((np.arange(t, t + 128, dtype=np.float64) % 100000 / 1e5).astype(np.float32), out)
+                t += 128
+
+        th = threading.Thread(target=audio_thread)
+        th.start()
+        try:
+            for _ in range(300):
+                snap, end, _ = e.snapshot_input(0.1)
+                if end < len(snap):
+                    continue
+                steps = np.round(np.diff(snap.astype(np.float64)) * 1e5) % 100000
+                self.assertTrue(np.all(steps == 1), "a snapshot mixed two different windows")
+        finally:
+            stop.set()
+            th.join()
+
+
 if __name__ == "__main__":
     unittest.main()
