@@ -56,6 +56,7 @@ class CoachFeed:
         self.frame = initial_frame(session_id)
         self.frame["scripted"] = bool(scripted)
         self.decisions: queue.Queue[dict] = queue.Queue(maxsize=16)
+        self.said: queue.Queue[dict] = queue.Queue(maxsize=8)   # coach.say: what the player told Riff
         self._lock = threading.Lock()
         self._loop: asyncio.AbstractEventLoop | None = None
         self._thread: threading.Thread | None = None
@@ -85,6 +86,23 @@ class CoachFeed:
             return True
         except queue.Full:
             return False
+
+    def accept_say(self, message: dict) -> bool:
+        """Validate one coach.say (what the player told Riff) and queue it for the brain."""
+        if not isinstance(message, dict) or message.get("type") != "coach.say" or not VALIDATOR.is_valid(message):
+            return False
+        try:
+            self.said.put_nowait(message)
+            return True
+        except queue.Full:
+            return False
+
+    def poll_said(self) -> str | None:
+        """The oldest thing the player said that the brain hasn't read yet, or None."""
+        try:
+            return self.said.get_nowait()["text"].strip() or None
+        except queue.Empty:
+            return None
 
     def publish_activity(self, who: str, what: str, status: str) -> dict:
         """Append a real harness step to the dashboard's bounded activity strip."""
@@ -135,9 +153,13 @@ class CoachFeed:
                 if not isinstance(raw, str) or len(raw) > 2048:
                     continue
                 try:
-                    self.accept_decision(json.loads(raw))
+                    message = json.loads(raw)
                 except json.JSONDecodeError:
                     continue
+                if isinstance(message, dict) and message.get("type") == "coach.say":
+                    self.accept_say(message)
+                else:
+                    self.accept_decision(message)
         finally:
             self._clients.discard(websocket)
 

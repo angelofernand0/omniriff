@@ -64,7 +64,7 @@
 .coach-col .pedal { margin: auto 0 0; padding-top: var(--s3); border-top: var(--stroke) solid var(--line-2); display: flex; align-items: baseline; gap: var(--s3); flex: none; }
 .coach-col .pedal b { font: 400 12px/1.5 var(--font-pixel); color: var(--accent); }
 .coach-col .pedal span { font: 600 18px/1.3 var(--font-mono); color: var(--text); }
-.coach-col[data-voice="locked"] .pedal span::after { content: '  · click for Riff\2019s voice'; color: var(--warn); font-weight: 400; }
+.coach-col[data-voice="locked"] .pedal .acts::after { content: 'click once for Riff\2019s voice'; font: 400 14px/1.3 var(--font-mono); color: var(--muted); }
 
 /* ---- laptop windows and 720p ---- */
 @media (max-height: 820px) {
@@ -82,19 +82,15 @@
 /* Riff's home while it's out: a dotted outline and where it went, so the bubble points at someone */
 .talk { position: relative; }
 .talk .riff-socket { position: relative; }
-.riff-ghost, .riff-gone { display: none; }
+
+.riff-ghost { display: none; }
 .riff-ghost .riff-ghost-px { opacity: 0.9; }
 .coach-col[data-home="false"] .riff-ghost { display: block; }
-.coach-col[data-home="false"] .riff-gone {
-  display: block; position: absolute; left: calc(96px + var(--s3)); top: 48px; transform: translateY(-50%);
-  font: 400 12px/1.2 var(--font-pixel); color: var(--muted); white-space: nowrap;
-}
 .coach-col[data-home="false"] .bubble { border-style: dashed; }
 
 /* the bubble's empty text depends on where you are (coach.js sets data-empty) */
 .bubble:empty::after, .coach-col[data-state="asleep"] .bubble:empty::after { content: attr(data-empty); }
 
-/* the deep agent at work: plan progress, then each call tagged by the part of the harness it is */
 .agent { flex: none; display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2) 0 0; border-top: 1px solid var(--line); }
 .agent[hidden] { display: none; }
 .agent header { display: flex; align-items: baseline; gap: var(--s3); min-width: 0; }
@@ -111,31 +107,6 @@
 .agent li[data-s="running"] i { color: var(--accent); border-color: var(--accent); }
 .agent li[data-s="running"] em { color: var(--accent); animation: blink 1s steps(2) infinite; }
 .agent li[data-s="waiting"] em { color: var(--warn); font: 400 10px/1.6 var(--font-pixel); }
-
-/* DONE: a result card, not a paragraph */
-.result { flex: none; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); border: var(--stroke) solid var(--ok); background: var(--bg); }
-.result[hidden] { display: none; }
-.result header { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); min-width: 0; }
-.result header b { font: 400 12px/1.4 var(--font-pixel); color: var(--ok); flex: none; }
-.result header span { font: 400 12px/1.4 var(--font-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.r-drills { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.r-drills li { font: 600 16px/1.35 var(--font-mono); color: var(--text); }
-.r-drills li::before { content: '✓ '; color: var(--ok); }
-.r-drills li[data-s="skipped"] { color: var(--muted); }
-.r-drills li[data-s="skipped"]::before { content: '– '; color: var(--muted); }
-.r-drills li[data-s="now"]::before, .r-drills li[data-s="next"]::before { content: '· '; color: var(--muted); }
-.r-num { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s2); padding-top: var(--s2); border-top: 1px solid var(--line); }
-.r-num[hidden] { display: none; }
-.r-num span { font: 400 12px/1.4 var(--font-pixel); color: var(--muted); margin-right: var(--s1); }
-.r-num b { font: 400 22px/1.2 var(--font-pixel); color: var(--muted); font-variant-numeric: tabular-nums; }
-.r-num b + i + b { color: var(--warn); }
-.r-num b[data-pass="true"] { color: var(--ok) !important; }
-.r-num i { font-style: normal; color: var(--faint); }
-.r-num small { flex-basis: 100%; font: 400 13px/1.4 var(--font-mono); color: var(--muted); }
-.r-next { margin: 0; display: flex; align-items: baseline; gap: var(--s3); padding-top: var(--s2); border-top: 1px solid var(--line); }
-.r-next[hidden] { display: none; }
-.r-next span { font: 400 12px/1.4 var(--font-pixel); color: var(--accent); flex: none; }
-.r-next b { font: 600 16px/1.35 var(--font-mono); color: var(--text); }
 
 /* the pedal: keycaps for what one press does now; WAIT while Riff has the floor */
 .coach-col .pedal { align-items: center; flex-wrap: wrap; row-gap: var(--s2); }
@@ -189,9 +160,8 @@
 @keyframes leveron { 0% { transform: scaleY(-1); } 45% { transform: scaleY(0.15); } 75% { transform: scaleY(1.25); } 100% { transform: scaleY(1); } }
 @keyframes leveroff { 0% { transform: scaleY(1); } 45% { transform: scaleY(-0.15); } 75% { transform: scaleY(-1.25); } 100% { transform: scaleY(-1); } }
 
-/* effects as analog units: a stepped knob and four screws. Light touch: the numbers still lead */
+/* effects as hardware units: four screws, nothing else (SM cut the knob: the vertical bar says it) */
 .card > header { min-height: 0; }
-.knob { width: 54px; height: 54px; flex: none; image-rendering: pixelated; image-rendering: crisp-edges; }
 .card {
   background-image: linear-gradient(var(--line-2), var(--line-2)), linear-gradient(var(--line-2), var(--line-2)),
     linear-gradient(var(--line-2), var(--line-2)), linear-gradient(var(--line-2), var(--line-2));
@@ -200,20 +170,88 @@
 }
 
 @media (max-height: 820px) {
-  .coach-col[data-home="false"] .riff-gone { left: calc(72px + var(--s3)); top: 36px; }
   .agent li { font-size: 13px; grid-template-columns: 70px minmax(0, 1fr) auto; }
-  .r-drills li, .r-next b { font-size: 15px; }
-  .r-num b { font-size: 18px; }
   .pedal .does { font-size: 15px; }
-  .knob { width: 40px; height: 40px; }
   .fx-toggle { width: 52px; height: 76px; }
   .fx-lever { height: 32px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .fx-power.snap, .fx-power.snap .fx-lever, .wave-mark { animation: none !important; }
 }
-/* layout check fixes: the knob sizes to its card; the mark's tag stays inside the waveform panel */
-.knob { width: clamp(28px, 16cqi, 54px); height: clamp(28px, 16cqi, 54px); }
+/* layout check fixes: the mark's tag stays inside the waveform panel */
 .card > header h3 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wave-mark { overflow: visible; }
 .wave-mark span { left: auto; right: auto; transform: none; }
+
+/* ======== talk to Riff (SM, 2026-11-14): one thing you say between takes ======== */
+/* what you said: your line, opposite Riff's, its tail toward you (right) */
+.you { position: relative; flex: none; margin-left: 15%; display: flex; flex-direction: column; gap: var(--s1);
+  padding: var(--s2) var(--s3); background: var(--bg); border: var(--stroke) solid var(--text); }
+.you[hidden] { display: none; }
+.you::after { content: ''; position: absolute; right: 20px; bottom: -9px; width: 14px; height: 14px; background: var(--bg);
+  border-right: var(--stroke) solid var(--text); border-bottom: var(--stroke) solid var(--text); transform: rotate(45deg); }
+.you > b { font: 400 12px/1.4 var(--font-pixel); color: var(--muted); }
+.you span { font: 600 18px/1.35 var(--font-mono); color: var(--text); overflow-wrap: anywhere; }
+.you[data-mode="listening"] > b::after { content: ' · LISTENING'; color: var(--rec); animation: blink 1s steps(2) infinite; }
+.you[data-mode="listening"] span:empty::before { content: 'Go ahead\2026'; color: var(--faint); font-weight: 400; }
+.you[data-mode="typing"] span { font: 400 14px/1.3 var(--font-mono); color: var(--warn); }
+.you[data-mode="typing"] span:empty { display: none; }
+.you[data-mode="idle"] span { color: var(--muted); font-weight: 400; }
+.you input { font: 600 18px/1.3 var(--font-mono); color: var(--text); background: var(--panel); border: var(--stroke) solid var(--line-2);
+  padding: var(--s1) var(--s2); width: 100%; box-sizing: border-box; outline: none; }
+.you input:focus { border-color: var(--accent); }
+.you input[hidden] { display: none; }
+
+/* the footer: TALK, then the pedal */
+.coach-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--s3); flex: none; }
+.coach-col .coach-foot .pedal { margin: 0; }
+.talk-btn { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); cursor: pointer; text-align: left;
+  background: var(--bg); color: var(--text); border: var(--stroke) solid var(--line-2); box-shadow: 0 4px 0 var(--shadow);
+  touch-action: none; user-select: none; -webkit-user-select: none; }
+.talk-btn[hidden] { display: none; }
+.talk-btn i { width: 12px; height: 12px; background: var(--muted); flex: none; }
+.talk-btn b { font: 400 13px/1 var(--font-pixel); color: var(--muted); flex: none; }
+.talk-btn span { font: 600 16px/1.2 var(--font-mono); }
+.talk-btn[data-ask="true"] { border-color: var(--accent); }
+.talk-btn[data-ask="true"] b, .talk-btn[data-ask="true"] span { color: var(--accent); }
+.talk-btn[data-ask="true"] i { background: var(--accent); animation: blink 1.4s steps(2) infinite; }
+.coach-col[data-talk="listening"] .talk-btn { transform: translateY(4px); box-shadow: 0 0 0 var(--shadow); border-color: var(--rec); }
+.coach-col[data-talk="listening"] .talk-btn i { background: var(--rec); animation: none; }
+@media (max-height: 820px) {
+  .you span, .you input { font-size: 16px; }
+  .talk-btn { padding: 6px var(--s3); }
+  .talk-btn span { font-size: 15px; }
+  .coach-foot { gap: var(--s2); }
+}
+
+/* ======== SM review 3: Riff at work in plain words; pop-ups for the moments to narrate ======== */
+.agent header { align-items: center; }
+.plan-dots { display: flex; gap: 4px; align-items: center; }
+.plan-dots i { width: 10px; height: 10px; background: var(--off); }
+.plan-dots i[data-s="completed"] { background: var(--accent-low); }
+.plan-dots i[data-s="in_progress"] { background: var(--accent); animation: blink 1s steps(2) infinite; }
+.agent li { grid-template-columns: 48px minmax(0, 1fr) auto; font: 600 16px/1.4 var(--font-mono); color: var(--text); }
+.agent li i { border: 0; padding: 0; text-align: left; font: 400 11px/1.9 var(--font-pixel); color: var(--muted); }
+.agent li[data-who="ears"] i, .agent li[data-who="eyes"] i { color: var(--accent); }
+.agent li[data-s="done"] { color: var(--muted); font-weight: 400; }
+.agent li[data-s="done"] em { color: var(--muted); }
+.agent li[data-s="running"] i { color: var(--accent); }
+.agent li[data-s="running"] span::after { content: '\2026'; }
+.agent li[data-s="running"] em { animation: none; }
+.agent li[data-new="true"] { animation: popin var(--bar) var(--step); }
+
+.riff-toast { position: fixed; z-index: 45; display: flex; flex-direction: column; gap: 4px; padding: 10px 14px;
+  background: var(--bg); border: var(--stroke) solid var(--accent); box-shadow: 4px 4px 0 var(--shadow); pointer-events: none; }
+.riff-toast[hidden] { display: none; }
+.riff-toast b { font: 400 13px/1.2 var(--font-pixel); color: var(--accent); }
+.riff-toast span { font: 600 17px/1.3 var(--font-mono); color: var(--text); }
+.riff-toast[data-on="true"] { animation: toastin 300ms steps(3); }
+@keyframes toastin { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+.row[data-done="true"] dd > span:first-child { color: var(--ok); }
+@media (max-height: 820px) { .agent li { font-size: 15px; } .riff-toast span { font-size: 15px; } }
+@media (prefers-reduced-motion: reduce) { .riff-toast[data-on="true"], .agent li[data-new="true"] { animation: none; } }
+/* the voice hint stays inside the actions column, under the keycaps; PEDAL stays on its line */
+.coach-col .pedal { flex-wrap: nowrap; align-items: flex-start; }
+.coach-col .pedal > b { padding-top: 6px; }
+.pedal .acts { flex: 1; min-width: 0; }
+.coach-col[data-voice="locked"] .pedal .acts::after { flex-basis: 100%; }

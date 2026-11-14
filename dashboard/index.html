@@ -61,12 +61,12 @@
         <div class="fx-zone">
           <div class="cards" id="cards">
             <article class="card" id="card-filter" data-control="filter" data-riff-name="FILTER">
-              <header><h3>FILTER</h3><span class="tag">MOVED</span><canvas class="knob" id="knob-filter" aria-hidden="true"></canvas></header>
+              <header><h3>FILTER</h3><span class="tag">MOVED</span></header>
               <div class="readout"><span class="pct" id="pct-filter">--</span><span class="sub" id="sub-filter"></span></div>
               <div class="blocks" id="blocks-filter"></div>
             </article>
             <article class="card" id="card-reverb" data-control="reverb" data-riff-name="REVERB">
-              <header><h3>REVERB</h3><span class="tag">MOVED</span><canvas class="knob" id="knob-reverb" aria-hidden="true"></canvas></header>
+              <header><h3>REVERB</h3><span class="tag">MOVED</span></header>
               <div class="readout"><span class="pct" id="pct-reverb">--</span><span class="sub" id="sub-reverb"></span></div>
               <div class="blocks" id="blocks-reverb"></div>
             </article>
@@ -105,10 +105,14 @@
         <div class="riff-socket riff-stage" aria-hidden="true"></div>
         <p class="bubble" id="coachLine" aria-live="polite"></p>
       </div>
-      <!-- the deep agent at work: its plan (write_todos) and each call it makes, tagged by what part
-           of the harness it is: SUBAGENT, SKILL, FILE, MEMORY, PLAN, RIG -->
-      <section class="agent" id="agent" hidden aria-label="What the coach agent is doing">
-        <header><b>DEEP AGENT</b><span id="agentPlan"></span></header>
+      <!-- what you told Riff (hold V or TALK, between takes). Typed when speech recognition can't run -->
+      <div class="you" id="youLine" data-mode="idle" hidden>
+        <b>YOU</b><span id="youText" aria-live="polite"></span>
+        <input id="youInput" type="text" maxlength="240" autocomplete="off" placeholder="Type it, Enter to send" hidden>
+      </div>
+      <!-- Riff at work (the deep agent): its plan as dots, then its steps and helpers in plain words -->
+      <section class="agent" id="agent" hidden aria-label="What Riff is doing">
+        <header><b>RIFF IS WORKING</b><span class="plan-dots" id="agentPlan" aria-label="Riff's plan"></span></header>
         <ol id="agentSteps"></ol>
       </section>
       <dl class="rows">
@@ -117,15 +121,11 @@
         <div class="row gap" id="pMetric" hidden><dt id="pMetricName">GAP</dt><dd><span class="val"><b id="pMetricNow"></b><small id="pTarget"></small></span><span class="gap-bar" id="pChart"></span></dd></div>
         <div class="row" id="pNextRow" hidden><dt>NEXT</dt><dd id="pNext"></dd></div>
       </dl>
-      <!-- DONE: the session result, as a card -->
-      <section class="result" id="pResult" hidden aria-label="Session result">
-        <header><b>SESSION DONE</b><span id="rSaved"></span></header>
-        <ol class="r-drills" id="rDrills"></ol>
-        <p class="r-num"><span id="rName">GAP</span><b id="rFrom"></b><i>→</i><b id="rTo"></b><small id="rTarget"></small></p>
-        <p class="r-next" id="rNextRow"><span>NEXT TIME</span><b id="rNext"></b></p>
-      </section>
       <p class="last" id="pLast" hidden></p>
-      <div class="pedal" id="pedalNext"><b>PEDAL</b><span class="acts"></span></div>
+      <div class="coach-foot">
+        <button type="button" class="talk-btn" id="talkBtn" hidden title="Hold to talk to Riff (V)"><i aria-hidden="true"></i><b>HOLD V</b><span>talk to Riff</span></button>
+        <div class="pedal" id="pedalNext"><b>PEDAL</b><span class="acts"></span></div>
+      </div>
     </aside>
   </main>
 
@@ -153,7 +153,7 @@
     </div>
     <span class="loop-meta" id="loopMeta"></span>
     <p class="diag" id="diag">No engine yet</p>
-    <p class="keys"><kbd>F</kbd>FULLSCREEN <kbd>L</kbd>LOOP <kbd>B</kbd>FX <kbd>Y</kbd>/<kbd>N</kbd>ANSWER RIFF <kbd>M</kbd>MUTE RIFF <kbd>D</kbd>RIG</p>
+    <p class="keys"><kbd>F</kbd>FULLSCREEN <kbd>L</kbd>LOOP <kbd>B</kbd>FX <kbd>Y</kbd>/<kbd>N</kbd>ANSWER RIFF <kbd>M</kbd>MUTE RIFF <kbd>V</kbd>HOLD TO TALK <kbd>D</kbd>RIG</p>
   </aside>
 </div>
 <script src="brand.js"></script>

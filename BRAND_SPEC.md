@@ -106,7 +106,7 @@ Exact values. Defined once in `dashboard/brand.css`.
 | `--accent` | `#FF5CCB` | **Pink. Alive:** loop playing, hand has the control, coach awake | 6.8:1 |
 | `--accent-ink` | `#0B0B10` | Text on pink, amber or green fills | 7.1:1 on pink |
 | `--accent-shade` / `--accent-low` | `#D63FA6` / `#B4318A` | Riff's ridges; Riff's body and ridges when asleep | |
-| `--accent-deep` / `--accent-dim` | `#3B1A4F` / `#5A2A75` | Faint graph behind the engaged number | |
+| `--accent-deep` / `--accent-dim` | `#4A1A3C` / `#7A2A62` | Faint graph behind the engaged number (dark pinks; no purple: SM, it clashed) | |
 | `--rec` | `#FF5340` | Recording, clipping, meter red zone | 5.8:1 |
 | `--warn` | `#FFB547` | Bypass, stale, replay, preview, meter amber zone | 10.6:1 |
 | `--ok` | `#8FE3A6` | Connected and current, meter green zone | 12.1:1 |

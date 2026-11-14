@@ -26,7 +26,7 @@ PROBE = r"""
       out.push('OVERFLOW ' + name(e) + ' ' + JSON.stringify(e.textContent.trim().slice(0, 40)));
   }
   // 2. text boxes that leave their panel
-  for (const e of document.querySelectorAll('.pct, .bubble, .row, .row dd, .map, .pedal, .talk, .loop-word, .fx-power b, .wave-mark span, .agent, .result, .knob')) {
+  for (const e of document.querySelectorAll('.pct, .bubble, .row, .row dd, .map, .pedal, .talk, .loop-word, .fx-power b, .wave-mark span, .agent, .result')) {
     if (!vis(e)) continue;
     const p = e.parentElement && e.parentElement.closest('.card, .coach-col, .loop-state, .fx-power, .wave');
     if (!p || p === e) continue;

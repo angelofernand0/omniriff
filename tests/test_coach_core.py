@@ -40,6 +40,17 @@ class CoachFeedTests(unittest.TestCase):
         self.assertEqual(feed.poll_decision("right"), "approve")
         self.assertIsNone(feed.poll_decision("right"))
 
+    def test_player_words_are_validated_and_queued_for_the_brain(self):
+        feed = CoachFeed("session-test")
+        said = {"version": 1, "type": "coach.say", "timestamp_ms": 1, "text": "I've been struggling with this change", "via": "voice"}
+        self.assertFalse(feed.accept_say({**said, "text": ""}))
+        self.assertFalse(feed.accept_say({**said, "text": "x" * 241}))
+        self.assertFalse(feed.accept_say({**said, "type": "coach.approve"}))
+        self.assertTrue(feed.accept_say(said))
+        self.assertFalse(feed.accept_decision(said))          # never mistaken for an approval
+        self.assertEqual(feed.poll_said(), "I've been struggling with this change")
+        self.assertIsNone(feed.poll_said())
+
 
 class CoachRigTests(unittest.TestCase):
     def test_controls_are_schema_valid_and_fixture_mode_never_sends(self):
