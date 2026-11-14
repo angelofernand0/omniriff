@@ -82,3 +82,13 @@ The take contains the validated controls emitted by vision, including both Scene
 Recording is opt-in and existing files are never overwritten. A bounded disk-writer queue keeps capture responsive. Recording stops with a warning if the writer falls behind, encounters a disk error, or reaches the replay loader's one-hour/10000-event limit. The saved prefix remains available; inspect warnings before using it as a backup. An empty take (no control events) cannot be replayed. Monotonic capture timing avoids backward timestamps if the system clock changes. `--dry-run --record-take` captures a rehearsal without UDP. Calibration emits no control events, so it produces an empty take.
 
 The JSONL format is engine-replay compatible. Integration with the virtual-guitar CLI is coordinated separately with its owner; this feature adds no new virtual-guitar or DSP implementation.
+
+## Tone Match: build a scene from audio
+
+The offline [Tone Match tool](../tools/tone_match/README.md) fits existing
+filter/reverb settings from paired, sample-aligned dry and processed recordings
+of the same performance. It exports a ready-to-load `--scene-file`, a portable
+audio comparison page, and a scripted morph audition/replay. Run
+`python -m tools.tone_match.demo --output /tmp/tone-demo` for a clearly labeled
+synthetic guitar demonstration without hardware. It does not clone amps or match
+arbitrary song mixes; inspect the fit diagnostics and listen before performing.
