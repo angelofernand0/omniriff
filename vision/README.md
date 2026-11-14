@@ -184,7 +184,11 @@ the overlay keyboard and cannot be combined with `--no-overlay`, calibration,
 relative mode, or another scene-selection option. No new dashboard or wire
 protocol fields are introduced.
 
-## StrumGuard & DualAxis 3D Spatial Control (python -m vision.spatial)
+## Experimental modules (not on primary demo path)
+
+- **`vision/looper.py`**: [EXPERIMENTAL] Multi-parameter gesture automation and crossfading looper. Useful for capturing repeated automation curves, but marked experimental and kept off the primary live judging path.
+- **`vision/spatial.py`**: [EXPERIMENTAL] Dual-axis knuckle-roll and StrumGuard spatial protection. Available for advanced spatial demonstration (`python -m vision.spatial`), but the primary demo path remains standard single-filter slider capture (`python -m vision --relative` or `python -m tools.virtual_guitar --live`).
+
 
 Spatial performance mode combines spatial protection (`StrumGuard`) with multi-dimensional hand control (`DualAxisController`) and an interactive terminal stage display (`StageHUD`).
 
