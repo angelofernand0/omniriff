@@ -91,6 +91,36 @@ and alignment limits. `vision.eyes.report_for_window(...)` returns take-relative
 stall times using the same Unix start as the audio sidecar. Camera gaps are
 reported as missing evidence rather than stationary playing.
 
+### Optional strum protection on native capture
+
+```bash
+python -m vision --model models/hand_landmarker.task --relative --strum-guard
+```
+
+This **opt-in** flag reuses `StrumGuard` in the actual native capture loop. The
+lower camera zone (`y >= 0.55`, across the frame) suppresses control; rapid
+reversals can also suppress it. The overlay shows the guard reason. Move into
+the upper area, allow rapid-motion history to settle (up to 350 ms), show an open
+hand, then pinch to engage. Suppression disarms the clutch while preserving its
+last emitted relative value. A held pinch cannot reactivate after leaving the
+zone; a fresh open/pinch is required. Hand presence, both-wrist logs and raw
+hand-view landmarks continue while control is suppressed.
+
+Use `--relative` for the guarded demo: the fixed lower zone restricts the
+default absolute calibration range. Absolute users must calibrate their intended
+expression travel entirely above y=0.55; otherwise the darkest part of the
+absolute mapping cannot be reached. Relative mode supports repeated clutching.
+
+The flag is off by default. Without it, showing an open hand and then holding a
+pick can arm a pinch sweep while strumming. The guard is a position/motion
+heuristic, not recognition of a guitar or picking action: it can block intended
+controls in the lower frame and cannot guarantee rejection of every strum.
+Rehearse the camera framing with guitar and manual bypass before enabling it
+at the table. It applies to native `python -m vision`; the browser play room's
+camera bridge does not enable it. Recorded-landmark main-loop fixtures verify
+suppression/re-arm and unchanged logging/display; real strumming-camera and
+audible hardware acceptance remain pending.
+
 Unit tests cover activation, loss/rearm, confidence rejection, rate limiting, deadband, smoothing and invalid calibration. Run `python -m unittest discover -s tests -p test_vision.py -v`.
 
 Unit coverage includes reordered two-hand detections, implausible wrist jumps, track expiry, and clutch re-arm. Live webcam and audible integration still require validation on the target camera and audio hardware. Do not treat synthetic unit tests as a hardware acceptance check.
