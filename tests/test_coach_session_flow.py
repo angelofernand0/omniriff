@@ -105,7 +105,7 @@ class PracticeSessionFlowTests(unittest.TestCase):
             state.observe({"loop": {"state": "idle"}, "pedal": {"practice_count": 2}})
             runner._poll_practice_action()
             self.assertEqual(service.session.mode, "play")
-            self.assertEqual(service.session.summary, "Practice paused before completion.")
+            self.assertIsNone(service.session.summary)
             state.observe({"loop": {"state": "idle"}, "pedal": {"practice_count": 3}})
             runner._poll_practice_action()
             self.assertEqual(service.session.mode, "practice")

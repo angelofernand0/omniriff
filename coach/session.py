@@ -178,7 +178,7 @@ class PracticeSession:
     def stop(self) -> None:
         """A player may leave practice without claiming a completed drill."""
         self.mode = "play"
-        self.summary = "Practice paused before completion."
+        self.summary = None
         self.next_time = None
         self.next = None
         self.drill = None
