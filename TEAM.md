@@ -2,7 +2,7 @@
 
 - Angelo Fernando — @angelofernand0 — lead and integration owner; Codex and Claude Code.
 - SM (Seanmanuel) — @smcogburn — Codex and Claude Code. Prefers "SM" in labels and branches.
-- John — @lsj3l — Codex. Joined 2026-11-13; write invite pending until accepted.
+- John — @lsj3l — Codex. Joined 2026-11-13.
 - Aditya — @MonkeySeeMonkeyC0de — Codex. Back tomorrow night (2026-11-14) for hardware.
 
 Joey is not on this team.
