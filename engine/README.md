@@ -22,6 +22,8 @@ Tests: `python -m unittest discover -s engine/tests -v` after installing require
 
 **One command for the demo:** `python -m engine.demo --open [engine options]` serves the dashboard (port 8080, `--http-port`) and opens it, optionally starts gesture control (`--vision`, with `--vision-args "..."`), then runs the engine in the foreground with every normal engine option (`--headless`, `--replay`, `--serial-port`, …). Quitting the engine stops the dashboard and vision too.
 
+**With the coach:** `python -m engine.demo --coach [--coach-args "..."] [--hand-log runs/hand.jsonl] ...` also starts `python -m coach --take-dir <same dir>` (it adds `--take-dir runs/takes` to the engine if you didn't pass one) and passes `--hand-log` to both vision and the coach. It warns and continues if coach/ isn't installed, and stops the coach on exit.
+
 **Session log (opt-in):** `--session-log runs/demo.jsonl` writes a new JSONL file with `start`, every accepted control (`control`, the v1 envelope), 2 Hz `state` frames (the WS state) and `stop`, each with a unix-ms `t`. It's off the audio thread, records no audio, and refuses to overwrite. Combine it with `--take-dir` to give the coach both the audio and the control history of a practice run.
 
 **Preflight first:** `python -m engine --check` opens no audio. It checks the required packages, finds the Focusrite (and whether input 2 and WASAPI/ASIO are available), recognizes the Arduino's COM port (and prints the `--serial-port` to use), and confirms UDP 47800 / TCP 47801, 47802 and 8080 are free. Each problem gets a fix hint. Exit code 1 means not ready.
