@@ -29,7 +29,7 @@ Practising alone, you know you messed up, but not *why*. Apps score your notes a
 - Dropouts over a 5-minute play test: [xruns]
 - Ears on real takes: [strums detected / actual; the stumble found at the right time?]
 - Coach: [diagnosis on the planted-mistake take; before/after gap ms; cost per take]
-- Gesture control update rate: [Hz measured]
+- Gesture control: [moving-hand webcam numbers from `--metrics-json`]. Diagnostic so far (R16, static hand images, not a moving-hand test): 150/150 frames detected, 30.9 processed FPS, 9.3 ms mean per frame (p95 10.1 ms) on the dev Mac.
 - Engine CPU per 128-frame block: ~0.25 ms mean on an Apple M1 Pro (≈9% of the real-time budget), [Windows number]
 
 ## Challenges
