@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .budget import BudgetGuard
 from .feed import CoachFeed
+from .memory import last_time_cue, remember_comparison
 from .rig import RigStateReader, control_message
 from .tools import CoachTools, _safe_take_id
 
@@ -229,16 +230,23 @@ class CoachRunner:
         result = self._invoke(prompt, take_id)
         # Tool-side frames during the invoke can replace the early comparison
         # expression; make the measured improvement the visible final state.
-        if comparison and comparison["improved"]:
-            self.feed.publish(state="pleased", mood="proud", target="player")
+        if comparison:
+            remember_comparison(self.service.workspace, comparison, synthetic=self.fixture_mode)
+            if comparison["improved"]:
+                self.feed.publish(state="pleased", mood="proud", target="player")
         self.previous_take_id = take_id
         return result
+
+    def open_session(self) -> None:
+        """Show the most recent verified practice result before a new take."""
+        cue = last_time_cue(self.service.workspace)
+        self.feed.publish(state="idle", mood="neutral", target="player",
+                          cue=cue or "Play me something. Tap the pedal to record.")
 
     def run_directory(self, take_dir: Path, *, once: bool = False) -> None:
         """Poll completed sidecars; a coach failure never stops the instrument."""
         take_dir = Path(take_dir)
-        self.feed.publish(state="idle", mood="neutral", target="player",
-                          cue="Play me something. Tap the pedal to record.")
+        self.open_session()
         while True:
             for sidecar in sorted(take_dir.glob("*.json")):
                 if sidecar in self.seen:
