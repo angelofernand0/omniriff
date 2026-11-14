@@ -28,9 +28,9 @@ python -m dashboard            # → http://127.0.0.1:8080
 python -m vision --model models/hand_landmarker.task --calibration calibration.json   # gesture control + hand view (ws 47802)
 ```
 Engine keys: `b` bypass, `l` loop, `f 0.3` filter, `r 0.3` reverb, `s` status, `q` quit. Check, in order:
-- [ ] Dashboard LIVE, meters move when you play, 0 xruns
+- [ ] Dashboard header shows ENGINE LIVE, meters move when you play, 0 xruns
 - [ ] Pedal: each switch toggles exactly once
-- [ ] Gesture: the clutch sweeps the filter, strumming doesn't; HAND panel shows the hand
+- [ ] Gesture: the clutch sweeps the filter, strumming doesn't; the hand module shows the skeleton and CAM PINCH in the header
 - [ ] Unplug the pedal / close vision → audio keeps playing, dashboard shows it offline
 
 ## 3. The 2-minute demo (rehearse to time)

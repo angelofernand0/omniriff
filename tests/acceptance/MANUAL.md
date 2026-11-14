@@ -29,9 +29,9 @@ Run this before the demo and after any change to audio/ or engine/. Write down t
 - [ ] Start engine and serve dashboard (`http://localhost:8080`).
 - [ ] Start vision (`ws://127.0.0.1:47802`). The dashboard HAND panel lights up.
 - [ ] No hand in frame: panel reads `NO HAND`.
-- [ ] Hand in frame, open palm: panel displays mirrored skeleton and reads `HAND SEEN` (never `armed`).
-- [ ] Pinch thumb and index: panel turns pink, boxes the pinch, displays engaged %, and draws the value rail.
-- [ ] Stop vision: panel ages out within 500 ms and displays `NO FEED`. Engine remains LIVE and unaffected.
+- [ ] Hand in frame, open palm: panel displays mirrored skeleton and reads `SEEN` (never `armed`).
+- [ ] Pinch thumb and index: panel turns pink, boxes the pinch and shows the control and value (e.g. `FILTER 60%`, or `MORPH 65%` in Scene Morph).
+- [ ] Stop vision: panel ages out within 500 ms and displays `NO CAMERA`. The header still shows `ENGINE LIVE`; audio is unaffected.
 
 ## Scene Morph & Tone Match auditions
 - [ ] Start vision with `--scene bloom` (Clear to Cosmos).
