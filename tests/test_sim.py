@@ -125,6 +125,11 @@ class DashboardServeTests(unittest.TestCase):
         finally:
             server.shutdown(); server.server_close()
 
+    def test_cached_sources_cannot_look_online_when_connection_is_down(self):
+        script = (ROOT / 'dashboard/app.js').read_text()
+        self.assertIn("const online = conn === 'live' && seenAge < ONLINE_MS;", script)
+        self.assertIn("box.classList.toggle('active', online && seenAge < ENGAGED_MS);", script)
+
 
 if __name__ == '__main__':
     unittest.main()
