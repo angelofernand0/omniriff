@@ -38,6 +38,7 @@ class Router:
         self.counts = dict.fromkeys(['accepted', 'invalid', 'stale', 'future', 'duplicate', 'low_confidence', 'audio_rejected'], 0)
         self.sources = {}
         self.last = {}
+        self.pedal = None  # R24: {'practice_count', 'last_practice_ms'} once a practice request is accepted
 
     def reset(self, source):
         self.last.pop(source, None)
@@ -83,7 +84,11 @@ class Router:
         minimum = getattr(getattr(self.audio, 'config', None), 'min_confidence', 0.6)
         if event['type'] == 'parameter' and event['confidence'] < minimum:
             return self.reject('low_confidence', source)
-        if not self.audio.submit(event): return self.reject('audio_rejected', source)
+        if event['control'] == 'practice':
+            # R24: a request for the coach, never an audio change. Counted for state.pedal.
+            count = self.pedal['practice_count'] + 1 if self.pedal else 1
+            self.pedal = dict(practice_count=count, last_practice_ms=now)
+        elif not self.audio.submit(event): return self.reject('audio_rejected', source)
         self.counts['accepted'] += 1
         health['accepted'] += 1
         health['last_accepted_ms'] = now

@@ -32,6 +32,8 @@ Tests: `python -m unittest discover -s engine/tests -v` after installing require
 
 **Session log (opt-in):** `--session-log runs/demo.jsonl` writes a new JSONL file with `start`, every accepted control (`control`, the v1 envelope), 2 Hz `state` frames (the WS state) and `stop`, each with a unix-ms `t`. It's off the audio thread, records no audio, and refuses to overwrite. Combine it with `--take-dir` to give the coach both the audio and the control history of a practice run.
 
+**Practice requests (R24):** an accepted `practice` action never reaches the audio engine. The router counts it and the state frame publishes `pedal: {practice_count, last_practice_ms}` for the coach (see protocol/README.md).
+
 **Preflight first:** `python -m engine --check` opens no audio. It checks the required packages, finds the Focusrite (and whether input 2 and WASAPI/ASIO are available), recognizes the Arduino's COM port (and prints the `--serial-port` to use), and confirms UDP 47800 / TCP 47801, 47802 and 8080 are free. Each problem gets a fix hint. Exit code 1 means not ready.
 
 **Optional device-open test:** `python -m engine --check --open-test 3 --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2 --blocksize 128` explicitly opens both selected devices for three seconds. Strum to see the raw-input peak in dBFS and check for xruns; output is silence, so this is not pass-through, DSP or round-trip latency validation. Device names/indexes, host API, sample rate, channels, latency and exclusive mode follow the normal engine flags. Without `--open-test`, preflight still opens no stream. This option cannot be combined with `--headless`. Actual Windows/Solo validation remains pending.
