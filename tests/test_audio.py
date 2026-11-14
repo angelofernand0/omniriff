@@ -145,11 +145,42 @@ class LoopTests(unittest.TestCase):
 
 
 class OutputSafetyTests(unittest.TestCase):
-    def test_limiter_caps_output(self):
+    def test_limiter_caps_output_without_hard_clipping(self):
+        ceiling = 10 ** (-1 / 20)
         e = Engine(EngineConfig(samplerate=SR, input_gain_db=12, output_ceiling_db=-1))
-        out = run(e, sine(200, 0.2, amp=0.9))
+        out = run(e, sine(200, 0.5, amp=0.9))[:, 0]
+        self.assertLessEqual(float(np.max(np.abs(out))), ceiling + 1e-6)
+        self.assertEqual(e.snapshot()["clipped_samples"], 0, "limiter, not the hard clip, should catch it")
+        # A hard-clipped sine sits flat at the ceiling most of the time; a limited one doesn't.
+        settled = out[SR // 10:]
+        self.assertLess(float(np.mean(np.abs(settled) >= ceiling * 0.99)), 0.1)
+
+    def test_limiter_leaves_quiet_signal_untouched(self):
+        e = Engine(EngineConfig(samplerate=SR))
+        tone = sine(440, 0.3, amp=0.3)
+        out = run(e, tone)[:, 0]
+        ref = Engine(EngineConfig(samplerate=SR, output_ceiling_db=6))  # limiter far above the signal
+        np.testing.assert_allclose(out, run(ref, tone)[:, 0], atol=1e-6)
+
+    def test_limiter_recovers_after_a_burst(self):
+        e = Engine(EngineConfig(samplerate=SR, input_gain_db=12, limiter_release_ms=150))
+        run(e, sine(200, 0.2, amp=0.9))          # loud: heavy gain reduction
+        quiet = sine(200, 1.0, amp=0.05)
+        out = run(e, quiet)[:, 0]
+        loud_gain = 10 ** (12 / 20)
+        tail_ratio = np.max(np.abs(out[-SR // 10:])) / (0.05 * loud_gain)
+        self.assertGreater(tail_ratio, 0.95, "gain should return to unity within 1 s")
+
+    def test_loop_plus_reverb_stack_does_not_clip(self):
+        e = Engine(EngineConfig(samplerate=SR, input_gain_db=6))
+        e.set_reverb(0.8)
+        sig = make_test_signal(seconds=4.0, samplerate=SR)
+        e.toggle_loop()
+        run(e, sig[: 2 * SR])
+        e.toggle_loop()
+        out = run(e, sig[2 * SR:])
+        self.assertEqual(e.snapshot()["clipped_samples"], 0)
         self.assertLessEqual(float(np.max(np.abs(out))), 10 ** (-1 / 20) + 1e-6)
-        self.assertGreater(e.snapshot()["clipped_samples"], 0)
 
     def test_large_and_odd_blocks(self):
         e = Engine(EngineConfig(samplerate=SR, max_block=256))

@@ -73,3 +73,48 @@ class LowPass:
     def process(self, x: np.ndarray, out: np.ndarray) -> None:
         y, self.zi = lfilter(self.b, self.a, x, zi=self.zi)
         out[:] = y
+
+
+class PeakLimiter:
+    """Instant-attack, smooth-release peak limiter, stepped per sub-block.
+
+    For each sub-block, the gain that keeps its peak at the threshold is
+    applied at once if it's lower than the current gain (attack). Otherwise
+    the gain ramps back toward 1 with a release time constant, never above
+    what that sub-block allows. The output therefore never exceeds the
+    threshold, and the engine's hard clip becomes a safety net that should
+    count zero samples.
+    """
+
+    def __init__(self, threshold: float, samplerate: float, step_frames: int, release_ms: float):
+        self.threshold = float(threshold)
+        self.step = int(step_frames)
+        self.gain = 1.0
+        tau = max(release_ms, 1e-3) / 1000.0 * samplerate
+        self.release = 1.0 - math.exp(-self.step / tau)
+        self._lin = np.linspace(0.0, 1.0, self.step + 1, dtype=np.float32)[1:]
+        self._abs = np.zeros(self.step, np.float32)
+        self._ramp = np.zeros(self.step, np.float32)
+
+    def process(self, x: np.ndarray) -> None:
+        """Limit `x` in place."""
+        n, st = len(x), self.step
+        for s in range(0, n, st):
+            seg = x[s:s + st]
+            k = len(seg)
+            a = self._abs[:k]
+            np.abs(seg, out=a)
+            peak = float(a.max())
+            target = self.threshold / peak if peak > self.threshold else 1.0
+            g = self.gain
+            if target < g:
+                seg *= target
+                self.gain = target
+            else:
+                new = min(target, g + (1.0 - g) * self.release)
+                if new != g or g != 1.0:
+                    r = self._ramp[:k]
+                    np.multiply(self._lin[:k], new - g, out=r)
+                    r += g
+                    seg *= r
+                    self.gain = float(r[-1])
