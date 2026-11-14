@@ -8,12 +8,16 @@ python -m pip install -r tools/virtual_guitar/requirements.txt
 python -m tools.virtual_guitar --demo --output outputs/virtual-guitar.wav
 ```
 
-The default input is deterministic plucked synthesis. The command runs it
-through `audio.Engine`, applies the same validated control replay used by the
-backup demo, writes a processed stereo WAV, and prints a JSON report with
-levels, spectral brightness, limiter/clipping counters, control counts and
-render speed. Listen with any player, or add `--play` to use the laptop's
-speakers/headphones after rendering.
+The default input is a deterministic six-string physical model: Karplus–Strong
+feedback strings in standard tuning, real Em–Cmaj7–G–Dsus2 fret voicings,
+millisecond-staggered down/up strums, pick transients, string damping, clean
+pickup bandwidth and restrained body resonances. It is still synthesis—not a
+recording—but it is designed for audible effect tuning rather than merely
+lighting up meters. The command runs it through `audio.Engine`, applies the
+same validated control replay used by the backup demo, writes a processed
+stereo WAV, and prints a JSON report with levels, spectral brightness,
+limiter/clipping counters, control counts and render speed. Listen with any
+player, or add `--play` to use the laptop's speakers/headphones after rendering.
 
 For more realistic tuning, provide a clean guitar/DI PCM WAV:
 
