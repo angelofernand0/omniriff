@@ -12,6 +12,7 @@ class Controller:
     deadband: float = 0.015
     tau: float = 0.12
     control: str = 'filter'
+    relative: bool = False
 
     def __post_init__(self):
         if not all(math.isfinite(x) for x in (self.low, self.high, self.rate, self.confidence, self.deadband, self.tau)):
@@ -29,6 +30,8 @@ class Controller:
         self.sent_at = -math.inf
         self.sent_value = None
         self.seq = 0
+        self.pickup_y = None
+        self.pickup_value = None
 
     def update(self, y, pinch, confidence, now, timestamp_ms):
         if y is None or pinch is None or not all(math.isfinite(v) for v in (y, pinch, confidence, now)) or not 0 <= confidence <= 1 or confidence < self.confidence:
@@ -41,14 +44,23 @@ class Controller:
         if pinch >= 0.45:
             self.active = False
             self.armed = True
-            self.value = None
-        elif self.armed and pinch <= 0.25:
+            if not self.relative:
+                self.value = None
+        elif self.armed and not self.active and pinch <= 0.25:
             self.active = True
+            if self.relative:
+                self.pickup_y = y
+                self.pickup_value = self.sent_value
+                if self.pickup_value is None:
+                    self.pickup_value = 1.0 if self.control == 'filter' else 0.0
+                self.value = self.pickup_value
         dt = 0 if self.previous is None else now - self.previous
         self.previous = now
         if not self.active:
             return None
-        target = min(1., max(0., (self.low - y) / (self.low - self.high)))
+        target = (self.pickup_value + (self.pickup_y - y) / (self.low - self.high)
+                  if self.relative else (self.low - y) / (self.low - self.high))
+        target = min(1., max(0., target))
         self.value = target if self.value is None else self.value + (1 - math.exp(-dt / self.tau)) * (target - self.value)
         if now - self.sent_at < 1 / self.rate or (self.sent_value is not None and abs(self.value - self.sent_value) < self.deadband):
             return None

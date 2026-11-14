@@ -41,6 +41,26 @@ class GestureTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 Controller(**kwargs)
 
+    def test_relative_clutch_picks_up_without_position_jump(self):
+        c = Controller(relative=True, rate=60, deadband=0)
+        c.update(.8, .6, .9, 0, 0)
+        engage = c.update(.4, .1, .9, .1, 100)
+        self.assertEqual(engage['value'], 1.0)
+        c.update(.8, .6, .9, .2, 200)
+        reengage = c.update(.4, .1, .9, .3, 300)
+        self.assertEqual(reengage['value'], 1.0)
+        darker = c.update(.5, .1, .9, .4, 400)
+        self.assertLess(darker['value'], 1.0)
+        self.assertGreater(darker['value'], 0.0)
+
+    def test_relative_reverb_picks_up_from_zero(self):
+        c = Controller(control='reverb', relative=True, rate=60, deadband=0)
+        c.update(.8, .6, .9, 0, 0)
+        engage = c.update(.4, .1, .9, .1, 100)
+        self.assertEqual(engage['value'], 0.0)
+        changed = c.update(.3, .1, .9, .2, 200)
+        self.assertGreater(changed['value'], 0.0)
+
     def test_events_match_shared_schema(self):
         import json
         from pathlib import Path

@@ -17,6 +17,7 @@ def main():
     p.add_argument('--port', type=int, default=47800)
     p.add_argument('--rate', type=float, default=20)
     p.add_argument('--control', choices=['filter', 'reverb'], default='filter')
+    p.add_argument('--relative', action='store_true', help='pick up from current output value at pinch; move wrist to change it')
     p.add_argument('--calibration', type=Path, default=Path('vision-calibration.json'))
     p.add_argument('--calibrate', action='store_true')
     p.add_argument('--no-overlay', action='store_true')
@@ -28,7 +29,7 @@ def main():
     import mediapipe as mp
     from jsonschema import Draft202012Validator
     config = json.loads(args.calibration.read_text()) if args.calibration.exists() else {}
-    controller = Controller(rate=args.rate, control=args.control, **config)
+    controller = Controller(rate=args.rate, control=args.control, relative=args.relative, **config)
     schema = json.loads((Path(__file__).resolve().parents[1] / 'protocol/control.schema.json').read_text())
     validator = Draft202012Validator(schema)
     options = mp.tasks.vision.HandLandmarkerOptions(
