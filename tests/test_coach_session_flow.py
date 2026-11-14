@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import unittest
+import builtins
 import json
 import threading
 from pathlib import Path
@@ -142,6 +143,31 @@ class PracticeSessionFlowTests(unittest.TestCase):
             gate.call(lambda: (_ for _ in ()).throw(RuntimeError("model failure")))
         self.assertEqual(guard.releases, 1)
         self.assertEqual(guard.seen[-1], Callback.usage_metadata)
+
+    def test_offline_runner_needs_no_optional_langchain_import(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            feed = CoachFeed("session-test")
+            state = RigStateReader()
+            service = CoachTools(root, feed, RigClient(fixture_mode=True), state)
+
+            class FakeAgent:
+                def invoke(self, payload, config):
+                    self_test.assertEqual(config["callbacks"][0].usage_metadata, {})
+                    return {"messages": []}
+
+            self_test = self
+            runner = CoachRunner(FakeAgent(), service, feed, state, BudgetGuard(root / "usage.jsonl"))
+            real_import = builtins.__import__
+
+            def without_optional(name, *args, **kwargs):
+                if name == "langchain_core.callbacks":
+                    raise ModuleNotFoundError("synthetic optional dependency absent")
+                return real_import(name, *args, **kwargs)
+
+            with patch("builtins.__import__", side_effect=without_optional):
+                self.assertEqual(runner._invoke("offline", "synthetic-take"), {"messages": []})
+            self.assertEqual(len((root / "usage.jsonl").read_text().splitlines()), 1)
 
     def test_agent_goal_tool_is_one_shot_and_schema_valid(self):
         with TemporaryDirectory() as folder:

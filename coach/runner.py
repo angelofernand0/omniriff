@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -21,6 +22,14 @@ LOG = logging.getLogger(__name__)
 
 class BudgetExhausted(RuntimeError):
     """No more paid model calls are allowed this session."""
+
+
+class _OfflineUsageCollector:
+    """No-dependency callback placeholder for injected offline fake agents only."""
+
+    def __init__(self):
+        self.usage_metadata = {}
+        self._lock = threading.Lock()
 
 
 def _hesitation_mark(report: dict) -> dict | None:
@@ -253,15 +262,19 @@ class CoachRunner:
         return False
 
     def _invoke(self, message: str, take_id: str) -> dict:
-        from langchain_core.callbacks import UsageMetadataCallbackHandler
-        from langgraph.types import Command
-
         if not self.budget.allow_new_run():
             self.feed.publish(state="asleep", mood="sleepy", target=None,
                               cue="Coach is out of credit.")
             raise BudgetExhausted("coach budget guard stopped a new model run")
-        callback = UsageMetadataCallbackHandler()
         gate = getattr(self.service, "model_gate", None)
+        try:
+            from langchain_core.callbacks import UsageMetadataCallbackHandler
+        except ImportError:
+            if gate is not None:
+                raise RuntimeError("live coach requires langchain_core for usage accounting") from None
+            callback = _OfflineUsageCollector()
+        else:
+            callback = UsageMetadataCallbackHandler()
         if gate is not None:
             gate.bind(callback)
         config = {"configurable": {"thread_id": self.session_id},
@@ -285,6 +298,7 @@ class CoachRunner:
                 if not approved:
                     self.feed.publish(state="speaking", mood="neutral", target="player",
                                       cue="No problem, I'll leave your sound as it is.")
+                from langgraph.types import Command
                 result = self.agent.invoke(Command(resume={"decisions": decisions}), config=config)
                 if gate is not None and gate.refused:
                     raise BudgetExhausted("coach budget guard refused a resumed model call")
