@@ -62,6 +62,12 @@ def _run(a) -> int:
             hand_task = asyncio.create_task(serve_hand(view, a.hand_port))
             print(f'[sim] SIMULATED hand view ws://127.0.0.1:{a.hand_port}')
         demo = asyncio.create_task(run_demo(runtime.udp_port, view=view)) if a.demo else None
+        coach_task = None
+        if a.coach_sim:
+            from .coach import run_scripted_coach
+            coach_task = asyncio.create_task(run_scripted_coach(
+                a.coach_port, f'ws://127.0.0.1:{runtime.ws_port}', runtime.udp_port))
+            print(f'[sim] SCRIPTED coach session ws://127.0.0.1:{a.coach_port} (no AI)')
         start = time.monotonic()
         try:
             while not (a.duration and time.monotonic() - start >= a.duration):
@@ -69,6 +75,8 @@ def _run(a) -> int:
         finally:
             if demo:
                 demo.cancel()
+            if coach_task:
+                coach_task.cancel()
             if hand_task:
                 hand_task.cancel()
             stop.set()
@@ -108,6 +116,13 @@ def main(argv=None) -> int:
     r.add_argument('--samplerate', type=int, default=48000)
     r.add_argument('--blocksize', type=int, default=256)
     r.add_argument('--duration', type=float)
+    r.add_argument('--coach-sim', action='store_true',
+                   help='serve a SCRIPTED coach session on --coach-port (no AI; labelled on screen)')
+    r.add_argument('--coach-port', type=int, default=47803)
+    c = sub.add_parser('coach', help='SCRIPTED coach session against a running engine (no AI; labelled on screen)')
+    c.add_argument('--port', type=int, default=47803)
+    c.add_argument('--engine-ws', default='ws://127.0.0.1:47801')
+    c.add_argument('--udp-port', type=int, default=47800, help='where approved bypass goes (0: never touch the rig)')
     s = sub.add_parser('send', help='send one control event over UDP')
     s.add_argument('control', choices=['loop', 'bypass', 'filter', 'reverb'])
     s.add_argument('value', type=float, nargs='?')
@@ -119,7 +134,19 @@ def main(argv=None) -> int:
         if (a.control in ('filter', 'reverb')) != (a.value is not None):
             p.error('filter/reverb need a value in [0, 1]; loop/bypass take none')
         return _send(a)
+    if a.cmd == 'coach':
+        return _coach(a)
     return _run(a)
+
+
+def _coach(a) -> int:
+    from .coach import run_scripted_coach
+    print(f'[sim] SCRIPTED coach session ws://127.0.0.1:{a.port} (no AI) following {a.engine_ws}. Ctrl-C to stop.')
+    try:
+        asyncio.run(run_scripted_coach(a.port, a.engine_ws, a.udp_port or None))
+    except KeyboardInterrupt:
+        pass
+    return 0
 
 
 if __name__ == '__main__':

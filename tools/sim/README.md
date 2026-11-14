@@ -19,3 +19,7 @@ python -m tools.sim send filter 0.4 --source vision --confidence 0.9
 - `demo.py`: a 16 s cycle: record 4 s, play, reverb sweep, filter sweep, clear.
 
 The sim reuses `engine.runtime.Runtime` unchanged, so the dashboard sees exactly the real state format. Tests: `tests/test_sim.py`.
+
+## Scripted coach session (no AI)
+
+`python -m tools.sim run --demo --coach-sim` (or `python -m tools.sim coach` against any running engine, sim or real) serves the coach feed on `ws://127.0.0.1:47803` (`protocol/coach.schema.json`) with a **scripted** session. It reacts to real events (the loop pedal, `coach.approve`/`coach.reject` from the dashboard), but the diagnosis, numbers and drill are written in advance. Every frame has `scripted: true`, and the dashboard must label it. On approval it toggles bypass as `source: "coach"` and restores it after the drill take (`--udp-port 0` never touches the rig). Uses: building the dashboard before the coach brain exists, and a **labelled** fallback at the demo table.
