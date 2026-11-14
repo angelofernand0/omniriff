@@ -88,3 +88,7 @@ and guitar/Scarlett checks remain manual.**
 
 The browser play room currently does not write this log; use native `python -m
 vision` for R17 capture. Browser logging needs a separate owner-coordinated follow-up.
+
+For a portable, listenable comparison of Ears and Eyes reports, use the
+[take evidence viewer](EVIDENCE.md). It checks take identity/start clocks and
+shows incomplete coverage explicitly.
