@@ -12,6 +12,16 @@ class Datagram(asyncio.DatagramProtocol):
     def error_received(self, exc): self.runtime.error('udp', exc)
 
 
+def read_serial_chunk(port):
+    """Wait for the first byte, or drain an already queued bounded batch.
+
+    pySerial read(N) waits for N bytes or timeout. Reading 256 unconditionally
+    delays short footswitch lines until timeout. Keep both the availability
+    query and the read on the worker thread; idle reads still have a timeout.
+    """
+    return port.read(max(1, min(256, port.in_waiting)))
+
+
 class SerialDecoder:
     """Bounded NDJSON framing, host timestamping, reset/reconnect sessions."""
     def __init__(self, router):
@@ -166,7 +176,7 @@ class Runtime:
         self.adapters['serial']['status'] = 'running'
         try:
             while True:
-                data = await asyncio.to_thread(port.read, 256)
+                data = await asyncio.to_thread(read_serial_chunk, port)
                 if data: decoder.feed(data)
         finally:
             # read has a bounded timeout; closing unblocks on device removal.
