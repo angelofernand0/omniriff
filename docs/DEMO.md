@@ -10,10 +10,12 @@ Once per laptop: follow the [Windows quickstart](../engine/README.md#windows-11-
 
 Windows helpers: [setup.ps1](../scripts/windows/setup.ps1) creates/checks the Python 3.12 venv, installs engine + vision requirements and prints preflight results. [start-demo.ps1](../scripts/windows/start-demo.ps1) launches the local dashboard and rig. Both use `.venv\Scripts\python.exe` directly and leave PowerShell execution policy unchanged. **Untested on Windows; PowerShell syntax/execution has not been verified here (`pwsh` unavailable).** Run from the clone in PowerShell:
 
+Windows blocks `.ps1` files by default ("running scripts is disabled"), so start them with a **one-run bypass** that changes no system setting:
+
 ```powershell
-.\scripts\windows\setup.ps1
-.\scripts\windows\start-demo.ps1 -SerialPort COM3  # replace COM3 with the detected port; omit if no pedal
-.\scripts\windows\start-demo.ps1 -Headless         # alternative: silence processing, no Focusrite output
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\setup.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -SerialPort COM3  # use the port --check printed; omit if no pedal
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -Headless         # alternative: silence processing, no Focusrite output
 ```
 
 Run only one demo at a time. Download the hand model as described in §2 before the camera check; if it is missing, the launcher warns and starts without vision. `-Headless` skips the audio interface but still starts vision if the model is present and still opens any explicitly supplied serial port. Setup returns the preflight exit code: a device/port FAIL can mean dependencies installed successfully but the rig is not ready. Complete the live checks below before claiming hardware operation.
