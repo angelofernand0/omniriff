@@ -35,14 +35,20 @@ Exit metrics on stderr report actual elapsed runtime, emitted event count, avera
 ## Demo-table calibration and setup
 
 ### 60-second rehearsal & calibration routine
-Run through this quick 4-step sequence before each judge approaches:
-1. **Frame check (15s)**: Sit with guitar. Check webcam angle: ensure your control hand has an unobstructed path from picking/belt height up to mid-chest. Verify no harsh backlight silhouettes the hand.
-2. **Launch (10s)**: Start the demo vision process:
-   ```bash
-   python -m vision --model models/hand_landmarker.task --scene bloom
-   ```
-3. **Range tap (15s)**: If the player's natural height range is taller/shorter than the default $y \in [0.8, 0.2]$ normalized window, run with `--calibrate`: wrist at lowest rest position $\rightarrow$ press `l`, wrist at highest comfortable sweep $\rightarrow$ press `h`, press `s` to save `calibration.json`.
-4. **Physical dry check (20s)**: Open hand (disarmed), pinch index+thumb (HUD turns green, engaged), sweep upward (filter opens, reverb blooms), open hand (disengages, scene holds). Strum a chord to verify StrumGuard suppresses accidental sweeps. You are ready to demo!
+Run through this quick 4-step sequence before each judge approaches, or run the automated pre-flight audit via `python -m vision.rehearsal --demo`:
+
+```bash
+# Automated instant pre-flight rehearsal audit
+python -m vision.rehearsal --demo --output calibration.json
+```
+
+The rehearsal studio executes a full 4-stage preflight check:
+1. **Range Calibration (15s)**: Measures the performer's comfortable vertical travel ($y \in [\text{high}, \text{low}]$) and calculates optimal bounds with 5% safety margin.
+2. **Clutch Hysteresis Verification (10s)**: Confirms pinch clutching transitions properly (open $\ge 0.45$ arms, pinch $\le 0.25$ engages).
+3. **StrumGuard Spatial Isolation (15s)**: Simulates/monitors 15–45 picking strokes inside the guitar zone ($y \ge 0.55$) to mathematically prove 100% false-positive rejection while playing.
+4. **Expression Quality Audit (20s)**: Evaluates a sample swell with `GestureScorer` (minimum jerk, dynamic range, and efficiency) and prints an objective letter grade (`S`, `A`, `B`, `C`).
+
+Exports a clean, validated `calibration.json` ready for `--calibration calibration.json`. Existing calibration files are never overwritten unless `--overwrite` is explicitly provided.
 
 ### Camera placement and lighting
 - **Distance**: Place the webcam 2–3 feet (0.6–1.0 m) from the player, facing them directly.
@@ -208,4 +214,61 @@ python -m vision.spatial --model models/hand_landmarker.task
    - **Knuckle roll tilt (3D roll angle)** modulates reverb depth: leveling the knuckles ($0^\circ$) gives a dry tone; rolling the knuckles outward ($0^\circ \rightarrow 60^\circ$) washes the guitar signal in spacious reverb.
    - Synchronized filter/reverb pairs are emitted at 10 pairs/s (strictly bounded to $\le 20$ events/s).
 4. **Dashboard Hand View**: Normalized 21-point hand skeleton streams simultaneously to `ws://127.0.0.1:47802` for the dashboard live HAND panel.
+
+## Gesture Vocabulary Engine (`vision/gestures.py`)
+
+Provides a comprehensive vocabulary of natural, guitar-friendly hand poses recognized directly from 21 MediaPipe hand landmarks. Rather than restricting guitarists to a single pinch clutch, the vocabulary engine detects intuitive physical archetypes with configurable dwell confirmation (default 400 ms) and fire cooldowns:
+
+| Gesture Pose | Hand Landmarks | Target Control / Action |
+|---|---|---|
+| **Fist** | All fingers curled, thumb tucked | `action: "bypass"` toggle |
+| **Thumbs Up** | Thumb extended upward, fingers curled | `action: "loop"` (start / punch-in) |
+| **Thumbs Down** | Thumb extended downward, fingers curled | `action: "loop"` (stop / clear) |
+| **Peace Sign (V)** | Index + Middle extended and spread apart | Scene Morph mode toggle |
+| **One Finger** | Index extended, others curled | Scene Preset 1 |
+| **Two Fingers** | Index + Middle extended (parallel) | Scene Preset 2 |
+| **Three Fingers** | Index + Middle + Ring extended | Scene Preset 3 |
+| **Four Fingers** | All fingers extended except thumb | Scene Preset 4 |
+| **Open Palm (Five)** | All 5 fingers extended | Scene Preset 5 / Master Expression |
+
+### Verification & Demo
+```bash
+python -m vision.gestures --demo
+```
+All emitted envelopes comply with `protocol/control.schema.json` v1.
+
+## Performance Scoring & Technique Analytics (`vision/scoring.py`)
+
+Evaluates guitarist gesture execution across four quantitative biomechanical dimensions to provide actionable feedback and grade performance quality:
+
+1. **Smoothness (35% weight)**: Second-order acceleration differences (jerk); rewards graceful continuous sweeps and penalizes nervous hand twitches.
+2. **Dynamic Range Coverage (30% weight)**: Quantifies utilization of the full `[0.0, 1.0]` parameter gamut; flags shallow or constricted motion.
+3. **Stability & Cadence (20% weight)**: Timing variance across repeated filter sweeps or sustained holds.
+4. **Physical Efficiency (15% weight)**: Parameter travel achieved relative to physical hand displacement in space.
+
+### Output Report
+Outputs a standardized `GestureScoreReport` JSON object:
+- **Overall Score** (0–100 integer) & Letter Grade (`S` $\ge 93$, `A` $\ge 85$, `B` $\ge 75$, `C` $\ge 65$, `D` $< 65$).
+- **Dimensional Breakdown**: Individual 0–100 scores for Smoothness, Range, Stability, and Efficiency.
+- **Actionable Coaching Tips**: Concrete suggestions to improve gestural control (e.g. *"Smooth out hand acceleration: detected rapid twitches or reversals. Move like a cello bow — continuous, controlled strokes"*).
+
+### Verification & Demo
+```bash
+python -m vision.scoring --demo
+```
+
+## Adaptive Difficulty & Assistive Accessibility (`vision/adaptive.py`)
+
+A physical AI assistive controller designed for the **Amazon Practical AI** accessibility track, ensuring musicians with limited mobility, arthritis, or physiological tremors can perform with full expressive control:
+
+1. **Auto-Gamut Mapping**: Continuously learns the performer's physical range of motion (even if restricted to a 5–10 cm vertical window) and dynamically expands it to span the entire `[0.0, 1.0]` parameter range.
+2. **Tremor Dampening**: Detects rapid physiological tremor oscillations (4–8 Hz sign reversals) and dynamically elevates filter time constant $\tau$ ($0.12 \rightarrow 0.35$ s) during tremors while keeping intentional sweeps responsive.
+3. **Magnetic Landmark Snapping**: Subtly attracts parameter values to critical musical targets (`0.0`, `0.5`, `1.0`) when hovering nearby, removing the need for sub-millimeter physical precision.
+4. **Assistive Profiles**: Configurable profiles (`assistive`, `standard`, `pro`) with deadbands and confidence gates.
+
+### Verification & Demo
+```bash
+python -m vision.adaptive --demo
+```
+
 
