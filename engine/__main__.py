@@ -59,9 +59,18 @@ def main(argv=None):
             import numpy as np
             mono = np.zeros(a.blocksize, dtype=np.float32)
             out = np.zeros((a.blocksize, a.out_channels), dtype=np.float32)
+            period = a.blocksize / a.samplerate
+            deadline = time.monotonic()
             while not stop.is_set():
                 audio.process(mono, out)
-                stop.wait(a.blocksize / a.samplerate)
+                # Pace against a monotonic deadline so headless runs at real time
+                # (sleeping one period per block drifts slow by the processing time).
+                deadline += period
+                delay = deadline - time.monotonic()
+                if delay > 0:
+                    stop.wait(delay)
+                elif delay < -0.5:
+                    deadline = time.monotonic()  # fell far behind (e.g. machine suspended): resync
     else:
         from audio import stream
         in_dev = stream.resolve_device(a.in_dev, a.hostapi, 'input')
