@@ -28,7 +28,9 @@ def estimate_upper_bound_usd(usage_by_model: dict) -> float:
     if not isinstance(usage_by_model, dict):
         raise ValueError("usage must be a mapping of models to token counts")
     input_tokens = output_tokens = 0
-    for data in usage_by_model.values():
+    # The pinned usage callback replaces per-model records concurrently.
+    # Snapshot the mapping before iterating while specialists finish.
+    for data in usage_by_model.copy().values():
         if not isinstance(data, dict):
             raise ValueError("model usage must contain token counts")
         if any(key not in data for key in ("input_tokens", "output_tokens")):
