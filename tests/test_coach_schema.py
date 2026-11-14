@@ -45,6 +45,8 @@ class CoachSchemaTests(unittest.TestCase):
         bad = [
             no_todos,                                          # full snapshot: every field required
             unlabelled,                                        # a frame must say whether a live agent is behind it
+            frame(session={'goal': 'x'}),                      # a session states every field (null when unknown)
+            frame(session={**EXAMPLES[2]['session'], 'metric': {**EXAMPLES[2]['session']['metric'], 'history': [-1]}}),
             frame(scripted='yes'),
             frame(state='dancing'),
             frame(mood='angry'),

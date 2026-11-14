@@ -1,8 +1,9 @@
-/* Spotlight layout (SM, 2026-11-14). Loaded last; overrides the engineering layout in style.css.
-   While you play it is a guitar app: the loop is the hero, tone below, one power button.
-   When Riff has something for you, it steps forward (data-spot="on"): the instrument dims except
-   the control Riff is operating, Riff grows to centre stage, the line prints at subtitle size.
-   Everything an engineer needs is one key away in the rig drawer (D). */
+/* Coach-column layout (SM, 2026-11-14). Loaded last; overrides the engineering layout in style.css.
+   The instrument (loop, tone, FX POWER) is on the left and is never covered or dimmed. The right
+   column is Riff's: Riff and what it is saying at the top, the practice session below (goal, the
+   drill now, the number that decides a pass with every take so far, what's next), then the
+   coach's plan. Riff walks out to operate a control and comes back. Engineering readouts are in
+   the rig drawer (D). */
 
 /* ---------- frame ---------- */
 .app { grid-template-rows: auto minmax(0, 1fr); position: relative; }
@@ -18,14 +19,13 @@
 .gear kbd { font: inherit; }
 
 /* ---------- deck: loop on top, tone below; the side rail is gone ---------- */
-.deck { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--s6); padding: var(--s4) var(--s6) var(--s6); transition: opacity var(--bar) var(--step); }
+.deck { grid-template-columns: minmax(0, 1fr) clamp(400px, 31vw, 600px); grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--s5) var(--s6); padding: var(--s4) var(--s6) var(--s6); }
 .loop, .tone { grid-column: 1; }
+.coach-col { grid-column: 2; grid-row: 1 / span 2; }
 .loop { grid-row: 1; position: relative; }
 .tone { grid-row: 2; }
 .label { font-size: var(--p1); }
 
-/* Riff's home perch: on the loop's top edge, like a figure sitting on an amp */
-.riff-socket { position: absolute; right: var(--s5); top: -64px; width: 96px; height: 96px; pointer-events: none; }
 
 /* loop: bigger state word, the waveform carries the rest */
 .loop-state { flex: 0 0 296px; }
@@ -65,52 +65,73 @@
 .hand-inset[data-show="true"] { display: flex; animation: popin var(--bar) var(--step); }
 .hand-inset .hand { flex: 1; min-height: 120px; }
 
-/* ---------- spotlight: Riff's moment ---------- */
-.spotlight {
-  position: absolute; left: 0; right: 0; top: 72px; z-index: 30; display: none;
-  grid-template-columns: 300px minmax(0, 960px); justify-content: center; align-items: center; gap: var(--s6);
-  padding: var(--s6); pointer-events: none; min-height: 50vh;
-  background: linear-gradient(to bottom, rgba(11, 11, 16, 0.94) 82%, rgba(11, 11, 16, 0));
-}
-.app[data-spot="on"] .spotlight { display: grid; animation: popin var(--bar) var(--step); }
-.app[data-spot="on"] .deck > section { opacity: 0.16; }
-.app[data-spot="on"] .deck > section:has(.spot-target) { opacity: 1; }
-.app[data-spot="on"] section:has(.spot-target) .fx-zone { opacity: 0.16; }
-.app[data-spot="on"] .riff-socket { opacity: 0; }
-.spot-target { position: relative; z-index: 31; }
-.riff-stage { width: 300px; height: 300px; }
-
-.spot-text { display: flex; flex-direction: column; gap: var(--s5); pointer-events: auto; }
+/* ---------- coach column: Riff's home ---------- */
+.coach-col { display: flex; flex-direction: column; gap: var(--s4); min-height: 0; padding: var(--s4); background: var(--panel); border: var(--stroke) solid var(--line-2); box-shadow: 4px 4px 0 var(--shadow); transition: border-color var(--beat) steps(2); }
+.coach-col[data-state="speaking"], .coach-col[data-state="pointing"], .coach-col[data-state="pleased"], .coach-col[data-ask="true"] { border-color: var(--accent); }
+.booth { display: grid; grid-template-columns: 144px minmax(0, 1fr); gap: var(--s4); align-items: start; min-height: 168px; }
+.booth .riff-socket { width: 144px; height: 144px; }
+.say { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
 .spot-tag { display: none; align-self: flex-start; font: var(--p1)/1 var(--font-pixel); color: var(--warn); border: var(--stroke) solid var(--warn); padding: var(--s1) var(--s2); }
-.spotlight[data-scripted="true"] .spot-tag { display: inline-block; }
-/* the line: subtitle size, readable from the floor, printed by the machine (square, no bubble) */
-.spot-cue { margin: 0; font: 600 48px/1.22 var(--font-mono); color: var(--text); text-wrap: balance; }
-.spot-cue:empty { display: none; }
+.coach-col[data-scripted="true"] .spot-tag { display: inline-block; }
+/* what Riff says: big, in the same place every time, readable from the floor */
+.spot-cue { margin: 0; font: 600 30px/1.25 var(--font-mono); color: var(--text); text-wrap: pretty; }
+.spot-cue:empty::before { content: 'Riff is listening.'; color: var(--faint); font-weight: 400; }
+.coach-col[data-state="asleep"] .spot-cue:empty::before { content: 'Coach off. The rig plays without it.'; }
+.acts { margin: 0; font: 600 var(--t1)/1.4 var(--font-mono); color: var(--muted); }
+.acts:empty { display: none; }
 
-.spot-ask { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s4); align-self: flex-start; padding: var(--s4) var(--s5); background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 0 var(--accent-low); }
-.spot-ask > b { font: 400 var(--p3)/1 var(--font-pixel); animation: blink 1.4s steps(2) infinite; }
+.spot-ask { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s3); padding: var(--s3) var(--s4); background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 0 var(--accent-low); }
+.spot-ask > b { font: 400 var(--p2)/1 var(--font-pixel); animation: blink 1.4s steps(2) infinite; }
 .spot-ask > span:not(.ask-keys) { display: none; }
-.ask-keys { display: flex; gap: var(--s2); }
-.ask-keys .key { background: var(--accent-ink); color: var(--text); border-color: var(--accent-ink); font-size: var(--t2); padding: var(--s1) var(--s3); }
+.ask-keys { display: flex; gap: var(--s2); margin-left: auto; }
+.ask-keys .key { background: var(--accent-ink); color: var(--text); border-color: var(--accent-ink); font-size: var(--t1); padding: var(--s1) var(--s2); }
 
-.spot-ba { display: flex; flex-wrap: wrap; gap: var(--s6); }
+/* practice: where you are. Stays put; numbers come from measured takes */
+.practice { display: flex; flex-direction: column; gap: var(--s3); padding: var(--s4); background: var(--bg); border: var(--stroke) solid var(--line-2); }
+.practice header { display: flex; align-items: baseline; gap: var(--s3); }
+.practice header b, .p-next b, .p-read > span:first-child { font: 400 var(--p1)/1 var(--font-pixel); color: var(--muted); }
+.practice header span { font: 600 var(--t3)/1.2 var(--font-mono); color: var(--text); }
+.p-now { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: var(--s3); padding: var(--s3); border: var(--stroke) solid var(--accent); }
+.p-step { font: 400 var(--p1)/1 var(--font-pixel); color: var(--accent); }
+.p-drill { font: 600 var(--t3)/1.2 var(--font-mono); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-attempt { font: 400 var(--p1)/1 var(--font-pixel); color: var(--muted); }
+.p-read { display: flex; align-items: baseline; gap: var(--s3); }
+.p-read b { font: 400 var(--p3)/1 var(--font-pixel); color: var(--text); font-variant-numeric: tabular-nums; }
+.p-read b[data-pass="true"] { color: var(--accent); }
+.p-target { margin-left: auto; font: 600 var(--t1)/1 var(--font-mono); color: var(--muted); }
+/* every take this session: one bar each, the target as a line. Lower is better. */
+.p-chart { position: relative; height: 72px; display: flex; align-items: flex-end; gap: 6px; padding-top: var(--s2); border-bottom: var(--stroke) solid var(--line-2); }
+.p-chart i { flex: 0 0 22px; background: var(--dim); }
+.p-chart i.pass { background: var(--accent); }
+.p-chart i.last { outline: var(--stroke) solid var(--text); outline-offset: 1px; }
+.p-chart .goal { position: absolute; left: 0; right: 0; height: 0; border-top: var(--stroke) dashed var(--ok); }
+.p-chart .goal::after { content: attr(data-label); position: absolute; right: 0; top: -18px; font: 600 12px/1 var(--font-mono); color: var(--ok); }
+.p-next { display: flex; align-items: baseline; gap: var(--s3); }
+.p-next span { font: 600 var(--t2)/1.3 var(--font-mono); color: var(--text); }
+.p-last { margin: 0; font-size: var(--t1); color: var(--muted); }
+
+/* the coach's plan for this take: a quiet checklist (deepagents write_todos) */
+.plan { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font: var(--t1)/1.5 var(--font-mono); color: var(--faint); }
+.plan:empty { display: none; }
+.plan li::before { content: '· '; }
+.plan li[data-s="completed"] { color: var(--muted); }
+.plan li[data-s="completed"]::before { content: '✓ '; color: var(--ok); }
+.plan li[data-s="in_progress"] { color: var(--text); }
+.plan li[data-s="in_progress"]::before { content: '▸ '; color: var(--accent); }
+
+/* a result: big before/after numbers, in the column */
+.spot-ba { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s3); }
 .spot-ba div { display: flex; flex-direction: column; gap: var(--s2); }
 .spot-ba span { font: var(--p1)/1 var(--font-pixel); color: var(--muted); }
-.spot-ba b { font: 400 var(--p5)/1 var(--font-pixel); color: var(--text); font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: var(--s2); }
-.spot-ba b i { font-style: normal; color: var(--faint); font-size: var(--p3); }
-.spot-ba b small { font-size: var(--p2); color: var(--muted); }
+.spot-ba b { font: 400 var(--p2)/1 var(--font-pixel); color: var(--text); font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: var(--s1); flex-wrap: wrap; }
+.spot-ba b i { font-style: normal; color: var(--faint); }
+.spot-ba b small { font-size: var(--p1); color: var(--muted); }
 .spot-ba[data-improved="true"] b { color: var(--accent); }
 
-.spot-drill { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s4); font-size: var(--t3); color: var(--muted); }
-.spot-drill b { font: var(--p1)/1 var(--font-pixel); font-weight: 400; color: var(--accent); }
-.spot-drill span:first-of-type { color: var(--text); font-weight: 600; }
+/* the control Riff is operating answers with an outline; nothing else on the instrument changes */
+.spot-target { outline: 4px solid var(--accent); outline-offset: 4px; }
 
-/* the harness at work: one quiet line under Riff's perch, not a log */
-.spot-acts { position: absolute; right: 152px; top: 80px; z-index: 25; margin: 0; max-width: 46vw; font: 600 var(--t2)/1.3 var(--font-mono); color: var(--muted); text-align: right; pointer-events: none; }
-.spot-acts:empty { display: none; }
-.app[data-spot="on"] .spot-acts { display: none; }
-
-/* Riff's own cue bubble is replaced by the spotlight line */
+/* Riff's own cue bubble is replaced by the column's line */
 .riff-cue { display: none !important; }
 .riff-finger { position: absolute; left: 50%; top: 50%; image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; display: none; transform-origin: center; }
 .riff-finger[data-on="true"] { display: block; }
@@ -128,15 +149,25 @@
 /* ---------- smaller screens (720p projector, the play room) ---------- */
 @media (max-height: 820px) {
   .bar { padding: var(--s2) var(--s5); }
-  .deck { gap: var(--s4); padding: var(--s3) var(--s5) var(--s4); }
+  .deck { gap: var(--s3) var(--s4); padding: var(--s3) var(--s5) var(--s4); grid-template-columns: minmax(0, 1fr) clamp(340px, 32vw, 460px); }
   .loop-word { font-size: var(--p4); }
-  .tone-row { grid-template-columns: minmax(0, 1fr) auto 184px; gap: var(--s4); }
-  .hand-inset { width: 200px; }
-  .fx-glyph { font-size: 56px; }
-  .spotlight { grid-template-columns: 220px minmax(0, 820px); top: 56px; padding-top: var(--s4); }
-  .riff-stage { width: 220px; height: 220px; }
-  .spot-cue { font-size: 36px; }
-  .spot-ba b { font-size: var(--p4); }
+  .loop-state { flex-basis: 232px; }
+  .tone-row { grid-template-columns: minmax(0, 1fr) auto 160px; gap: var(--s3); }
+  .hand-inset { width: 180px; }
+  .fx-glyph { font-size: 48px; }
+  .booth { grid-template-columns: 112px minmax(0, 1fr); min-height: 120px; }
+  .booth .riff-socket { width: 112px; height: 112px; }
+  .spot-cue { font-size: 22px; }
+  .coach-col { padding: var(--s3); gap: var(--s3); }
+  .practice { padding: var(--s3); gap: var(--s2); }
+  .p-chart { height: 48px; }
+  .plan { display: none; }
+  .p-read b { font-size: var(--p2); }
+  .p-read > span:first-child { white-space: nowrap; }
+  .p-drill { white-space: normal; font-size: var(--t2); }
+  .spot-ba b { font-size: var(--p1); }
+  .spot-ba span { font-size: 12px; }
+}
 }
 
 /* fixed columns so the power button keeps its place whether or not the hand inset shows */

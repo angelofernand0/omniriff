@@ -354,6 +354,165 @@
         "scripted": {
           "type": "boolean",
           "description": "true when no live agent is behind this frame (tools.sim's scripted coach session, a replayed session). The dashboard must label it on screen; never present a scripted session as live."
+        },
+        "session": {
+          "description": "Optional (additive). The practice session the coach is running, so the player can see where they are: the goal, the drill now, the attempt, the number that decides a pass with its target and history, what comes next, and what the coach remembers. Omit or null when there is no session yet.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "goal",
+                "drill",
+                "attempt",
+                "metric",
+                "next",
+                "last_time"
+              ],
+              "properties": {
+                "goal": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 80,
+                  "description": "What this session is for, e.g. 'Clean G to C change'."
+                },
+                "drill": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "title",
+                        "skill",
+                        "step",
+                        "of"
+                      ],
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 60
+                        },
+                        "skill": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+                          "maxLength": 64
+                        },
+                        "step": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 12,
+                          "description": "This drill's place in the session plan."
+                        },
+                        "of": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 12
+                        }
+                      }
+                    }
+                  ]
+                },
+                "attempt": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "n",
+                        "of"
+                      ],
+                      "properties": {
+                        "n": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 50
+                        },
+                        "of": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 50
+                        }
+                      }
+                    }
+                  ]
+                },
+                "metric": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "name",
+                        "unit",
+                        "target",
+                        "lower_is_better",
+                        "history"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40,
+                          "description": "e.g. 'longest gap'"
+                        },
+                        "unit": {
+                          "type": "string",
+                          "maxLength": 8
+                        },
+                        "target": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "lower_is_better": {
+                          "type": "boolean"
+                        },
+                        "history": {
+                          "type": "array",
+                          "maxItems": 12,
+                          "items": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "description": "One value per judgeable take this session, oldest first. Measured, never estimated."
+                        }
+                      }
+                    }
+                  ]
+                },
+                "next": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 80,
+                  "description": "What comes after this drill, e.g. 'Full pattern at 92 bpm'."
+                },
+                "last_time": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 120,
+                  "description": "One line from the player's memory, if any."
+                }
+              }
+            }
+          ]
         }
       }
     },

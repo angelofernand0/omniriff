@@ -27,9 +27,9 @@
   </header>
 
   <main class="deck">
-    <!-- LOOP: the hero while you play. Riff's home perch sits on its top edge. -->
+    <!-- LOOP: the hero while you play -->
     <section class="mod loop" aria-labelledby="h-loop">
-      <h2 class="label" id="h-loop"><i data-icon="loop"></i>LOOP<span class="grow"></span><span class="riff-socket" aria-hidden="true"></span></h2>
+      <h2 class="label" id="h-loop"><i data-icon="loop"></i>LOOP</h2>
       <div class="loop-row">
         <div class="loop-state panel">
           <div class="loop-word"><span class="loop-dot" aria-hidden="true"></span><span id="loopWord">READY</span></div>
@@ -84,26 +84,40 @@
       </div>
     </section>
 
-  </main>
-
-  <!-- SPOTLIGHT: Riff's moment. Filled by coach.js from the coach feed. -->
-  <section class="spotlight" id="coachDock" data-state="asleep" aria-live="polite" aria-label="Coach">
-    <div class="spot-riff riff-stage" aria-hidden="true"></div>
-    <div class="spot-text">
-      <span class="spot-tag preview-tag">SCRIPTED · NOT AI</span>
-      <p class="spot-cue" id="coachLine"></p>
-      <span class="spot-sub" id="coachSub" hidden></span>
+    <!-- COACH COLUMN: Riff's home. Never covers the instrument. Filled by coach.js from the coach feed. -->
+    <aside class="coach-col" id="coachDock" data-state="asleep" aria-label="Coach">
+      <div class="booth">
+        <div class="riff-socket riff-stage" aria-hidden="true"></div>
+        <div class="say" aria-live="polite">
+          <span class="spot-tag preview-tag">SCRIPTED · NOT AI</span>
+          <p class="spot-cue" id="coachLine"></p>
+          <p class="acts" id="coachActsLine" aria-label="What the coach is doing"></p>
+        </div>
+      </div>
       <div class="spot-ask" id="coachAsk" hidden>
         <b>TAP PEDAL TO START</b><span id="coachAskText"></span>
         <span class="ask-keys"><button type="button" class="key" id="coachYes"><kbd>Y</kbd>YES</button><button type="button" class="key" id="coachNo"><kbd>N</kbd>NO</button></span>
       </div>
+      <!-- PRACTICE: where you are in the session. Stays put; updates as takes come in. -->
+      <section class="practice" id="practice" aria-label="Practice session">
+        <header><b>GOAL</b><span id="pGoal">Play a take to start</span></header>
+        <div class="p-now" id="pNow" hidden>
+          <span class="p-step" id="pStep"></span>
+          <span class="p-drill" id="pDrill"></span>
+          <span class="p-attempt" id="pAttempt"></span>
+        </div>
+        <div class="p-metric" id="pMetric" hidden>
+          <div class="p-read"><span id="pMetricName">LONGEST GAP</span><b id="pMetricNow">--</b><span class="p-target" id="pTarget"></span></div>
+          <div class="p-chart" id="pChart" aria-label="Every take this session"></div>
+        </div>
+        <div class="p-next" id="pNextRow" hidden><b>NEXT</b><span id="pNext"></span></div>
+        <p class="p-last" id="pLast" hidden></p>
+      </section>
+      <ol class="plan" id="coachPlan" aria-label="Coach's plan for this take"></ol>
       <div class="spot-ba" id="coachBA" hidden></div>
-      <div class="spot-drill" id="coachDrill" hidden></div>
-    </div>
-  </section>
-  <!-- the harness at work, one quiet line beside Riff's perch (coach / ears / eyes) -->
-  <p class="spot-acts" id="coachActsLine" aria-label="What the coach is doing"></p>
-  <ul id="coachPlan" hidden></ul><ul id="coachActs" hidden></ul><div id="coachDetail" hidden></div>
+      <div id="coachDrill" hidden></div><span id="coachSub" hidden></span><ul id="coachActs" hidden></ul><div id="coachDetail" hidden></div>
+    </aside>
+  </main>
 
   <!-- RIG DRAWER: everything an engineer needs, nothing a player needs -->
   <aside class="drawer" id="drawer" hidden aria-label="Rig details">
