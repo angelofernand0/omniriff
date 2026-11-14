@@ -4,47 +4,32 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OmniRiff</title>
-<meta name="description" content="OmniRiff: a practice rig with a teacher in the signal chain. Live dashboard.">
+<meta name="description" content="OmniRiff: a guitar teacher that lives in your signal chain. Live dashboard.">
 <meta name="theme-color" content="#0B0B10">
 <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="brand.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="juice.css">
 <link rel="stylesheet" href="riff.css">
-<link rel="stylesheet" href="coach.css">
+<link rel="stylesheet" href="stage.css">
 </head>
 <body>
-<div class="app" id="app" data-conn="offline" data-boot="true" data-bypass="false" data-loop="idle" data-fx="idle">
+<!-- Spotlight layout (BRAND_SPEC section 9): while you play it is a guitar app; when Riff has
+     something to say, it steps forward and the instrument dims. Engineering readouts live in the
+     rig drawer (D). Every id app.js / juice.js / coach.js / riff.js read is kept. -->
+<div class="app" id="app" data-conn="offline" data-boot="true" data-bypass="false" data-loop="idle" data-fx="idle" data-spot="off">
 
-  <!-- faceplate: who we are, what is connected, what is coming in and going out -->
-  <header class="plate">
+  <header class="bar">
     <div class="logo"><span data-logo="lockup"></span></div>
-    <span class="model">PRACTICE RIG</span>
-    <div class="leds" role="group" aria-label="Connections">
-      <span class="led" id="led-engine"><i aria-hidden="true"></i><b>ENGINE</b><span id="conn" role="status">OFFLINE</span></span>
-      <span class="led" id="st-vision"><i aria-hidden="true"></i><b>CAM</b><span id="visionVal">OFF</span></span>
-      <span class="led" id="st-arduino"><i aria-hidden="true"></i><b>PEDAL</b><span id="pedalVal">OFF</span></span>
-      <span class="led" id="led-coach"><i aria-hidden="true"></i><b>COACH</b><span>OFF</span></span>
-    </div>
-    <span class="chip sim-chip" id="simChip" role="status" title="The guitar input is synthetic, not a real instrument">SIMULATED</span>
-    <span class="chip replay-chip" id="replayChip" role="status" title="Scripted backup controls, not live sensors">REPLAY</span>
-    <span class="chip bypass-chip" id="bypassChip" role="status">BYPASS</span>
     <span class="spacer"></span>
-    <div class="meters" role="group" aria-label="Levels">
-      <span class="meter-label">IN</span>
-      <div class="segs" id="inSegs" aria-label="Input level"></div>
-      <span class="db" id="inDb">-- dB</span>
-      <span class="clip" id="inClip" aria-label="Clip indicator">CLIP</span>
-      <span class="meter-label">OUT</span>
-      <div class="segs small" id="outSegs" aria-label="Output level"></div>
-    </div>
+    <span class="pill" id="statusPill" role="status">OFFLINE</span>
+    <button type="button" class="gear" id="drawerBtn" aria-controls="drawer" aria-expanded="false" title="Rig details (D)"><kbd>D</kbd>RIG</button>
   </header>
 
   <main class="deck">
-
-    <!-- 01 LOOP -->
+    <!-- LOOP: the hero while you play. Riff's home perch sits on its top edge. -->
     <section class="mod loop" aria-labelledby="h-loop">
-      <h2 class="label" id="h-loop"><i data-icon="loop"></i><span class="n">01</span>LOOP<span class="grow"></span><span class="label-r" id="loopMeta"></span></h2>
+      <h2 class="label" id="h-loop"><i data-icon="loop"></i>LOOP<span class="grow"></span><span class="riff-socket" aria-hidden="true"></span></h2>
       <div class="loop-row">
         <div class="loop-state panel">
           <div class="loop-word"><span class="loop-dot" aria-hidden="true"></span><span id="loopWord">READY</span></div>
@@ -59,82 +44,101 @@
       </div>
     </section>
 
-    <!-- 02 TONE -->
+    <!-- TONE: two values and the power button Riff can press -->
     <section class="mod tone" aria-labelledby="h-tone">
-      <h2 class="label" id="h-tone"><i data-icon="tone"></i><span class="n">02</span>TONE</h2>
-      <div class="fx-zone">
-        <div class="cards" id="cards">
-          <article class="card" id="card-filter" data-control="filter">
-            <header><h3>FILTER</h3><span class="tag">MOVED</span></header>
-            <div class="readout"><span class="pct" id="pct-filter">--</span><span class="sub" id="sub-filter"></span></div>
-            <div class="blocks" id="blocks-filter"></div>
-          </article>
-          <article class="card" id="card-reverb" data-control="reverb">
-            <header><h3>REVERB</h3><span class="tag">MOVED</span></header>
-            <div class="readout"><span class="pct" id="pct-reverb">--</span><span class="sub" id="sub-reverb"></span></div>
-            <div class="blocks" id="blocks-reverb"></div>
-          </article>
-        </div>
-        <div class="engaged" id="engaged" aria-live="polite">
-          <div class="engaged-text">
-            <span class="engaged-name" id="engName">REVERB</span>
-            <span class="engaged-pct" id="engPct">0%</span>
+      <h2 class="label" id="h-tone"><i data-icon="tone"></i>TONE</h2>
+      <div class="tone-row">
+        <div class="fx-zone">
+          <div class="cards" id="cards">
+            <article class="card" id="card-filter" data-control="filter">
+              <header><h3>FILTER</h3><span class="tag">MOVED</span></header>
+              <div class="readout"><span class="pct" id="pct-filter">--</span><span class="sub" id="sub-filter"></span></div>
+              <div class="blocks" id="blocks-filter"></div>
+            </article>
+            <article class="card" id="card-reverb" data-control="reverb">
+              <header><h3>REVERB</h3><span class="tag">MOVED</span></header>
+              <div class="readout"><span class="pct" id="pct-reverb">--</span><span class="sub" id="sub-reverb"></span></div>
+              <div class="blocks" id="blocks-reverb"></div>
+            </article>
           </div>
-          <div class="tower" id="tower"></div>
+          <div class="engaged" id="engaged" aria-live="polite">
+            <div class="engaged-text">
+              <span class="engaged-name" id="engName">REVERB</span>
+              <span class="engaged-pct" id="engPct">0%</span>
+            </div>
+            <div class="tower" id="tower"></div>
+          </div>
+          <div class="bypass-stamp" aria-hidden="true"><b>FX OFF</b><span>Dry signal.</span></div>
         </div>
-        <div class="bypass-stamp" aria-hidden="true"><b>BYPASS</b><span>Effects off. Dry signal.</span></div>
+        <!-- HAND: a small inset, only while the camera sees a hand -->
+    <section class="hand-inset" aria-labelledby="h-hand">
+      <h2 class="label" id="h-hand"><i data-icon="hand"></i>HAND<span class="grow"></span><span class="label-r hand-state" id="handState" role="status">NO CAMERA</span></h2>
+      <div class="panel hand" id="handPanel" data-hand="off" data-perch="bl">
+        <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
+        <div class="empty hand-empty"><i data-icon="cam" class="x4 if-off"></i><i data-icon="hand" class="x4 if-none"></i><b id="handEmptyWord">NO CAMERA</b><span id="handEmptyHint">Start vision to see your hand.</span></div>
+      </div>
+    </section>
+        <button type="button" class="fx-power" id="fxPower" data-reach="left" aria-pressed="true" title="Effects on/off (B)">
+          <span class="fx-led" aria-hidden="true"></span><span class="fx-glyph" aria-hidden="true">⏻</span><b>FX</b><span class="fx-word">ON</span>
+        </button>
       </div>
     </section>
 
-    <aside class="side">
-      <!-- 03 HAND -->
-      <section class="mod hand-mod" aria-labelledby="h-hand">
-        <h2 class="label" id="h-hand"><i data-icon="hand"></i><span class="n">03</span>HAND<span class="grow"></span><span class="label-r hand-state" id="handState" role="status">NO CAMERA</span></h2>
-        <div class="panel hand" id="handPanel" data-hand="off" data-perch="bl">
-          <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
-          <div class="empty hand-empty"><i data-icon="cam" class="x4 if-off"></i><i data-icon="hand" class="x4 if-none"></i><b id="handEmptyWord">NO CAMERA</b><span id="handEmptyHint">Start vision to see your hand.</span></div>
-        </div>
-      </section>
-
-      <!-- 04 COACH: Riff's dock. The character is drawn by riff.js; nothing here is AI yet. -->
-      <section class="mod" id="coachDock" data-state="asleep" aria-labelledby="h-coach">
-        <h2 class="label" id="h-coach"><i data-icon="coach"></i><span class="n">04</span>COACH<span class="grow"></span><span class="label-r preview-tag">SCRIPTED PREVIEW</span></h2>
-        <div class="panel coach">
-          <div class="riff-socket" aria-hidden="true"></div>
-          <div class="coach-text"><b id="coachLine">COACH OFF</b><span id="coachSub">Not running. The rig plays without it.</span></div>
-        </div>
-        <!-- filled by coach.js from the coach feed (ws 47803); hidden when there is nothing to show -->
-        <div class="coach-detail" id="coachDetail" hidden>
-          <div class="coach-ask" id="coachAsk" role="alert" hidden>
-            <b>TAP PEDAL TO START</b><span id="coachAskText"></span>
-            <span class="ask-keys"><button type="button" class="key" id="coachYes"><kbd>Y</kbd>YES</button><button type="button" class="key" id="coachNo"><kbd>N</kbd>NO</button></span>
-          </div>
-          <ul class="coach-plan" id="coachPlan" hidden></ul>
-          <div class="coach-drill" id="coachDrill" hidden></div>
-          <div class="coach-ba" id="coachBA" hidden></div>
-          <ul class="coach-acts" id="coachActs" aria-label="What the coach is doing" hidden></ul>
-        </div>
-      </section>
-
-      <!-- 05 MANUAL: the fallback. Pedal and hand come first. -->
-      <details class="mod manual">
-        <summary class="label"><span class="n">05</span>MANUAL<span class="grow"></span><span class="twist" aria-hidden="true"></span></summary>
-        <div class="manual-body">
-          <div class="row">
-            <button type="button" class="key" id="btnLoop"><kbd>L</kbd>LOOP</button>
-            <button type="button" class="key" id="btnBypass"><kbd>B</kbd>BYPASS</button>
-          </div>
-          <label class="fader"><span>FILTER</span><output id="outFilter">--</output><input type="range" id="slFilter" min="0" max="1" step="0.01" value="1"></label>
-          <label class="fader"><span>REVERB</span><output id="outReverb">--</output><input type="range" id="slReverb" min="0" max="1" step="0.01" value="0"></label>
-        </div>
-      </details>
-    </aside>
   </main>
 
-  <footer class="foot">
-    <span id="diag">No engine yet</span>
-    <span class="keys" aria-label="Keyboard shortcuts"><kbd>F</kbd>FULLSCREEN<kbd>L</kbd>LOOP<kbd>B</kbd>BYPASS<kbd>Y</kbd><kbd>N</kbd>ANSWER RIFF<kbd>M</kbd>MUTE RIFF</span>
-  </footer>
+  <!-- SPOTLIGHT: Riff's moment. Filled by coach.js from the coach feed. -->
+  <section class="spotlight" id="coachDock" data-state="asleep" aria-live="polite" aria-label="Coach">
+    <div class="spot-riff riff-stage" aria-hidden="true"></div>
+    <div class="spot-text">
+      <span class="spot-tag preview-tag">SCRIPTED · NOT AI</span>
+      <p class="spot-cue" id="coachLine"></p>
+      <span class="spot-sub" id="coachSub" hidden></span>
+      <div class="spot-ask" id="coachAsk" hidden>
+        <b>TAP PEDAL TO START</b><span id="coachAskText"></span>
+        <span class="ask-keys"><button type="button" class="key" id="coachYes"><kbd>Y</kbd>YES</button><button type="button" class="key" id="coachNo"><kbd>N</kbd>NO</button></span>
+      </div>
+      <div class="spot-ba" id="coachBA" hidden></div>
+      <div class="spot-drill" id="coachDrill" hidden></div>
+    </div>
+  </section>
+  <!-- the harness at work, one quiet line beside Riff's perch (coach / ears / eyes) -->
+  <p class="spot-acts" id="coachActsLine" aria-label="What the coach is doing"></p>
+  <ul id="coachPlan" hidden></ul><ul id="coachActs" hidden></ul><div id="coachDetail" hidden></div>
+
+  <!-- RIG DRAWER: everything an engineer needs, nothing a player needs -->
+  <aside class="drawer" id="drawer" hidden aria-label="Rig details">
+    <h2 class="label">RIG<span class="grow"></span><button type="button" class="key" id="drawerClose"><kbd>D</kbd>CLOSE</button></h2>
+    <div class="leds" role="group" aria-label="Connections">
+      <span class="led" id="led-engine"><i aria-hidden="true"></i><b>ENGINE</b><span id="conn" role="status">OFFLINE</span></span>
+      <span class="led" id="st-vision"><i aria-hidden="true"></i><b>CAM</b><span id="visionVal">OFF</span></span>
+      <span class="led" id="st-arduino"><i aria-hidden="true"></i><b>PEDAL</b><span id="pedalVal">OFF</span></span>
+      <span class="led" id="led-coach"><i aria-hidden="true"></i><b>COACH</b><span>OFF</span></span>
+    </div>
+    <div class="chips">
+      <span class="chip sim-chip" id="simChip" role="status">SIMULATED</span>
+      <span class="chip replay-chip" id="replayChip" role="status">REPLAY</span>
+      <span class="chip bypass-chip" id="bypassChip" role="status">BYPASS</span>
+    </div>
+    <div class="meters" role="group" aria-label="Levels">
+      <span class="meter-label">IN</span>
+      <div class="segs" id="inSegs" aria-label="Input level"></div>
+      <span class="db" id="inDb">-- dB</span>
+      <span class="clip" id="inClip" aria-label="Clip indicator">CLIP</span>
+      <span class="meter-label">OUT</span>
+      <div class="segs small" id="outSegs" aria-label="Output level"></div>
+    </div>
+    <div class="manual-body">
+      <div class="row">
+        <button type="button" class="key" id="btnLoop"><kbd>L</kbd>LOOP</button>
+        <button type="button" class="key" id="btnBypass"><kbd>B</kbd>BYPASS</button>
+      </div>
+      <label class="fader"><span>FILTER</span><output id="outFilter">--</output><input type="range" id="slFilter" min="0" max="1" step="0.01" value="1"></label>
+      <label class="fader"><span>REVERB</span><output id="outReverb">--</output><input type="range" id="slReverb" min="0" max="1" step="0.01" value="0"></label>
+    </div>
+    <span class="loop-meta" id="loopMeta"></span>
+    <p class="diag" id="diag">No engine yet</p>
+    <p class="keys"><kbd>F</kbd>FULLSCREEN <kbd>L</kbd>LOOP <kbd>B</kbd>FX <kbd>Y</kbd>/<kbd>N</kbd>ANSWER RIFF <kbd>M</kbd>MUTE RIFF <kbd>D</kbd>RIG</p>
+  </aside>
 </div>
 <script src="brand.js"></script>
 <script>OmniBrand.mount();</script>
@@ -142,5 +146,6 @@
 <script src="juice.js"></script>
 <script src="riff.js"></script>
 <script src="coach.js"></script>
+<script src="stage.js"></script>
 </body>
 </html>

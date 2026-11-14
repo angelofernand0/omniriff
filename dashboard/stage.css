@@ -1,0 +1,147 @@
+/* Spotlight layout (SM, 2026-11-14). Loaded last; overrides the engineering layout in style.css.
+   While you play it is a guitar app: the loop is the hero, tone below, one power button.
+   When Riff has something for you, it steps forward (data-spot="on"): the instrument dims except
+   the control Riff is operating, Riff grows to centre stage, the line prints at subtitle size.
+   Everything an engineer needs is one key away in the rig drawer (D). */
+
+/* ---------- frame ---------- */
+.app { grid-template-rows: auto minmax(0, 1fr); position: relative; }
+.label .n, .foot, .loop .label-r { display: none; }
+
+.bar { display: flex; align-items: center; gap: var(--s4); padding: var(--s4) var(--s6); }
+.bar .logo { transform: scale(1.15); transform-origin: left center; }
+.pill { font: var(--p1)/1 var(--font-pixel); padding: var(--s2) var(--s3); border: var(--stroke) solid var(--line-2); color: var(--muted); }
+.pill[data-kind="ok"] { color: var(--ok); border-color: rgba(143, 227, 166, 0.45); }
+.pill[data-kind="warn"] { color: var(--warn); border-color: rgba(255, 181, 71, 0.55); }
+.gear { display: inline-flex; align-items: center; gap: var(--s2); background: none; border: var(--stroke) solid var(--line-2); color: var(--faint); font: var(--p1)/1 var(--font-pixel); padding: var(--s2) var(--s3); cursor: pointer; }
+.gear:hover, .gear[aria-expanded="true"] { color: var(--text); border-color: var(--text); }
+.gear kbd { font: inherit; }
+
+/* ---------- deck: loop on top, tone below; the side rail is gone ---------- */
+.deck { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--s6); padding: var(--s4) var(--s6) var(--s6); transition: opacity var(--bar) var(--step); }
+.loop, .tone { grid-column: 1; }
+.loop { grid-row: 1; position: relative; }
+.tone { grid-row: 2; }
+.label { font-size: var(--p1); }
+
+/* Riff's home perch: on the loop's top edge, like a figure sitting on an amp */
+.riff-socket { position: absolute; right: var(--s5); top: -64px; width: 96px; height: 96px; pointer-events: none; }
+
+/* loop: bigger state word, the waveform carries the rest */
+.loop-state { flex: 0 0 296px; }
+.loop-word { font-size: var(--p5); }
+.loop-dot { width: 36px; height: 36px; }
+.loop-len { font-size: var(--p3); font-family: var(--font-pixel); font-weight: 400; }
+
+/* tone: two big readouts and the power button */
+.tone-row { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 232px; gap: var(--s6); min-height: 0; }
+.card .tag { display: none; }
+.card h3 { font-size: var(--p2); color: var(--muted); }
+.card.target h3, .card.live h3 { color: var(--accent); }
+.sub { font-size: var(--t1); }
+
+/* the FX power button: a real piece of hardware Riff can walk up to and press */
+.fx-power {
+  position: relative; display: grid; place-items: center; align-content: center; gap: var(--s3);
+  background: var(--panel); color: var(--text); border: 4px solid var(--line-2); box-shadow: 0 8px 0 var(--shadow);
+  font: var(--p2)/1 var(--font-pixel); cursor: pointer; transition: transform var(--tick) steps(1), box-shadow var(--tick) steps(1), border-color var(--beat) steps(2);
+}
+.fx-power b { font-weight: 400; font-size: var(--p3); }
+.fx-glyph { font: 400 72px/1 var(--font-mono); color: var(--faint); }
+.fx-word { font-size: var(--p2); color: var(--muted); }
+.fx-led { position: absolute; top: var(--s4); right: var(--s4); width: 16px; height: 16px; background: var(--off); }
+.fx-power[data-on="true"] { border-color: var(--accent); }
+.fx-power[data-on="true"] .fx-glyph, .fx-power[data-on="true"] .fx-word { color: var(--accent); }
+.fx-power[data-on="true"] .fx-led { background: var(--accent); box-shadow: 0 0 0 4px rgba(255, 92, 203, 0.25); }
+.fx-power[data-on="false"] .fx-word { color: var(--warn); }
+.fx-power:active, .fx-power.pressed { transform: translateY(6px); box-shadow: 0 2px 0 var(--shadow); }
+.fx-power:disabled { opacity: 0.4; cursor: default; }
+.app[data-bypass="true"] .bypass-stamp { display: none; }   /* the button says it now */
+.app[data-bypass="true"] .cards, .app[data-bypass="true"] .engaged { opacity: 0.3; }
+
+/* hand: in the tone row while the camera sees a hand, gone otherwise */
+.tone-row { grid-template-columns: minmax(0, 1fr) auto 232px; }
+.hand-inset { width: 260px; display: none; flex-direction: column; gap: var(--s2); min-height: 0; }
+.hand-inset[data-show="true"] { display: flex; animation: popin var(--bar) var(--step); }
+.hand-inset .hand { flex: 1; min-height: 120px; }
+
+/* ---------- spotlight: Riff's moment ---------- */
+.spotlight {
+  position: absolute; left: 0; right: 0; top: 72px; z-index: 30; display: none;
+  grid-template-columns: 300px minmax(0, 960px); justify-content: center; align-items: center; gap: var(--s6);
+  padding: var(--s6); pointer-events: none; min-height: 50vh;
+  background: linear-gradient(to bottom, rgba(11, 11, 16, 0.94) 82%, rgba(11, 11, 16, 0));
+}
+.app[data-spot="on"] .spotlight { display: grid; animation: popin var(--bar) var(--step); }
+.app[data-spot="on"] .deck > section { opacity: 0.16; }
+.app[data-spot="on"] .deck > section:has(.spot-target) { opacity: 1; }
+.app[data-spot="on"] section:has(.spot-target) .fx-zone { opacity: 0.16; }
+.app[data-spot="on"] .riff-socket { opacity: 0; }
+.spot-target { position: relative; z-index: 31; }
+.riff-stage { width: 300px; height: 300px; }
+
+.spot-text { display: flex; flex-direction: column; gap: var(--s5); pointer-events: auto; }
+.spot-tag { display: none; align-self: flex-start; font: var(--p1)/1 var(--font-pixel); color: var(--warn); border: var(--stroke) solid var(--warn); padding: var(--s1) var(--s2); }
+.spotlight[data-scripted="true"] .spot-tag { display: inline-block; }
+/* the line: subtitle size, readable from the floor, printed by the machine (square, no bubble) */
+.spot-cue { margin: 0; font: 600 48px/1.22 var(--font-mono); color: var(--text); text-wrap: balance; }
+.spot-cue:empty { display: none; }
+
+.spot-ask { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s4); align-self: flex-start; padding: var(--s4) var(--s5); background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 0 var(--accent-low); }
+.spot-ask > b { font: 400 var(--p3)/1 var(--font-pixel); animation: blink 1.4s steps(2) infinite; }
+.spot-ask > span:not(.ask-keys) { display: none; }
+.ask-keys { display: flex; gap: var(--s2); }
+.ask-keys .key { background: var(--accent-ink); color: var(--text); border-color: var(--accent-ink); font-size: var(--t2); padding: var(--s1) var(--s3); }
+
+.spot-ba { display: flex; flex-wrap: wrap; gap: var(--s6); }
+.spot-ba div { display: flex; flex-direction: column; gap: var(--s2); }
+.spot-ba span { font: var(--p1)/1 var(--font-pixel); color: var(--muted); }
+.spot-ba b { font: 400 var(--p5)/1 var(--font-pixel); color: var(--text); font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: var(--s2); }
+.spot-ba b i { font-style: normal; color: var(--faint); font-size: var(--p3); }
+.spot-ba b small { font-size: var(--p2); color: var(--muted); }
+.spot-ba[data-improved="true"] b { color: var(--accent); }
+
+.spot-drill { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s2) var(--s4); font-size: var(--t3); color: var(--muted); }
+.spot-drill b { font: var(--p1)/1 var(--font-pixel); font-weight: 400; color: var(--accent); }
+.spot-drill span:first-of-type { color: var(--text); font-weight: 600; }
+
+/* the harness at work: one quiet line under Riff's perch, not a log */
+.spot-acts { position: absolute; right: 152px; top: 80px; z-index: 25; margin: 0; max-width: 46vw; font: 600 var(--t2)/1.3 var(--font-mono); color: var(--muted); text-align: right; pointer-events: none; }
+.spot-acts:empty { display: none; }
+.app[data-spot="on"] .spot-acts { display: none; }
+
+/* Riff's own cue bubble is replaced by the spotlight line */
+.riff-cue { display: none !important; }
+.riff-finger { position: absolute; left: 50%; top: 50%; image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; display: none; transform-origin: center; }
+.riff-finger[data-on="true"] { display: block; }
+
+/* ---------- rig drawer ---------- */
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; max-width: 92vw; z-index: 50; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s5); padding: var(--s5); background: var(--bg-bar); border-left: var(--stroke) solid var(--line-2); box-shadow: -8px 0 0 var(--shadow); }
+.drawer[hidden] { display: none; }
+.drawer .leds { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+.drawer .chips { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.drawer .meters { justify-content: start; }
+.drawer .manual-body { display: flex; flex-direction: column; gap: var(--s3); }
+.drawer .diag, .drawer .keys, .drawer .loop-meta { margin: 0; font-size: var(--t1); color: var(--muted); line-height: 1.6; }
+.drawer .keys kbd { margin-left: var(--s2); }
+
+/* ---------- smaller screens (720p projector, the play room) ---------- */
+@media (max-height: 820px) {
+  .bar { padding: var(--s2) var(--s5); }
+  .deck { gap: var(--s4); padding: var(--s3) var(--s5) var(--s4); }
+  .loop-word { font-size: var(--p4); }
+  .tone-row { grid-template-columns: minmax(0, 1fr) auto 184px; gap: var(--s4); }
+  .hand-inset { width: 200px; }
+  .fx-glyph { font-size: 56px; }
+  .spotlight { grid-template-columns: 220px minmax(0, 820px); top: 56px; padding-top: var(--s4); }
+  .riff-stage { width: 220px; height: 220px; }
+  .spot-cue { font-size: 36px; }
+  .spot-ba b { font-size: var(--p4); }
+}
+
+/* fixed columns so the power button keeps its place whether or not the hand inset shows */
+.fx-zone { grid-column: 1; }
+.hand-inset { grid-column: 2; }
+.fx-power { grid-column: 3; }
+/* the pinch readout replaces the cards completely, FX on or off */
+.app[data-fx="engaged"] .cards { opacity: 0 !important; }

@@ -187,12 +187,32 @@
   el.setAttribute('aria-label', 'Riff, the coach');
   el.innerHTML = '<div class="riff-sq"><span class="riff-z" aria-hidden="true">z</span></div><div class="riff-cue" role="status"></div>';
   const canvas = makeCanvas(G * PX);
+  const PX_HOME = 4, PX_CONTROL = 4.5, PX_STAGE = 8;   // CSS px per grid cell in each place
+  let cssPx = PX_HOME, cssPxV = 0;
+  const box = () => 24 * cssPx;                          // the square Riff occupies
+  // the pointing hand: a pixel glove with one finger out (ink outline, paper fill)
+  const FINGER = ['.....#######.', '....#+++++++#', '.####+#######', '#+++#+#......', '#++++++#.....', '#++++++#.....', '.######......'];
+  const finger = document.createElement('canvas');
+  finger.width = FINGER[0].length; finger.height = FINGER.length;
+  finger.className = 'riff-finger';
+  { const fx = finger.getContext('2d');
+    FINGER.forEach((row, y) => [...row].forEach((ch, x) => {
+      if (ch === '.') return;
+      fx.fillStyle = ch === '#' ? `rgb(${PAL.ink})` : `rgb(${PAL.paper})`;
+      fx.fillRect(x, y, 1, 1);
+    })); }
+  let pressAt = -1e9, lastBypass = null;
+  // a press that happened while Riff was still on its way: it keeps that target, arrives, then presses
+  let lockEl = null, lockUntil = 0, pendingPress = false;
+  const curTarget = () => (performance.now() < lockUntil && lockEl ? lockEl : resolve(st.target));
   el.querySelector('.riff-sq').prepend(canvas);
+  el.appendChild(finger);
   document.body.appendChild(el);
   const ctx = canvas.getContext('2d');
   const img = ctx.createImageData(G, G);
   const cueEl = el.querySelector('.riff-cue');
-  const socket = dock ? dock.querySelector('.riff-socket') : null;
+  const socket = document.querySelector('.riff-socket');
+  const stageEl = document.querySelector('.riff-stage');
   const dockLine = document.getElementById('coachLine');
   const dockSub = document.getElementById('coachSub');
 
@@ -216,6 +236,13 @@
     const loop = f.loop && f.loop.state;
     if (loop === 'recording' && lastLoop && lastLoop !== 'recording' && st.state !== 'asleep') pop(0.9);   // eyes widen: it's listening now
     lastLoop = loop || lastLoop;
+    if (typeof f.bypass === 'boolean') {
+      const t = resolve(st.target);
+      if (lastBypass !== null && f.bypass !== lastBypass && t && t.id === 'fxPower') {
+        lockEl = t; lockUntil = performance.now() + 1500; pendingPress = true;
+      }
+      lastBypass = f.bypass;
+    }
     const strum = f.live && f.live.last_strum_ms;
     if (strum && strum !== lastStrum && lastStrum !== null && st.state === 'listening') pop(0.35);          // a tiny pop per real strum
     lastStrum = strum || lastStrum;
@@ -225,28 +252,46 @@
     voice = typeof v === 'number' ? Math.max(0, Math.min(1, v)) : 0;
     voiceAt = performance.now();
   });
+  function press() {                      // Riff pushes the control it is standing at
+    pressAt = performance.now();
+    const t = curTarget();
+    if (t) { t.classList.add('pressed'); setTimeout(() => t.classList.remove('pressed'), 200); }
+    def.dv -= 2.2;                         // a little squash into the push
+  }
   function pop(strength) { def.vv += 3.2 * strength; ahaUntil = performance.now() + 260 * strength; }
 
   function resolve(t) {
     if (!t) return null;
     return typeof t === 'string' ? document.querySelector(t) : t;
   }
+  function stagePoint() {
+    if (!st.stage || !stageEl) return null;
+    const r = stageEl.getBoundingClientRect();
+    return r.width ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+  }
   function homePoint() {
+    const sp = stagePoint();
+    if (sp) return sp;
     if (socket) { const r = socket.getBoundingClientRect(); if (r.width) return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
     return { x: window.innerWidth - 60, y: window.innerHeight - 60 };
   }
   // perch inside a corner of the thing being operated (data-perch="tr|tl|br|bl", default tr)
   function goalPoint() {
-    const t = resolve(st.target);
+    const t = curTarget();
     if (!t) return homePoint();
     const r = t.getBoundingClientRect();
     if (!r.width) return homePoint();
     const perch = t.dataset.perch || 'tr';
-    const x = perch[1] === 'l' ? r.left + SIZE * 0.55 : r.right - SIZE * 0.55;
-    const y = perch[0] === 'b' ? r.bottom - SIZE * 0.55 : r.top + SIZE * 0.55;
+    // a control (a button): stand beside it and reach over with the finger; a panel: perch in a corner
+    if (t.dataset.reach) {
+      const left = t.dataset.reach === 'left';
+      return { x: left ? r.left - box() * 0.85 : r.right + box() * 0.85, y: r.top + r.height / 2 };
+    }
+    const x = perch[1] === 'l' ? r.left + box() * 0.55 : r.right - box() * 0.55;
+    const y = perch[0] === 'b' ? r.bottom - box() * 0.55 : r.top + box() * 0.55;
     return {
-      x: Math.min(window.innerWidth - SIZE / 2 - 8, Math.max(SIZE / 2 + 8, x)),
-      y: Math.min(window.innerHeight - SIZE / 2 - 8, Math.max(SIZE / 2 + 8, y)),
+      x: Math.min(window.innerWidth - box() / 2 - 8, Math.max(box() / 2 + 8, x)),
+      y: Math.min(window.innerHeight - box() / 2 - 8, Math.max(box() / 2 + 8, y)),
     };
   }
 
@@ -256,11 +301,12 @@
     if (n.state && STATES.includes(n.state)) st.state = n.state;
     if ('target' in n) st.target = n.target || null;
     if ('cue' in n) st.cue = n.cue || '';
+    if ('stage' in n) st.stage = !!n.stage;
     if (n.mood && MOODS.includes(n.mood)) { st.mood = n.mood; st.moodSet = true; }
     else if (!st.moodSet || 'state' in n && !('mood' in n)) st.mood = STATE_MOOD[st.state];
     el.dataset.state = st.state;
     el.dataset.mood = st.mood;
-    const away = !!resolve(st.target);
+    const away = !!resolve(st.target) || !!st.stage;
     if (away) docked = false;
     el.dataset.away = String(away);
     if (dock) dock.dataset.away = String(away);
@@ -290,8 +336,8 @@
     if (!dock) return;
     const [line, sub] = COPY[st.state];
     dock.dataset.state = st.state;
-    if (dockLine) dockLine.textContent = line;
-    if (dockSub) dockSub.textContent = st.cue || sub;
+    if (dockLine) dockLine.textContent = st.cue;
+    void line; void sub;
     if (led && mode === 'preview') {
       led.classList.add('warn');
       led.querySelector('span').textContent = 'PREVIEW';
@@ -309,7 +355,7 @@
     last = now;
     const g = goalPoint();
     if (!pos.placed) { pos.x = g.x; pos.y = g.y; pos.placed = true; }
-    const away = !!resolve(st.target);
+    const away = !!curTarget() || !!stagePoint();
 
     // anticipation: a new far goal → the eyes go first and the body winds up, then launches
     const far = Math.hypot(g.x - pos.x, g.y - pos.y);
@@ -413,7 +459,27 @@
     if (st.state === 'asleep') lidL = lidR = now < peekUntil ? 0.45 : 1;
 
     // position the box; draw the pixels
-    el.style.transform = `translate(${(pos.x - SIZE / 2).toFixed(1)}px, ${(pos.y - SIZE / 2).toFixed(1)}px)`;
+    // size: grows into the spotlight and shrinks back to the perch on a spring (a little overshoot)
+    const pxGoal = stagePoint() && !curTarget() ? PX_STAGE : curTarget() ? PX_CONTROL : PX_HOME;
+    if (motion) [cssPx, cssPxV] = spring(cssPx, cssPxV, pxGoal, 90, 13, dt); else cssPx = pxGoal;
+    if (Math.abs(cssPxV) > 4 && Math.abs(pxGoal - cssPx) > 0.5 && def.vv * cssPxV >= 0) def.vv += 0.02 * cssPxV;  // grows with a stretch
+    const B = box();
+    el.style.width = el.style.height = B + 'px';
+    canvas.style.width = canvas.style.height = G * cssPx + 'px';
+    el.style.transform = `translate(${(pos.x - B / 2).toFixed(1)}px, ${(pos.y - B / 2).toFixed(1)}px)`;
+
+    // the finger: out while Riff is at a control; it pushes in when Riff presses
+    const tgt = curTarget();
+    const locked = now < lockUntil && lockEl;
+    const arrived = tgt && !moving && dist < 14 && (st.state === 'pointing' || locked);
+    if (pendingPress && arrived) { pendingPress = false; press(); lockUntil = now + 380; }   // press, a beat, then go
+    const reachLeft = tgt && (tgt.getBoundingClientRect().left + tgt.getBoundingClientRect().width / 2) < pos.x;
+    const push = Math.max(0, 1 - Math.abs((now - pressAt) - 90) / 90);   // 0..1..0 over 180 ms
+    const fs = cssPx * 0.9;
+    finger.style.width = finger.width * fs + 'px';
+    finger.style.height = finger.height * fs + 'px';
+    finger.dataset.on = String(!!arrived);
+    finger.style.transform = `translate(${reachLeft ? -(finger.width * fs + B * 0.32) - push * fs * 2 : B * 0.32 + push * fs * 2}px, ${(-finger.height * fs / 2).toFixed(1)}px) scaleX(${reachLeft ? -1 : 1})`;
     const scale = 1 + 0.12 * ahaK;
     render(ctx, img, {
       spin: spin - twist, d: Math.max(-0.3, Math.min(0.4, def.d)), a: def.a, v: Math.max(-0.25, Math.min(0.25, def.v)), tilt: def.tilt, hop: def.hop,
@@ -439,19 +505,29 @@
       [3600, { state: 'listening', mood: 'concentrating' }],
       [2400, { state: 'thinking', mood: 'curious' }],
       [1400, { state: 'thinking', mood: 'aha' }],
-      [3200, { state: 'speaking', target: '.wave', cue: 'Bar 2 is late. Your hand stops.', mood: 'concerned' }],
-      [3600, { state: 'pointing', target: '#card-filter', cue: 'Effects off. Tap the pedal.', mood: 'encouraging' }],
-      [3200, { state: 'pointing', target: '#handPanel', cue: 'Keep the hand swinging.', mood: 'concentrating' }],
-      [3400, { state: 'pleased', target: null, cue: 'Change landed. 4 of 4.', mood: 'proud' }],
-      [2000, { state: 'idle', cue: '', mood: 'neutral' }],
+      [4200, { state: 'speaking', target: null, stage: true, cue: 'Ooh, close. Your strumming hand stops right at the change.', mood: 'concerned' }],
+      [3600, { state: 'pointing', target: '#fxPower', stage: false, cue: 'Okay, effects off so you can hear the timing.', mood: 'encouraging' }],
+      [1400, { press: true }],
+      [3200, { state: 'listening', target: null, cue: '', mood: 'concentrating' }],
+      [3800, { state: 'pleased', target: null, stage: true, cue: "Nice. That gap's down to about a tenth of a second.", mood: 'proud' }],
+      [2000, { state: 'idle', stage: false, cue: '', mood: 'neutral' }],
     ];
     let i = 0;
-    const next = () => { const [ms, s] = tour[i]; set(s); i = (i + 1) % tour.length; setTimeout(next, ms); };
+    const app = document.getElementById('app');
+    const next = () => {
+      const [ms, s] = tour[i];
+      if (s.press) press(); else set(s);
+      if (app) app.dataset.spot = st.stage || (st.state === 'pointing' && st.cue) ? 'on' : 'off';
+      document.querySelectorAll('.spot-target').forEach((e) => e.classList.remove('spot-target'));
+      const t = resolve(st.target);
+      if (t && app && app.dataset.spot === 'on') t.classList.add('spot-target');
+      i = (i + 1) % tour.length; setTimeout(next, ms);
+    };
     next();
   } else {
     set({ state: 'asleep' });
   }
 
-  window.OmniRiff.coach = { set, states: STATES.slice(), moods: MOODS.slice(), get: () => ({ ...st }) };
+  window.OmniRiff.coach = { set, press, states: STATES.slice(), moods: MOODS.slice(), get: () => ({ ...st }) };
   requestAnimationFrame(frame);
 })();
