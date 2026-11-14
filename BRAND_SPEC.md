@@ -176,7 +176,7 @@ Logo files: `dashboard/brand/` (`logo.svg`, `mark.svg`, `wordmark.svg`, `logo-on
 
 **Form**
 - A disc with eight soft ridges, like a knurled knob seen from above. Pink body, darker ridge marks.
-- Real pixel art (`riff.js` rasterises it every frame, logo-mark style): two tall ink eyes with one glint, no whites. **No mouth.** Expressions are lid shapes (see the mood sheet on `/brand.html`). What Riff says is printed beside it in a square box, because the machine does the printing.
+- Real pixel art (`riff.js` rasterises it every frame, logo-mark style): two tall ink eyes with one glint, no whites. **A mouth only while it talks:** a small ink opening that follows the loudness of its own voice (measured, or a syllable rhythm while the voice plays), with a bob per syllable, so speech never looks like idle breathing; closed, the face is eyes only. Expressions are lid shapes (see the mood sheet on `/brand.html`). What Riff says is printed beside it in a square box, because the machine does the printing.
 - 72 px on the dashboard. The logo mark is Riff on a 16-cell grid.
 
 **States.** Each one means something the coach is doing. No idle wandering, no decoration.

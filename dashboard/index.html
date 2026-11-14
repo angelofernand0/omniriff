@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="juice.css">
 <link rel="stylesheet" href="riff.css">
 <link rel="stylesheet" href="stage.css">
+<link rel="stylesheet" href="coach-col.css">
 </head>
 <body>
 <!-- Spotlight layout (BRAND_SPEC section 9): while you play it is a guitar app; when Riff has
@@ -22,6 +23,14 @@
   <header class="bar">
     <div class="logo"><span data-logo="lockup"></span></div>
     <span class="spacer"></span>
+    <div class="meters top-meters" role="group" aria-label="Levels">
+      <span class="meter-label">IN</span>
+      <div class="segs" id="inSegs" aria-label="Input level"></div>
+      <span class="db" id="inDb">-- dB</span>
+      <span class="clip" id="inClip" aria-label="Clip indicator">CLIP</span>
+      <span class="meter-label">OUT</span>
+      <div class="segs" id="outSegs" aria-label="Output level"></div>
+    </div>
     <span class="pill" id="statusPill" role="status">OFFLINE</span>
     <button type="button" class="gear" id="drawerBtn" aria-controls="drawer" aria-expanded="false" title="Rig details (D)"><kbd>D</kbd>RIG</button>
   </header>
@@ -31,13 +40,14 @@
     <section class="mod loop" aria-labelledby="h-loop">
       <h2 class="label" id="h-loop"><i data-icon="loop"></i>LOOP</h2>
       <div class="loop-row">
-        <div class="loop-state panel">
+        <div class="loop-state panel" data-riff-name="the looper">
           <div class="loop-word"><span class="loop-dot" aria-hidden="true"></span><span id="loopWord">READY</span></div>
           <span class="loop-len" id="loopLen">--</span>
           <span class="hint" id="loopHint">Press pedal to record</span>
         </div>
-        <div class="wave panel">
+        <div class="wave panel" data-riff-name="your loop">
           <canvas id="wave" aria-label="Loop waveform"></canvas>
+          <div class="wave-mark" id="waveMark" data-reach="down" hidden><span></span></div>
           <div class="empty wave-empty" id="waveEmpty"><i data-icon="pedal" class="x4"></i><b>NO LOOP</b><span>Press pedal. Play. Press again.</span></div>
           <span class="wave-note" id="waveNote"></span>
         </div>
@@ -50,13 +60,13 @@
       <div class="tone-row">
         <div class="fx-zone">
           <div class="cards" id="cards">
-            <article class="card" id="card-filter" data-control="filter">
-              <header><h3>FILTER</h3><span class="tag">MOVED</span></header>
+            <article class="card" id="card-filter" data-control="filter" data-riff-name="FILTER">
+              <header><h3>FILTER</h3><span class="tag">MOVED</span><canvas class="knob" id="knob-filter" aria-hidden="true"></canvas></header>
               <div class="readout"><span class="pct" id="pct-filter">--</span><span class="sub" id="sub-filter"></span></div>
               <div class="blocks" id="blocks-filter"></div>
             </article>
-            <article class="card" id="card-reverb" data-control="reverb">
-              <header><h3>REVERB</h3><span class="tag">MOVED</span></header>
+            <article class="card" id="card-reverb" data-control="reverb" data-riff-name="REVERB">
+              <header><h3>REVERB</h3><span class="tag">MOVED</span><canvas class="knob" id="knob-reverb" aria-hidden="true"></canvas></header>
               <div class="readout"><span class="pct" id="pct-reverb">--</span><span class="sub" id="sub-reverb"></span></div>
               <div class="blocks" id="blocks-reverb"></div>
             </article>
@@ -73,56 +83,49 @@
         <!-- HAND: a small inset, only while the camera sees a hand -->
     <section class="hand-inset" aria-labelledby="h-hand">
       <h2 class="label" id="h-hand"><i data-icon="hand"></i>HAND<span class="grow"></span><span class="label-r hand-state" id="handState" role="status">NO CAMERA</span></h2>
-      <div class="panel hand" id="handPanel" data-hand="off" data-perch="bl">
+      <div class="panel hand" id="handPanel" data-hand="off" data-perch="bl" data-riff-name="your hand">
         <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
         <div class="empty hand-empty"><i data-icon="cam" class="x4 if-off"></i><i data-icon="hand" class="x4 if-none"></i><b id="handEmptyWord">NO CAMERA</b><span id="handEmptyHint">Start vision to see your hand.</span></div>
       </div>
     </section>
-        <button type="button" class="fx-power" id="fxPower" data-reach="left" aria-pressed="true" title="Effects on/off (B)">
-          <span class="fx-led" aria-hidden="true"></span><span class="fx-glyph" aria-hidden="true">⏻</span><b>FX</b><span class="fx-word">ON</span>
+        <button type="button" class="fx-power" id="fxPower" data-reach="left" data-riff-name="FX" aria-pressed="true" title="Effects on/off (B)">
+          <span class="fx-led" aria-hidden="true"></span>
+          <span class="fx-toggle" aria-hidden="true"><i class="fx-nut"></i><i class="fx-lever"></i></span>
+          <b>FX</b><span class="fx-word">ON</span>
         </button>
       </div>
     </section>
 
-    <!-- COACH COLUMN: Riff's home. Never covers the instrument. Filled by coach.js from the coach feed. -->
+    <!-- COACH COLUMN. One reading order: where you are, what Riff says, the session, the pedal. -->
     <aside class="coach-col" id="coachDock" data-state="asleep" aria-label="Coach">
-      <!-- the practice loop: where you are, and what the pedal does right now (hands-free) -->
-      <div class="steps" id="steps" data-step="1">
-        <div class="steps-head"><span class="mode" id="modeBadge" data-mode="practice">PRACTICE</span></div>
-        <ol><li data-n="1">GOAL</li><li data-n="2">DRILL 1</li><li data-n="3">DRILL 2</li><li data-n="4">DONE</li></ol>
-        <p class="pedal" id="pedalNext"><b>PEDAL</b><span>Tap, play, tap again</span></p>
-      </div>
-      <div class="booth">
+      <ol class="map" id="steps" data-step="1" data-mode="practice" aria-label="Session">
+        <li data-n="1">GOAL</li><li data-n="2">DRILL 1</li><li data-n="3">DRILL 2</li><li data-n="4">DONE</li>
+      </ol>
+      <div class="talk">
         <div class="riff-socket riff-stage" aria-hidden="true"></div>
-        <div class="say" aria-live="polite">
-          <span class="spot-tag preview-tag">SCRIPTED · NOT AI</span>
-          <p class="spot-cue" id="coachLine"></p>
-          <p class="acts" id="coachActsLine" aria-label="What the coach is doing"></p>
-        </div>
+        <p class="bubble" id="coachLine" aria-live="polite"></p>
       </div>
-      <div class="spot-ask" id="coachAsk" hidden>
-        <b>TAP PEDAL TO START</b><span id="coachAskText"></span>
-        <span class="ask-keys"><button type="button" class="key" id="coachYes"><kbd>Y</kbd>YES</button><button type="button" class="key" id="coachNo"><kbd>N</kbd>NO</button></span>
-      </div>
-      <!-- PRACTICE: where you are in the session. Stays put; updates as takes come in. -->
-      <section class="practice" id="practice" aria-label="Practice session">
-        <header><b>GOAL</b><span id="pGoal">Play a take to start</span></header>
-        <div class="p-now" id="pNow" hidden>
-          <span class="p-step" id="pStep"></span>
-          <span class="p-drill" id="pDrill"></span>
-          <span class="p-attempt" id="pAttempt"></span>
-        </div>
-        <div class="p-metric" id="pMetric" hidden>
-          <div class="p-read"><span id="pMetricName">LONGEST GAP</span><b id="pMetricNow">--</b><span class="p-target" id="pTarget"></span></div>
-          <div class="p-chart" id="pChart" aria-label="Every take this session"></div>
-        </div>
-        <div class="p-next" id="pNextRow" hidden><b>NEXT</b><span id="pNext"></span></div>
-        <div class="p-summary" id="pSummary" hidden><b>SESSION</b><span></span></div>
-        <p class="p-last" id="pLast" hidden></p>
+      <!-- the deep agent at work: its plan (write_todos) and each call it makes, tagged by what part
+           of the harness it is: SUBAGENT, SKILL, FILE, MEMORY, PLAN, RIG -->
+      <section class="agent" id="agent" hidden aria-label="What the coach agent is doing">
+        <header><b>DEEP AGENT</b><span id="agentPlan"></span></header>
+        <ol id="agentSteps"></ol>
       </section>
-      <ol class="plan" id="coachPlan" aria-label="Coach's plan for this take"></ol>
-      <div class="spot-ba" id="coachBA" hidden></div>
-      <div id="coachDrill" hidden></div><span id="coachSub" hidden></span><ul id="coachActs" hidden></ul><div id="coachDetail" hidden></div>
+      <dl class="rows">
+        <div class="row" id="pGoalRow" hidden><dt>GOAL</dt><dd id="pGoal"></dd></div>
+        <div class="row" id="pNow" hidden><dt>NOW</dt><dd><span id="pDrill"></span><small id="pAttempt"></small></dd></div>
+        <div class="row gap" id="pMetric" hidden><dt id="pMetricName">GAP</dt><dd><span class="val"><b id="pMetricNow"></b><small id="pTarget"></small></span><span class="gap-bar" id="pChart"></span></dd></div>
+        <div class="row" id="pNextRow" hidden><dt>NEXT</dt><dd id="pNext"></dd></div>
+      </dl>
+      <!-- DONE: the session result, as a card -->
+      <section class="result" id="pResult" hidden aria-label="Session result">
+        <header><b>SESSION DONE</b><span id="rSaved"></span></header>
+        <ol class="r-drills" id="rDrills"></ol>
+        <p class="r-num"><span id="rName">GAP</span><b id="rFrom"></b><i>→</i><b id="rTo"></b><small id="rTarget"></small></p>
+        <p class="r-next" id="rNextRow"><span>NEXT TIME</span><b id="rNext"></b></p>
+      </section>
+      <p class="last" id="pLast" hidden></p>
+      <div class="pedal" id="pedalNext"><b>PEDAL</b><span class="acts"></span></div>
     </aside>
   </main>
 
@@ -139,14 +142,6 @@
       <span class="chip sim-chip" id="simChip" role="status">SIMULATED</span>
       <span class="chip replay-chip" id="replayChip" role="status">REPLAY</span>
       <span class="chip bypass-chip" id="bypassChip" role="status">BYPASS</span>
-    </div>
-    <div class="meters" role="group" aria-label="Levels">
-      <span class="meter-label">IN</span>
-      <div class="segs" id="inSegs" aria-label="Input level"></div>
-      <span class="db" id="inDb">-- dB</span>
-      <span class="clip" id="inClip" aria-label="Clip indicator">CLIP</span>
-      <span class="meter-label">OUT</span>
-      <div class="segs small" id="outSegs" aria-label="Output level"></div>
     </div>
     <div class="manual-body">
       <div class="row">

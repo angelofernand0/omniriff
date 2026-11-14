@@ -552,6 +552,46 @@
                   ],
                   "maxLength": 200,
                   "description": "Set at DONE: the wrap-up in one or two lines, the same thing written to memory."
+                },
+                "next_time": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 80,
+                  "description": "Optional (additive). Set at DONE: what the next session should work on, e.g. 'Push the tempo to 100 bpm'. Shown on the result card; written to memory with the summary."
+                }
+              }
+            }
+          ]
+        },
+        "mark": {
+          "description": "Optional (additive). Where in the loop the finding is, in seconds from the loop's start (the take the coach just heard), e.g. a hesitation's start/end from the take report. The dashboard draws it on the waveform; with target 'loop', Riff stands over it and points down. Null or absent: no mark. Clear it when a new take starts.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "start_s",
+                "end_s"
+              ],
+              "properties": {
+                "start_s": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "end_s": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 24,
+                  "description": "Short tag on the mark, e.g. '430 ms gap'. Default: the mark's length in ms."
                 }
               }
             }
