@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from audio import Engine  # noqa: E402
-from engine.runtime import Runtime  # noqa: E402
+from engine.runtime import Runtime, SerialDecoder  # noqa: E402
 
 CONTROL = Draft202012Validator(json.loads((ROOT / "protocol/control.schema.json").read_text()))
 STATE = Draft202012Validator(json.loads((ROOT / "protocol/state.schema.json").read_text()))
@@ -73,6 +73,17 @@ class PracticeRoutingTests(unittest.TestCase):
         self.assertTrue(self.router.ingest(json.dumps(ev(3, source="dashboard")).encode()))
         self.assertEqual(self.router.pedal["practice_count"], 2)
         self.assertEqual(self.router.sources["arduino"]["accepted"], 1)
+
+    def test_footswitch_hold_reaches_state_over_serial(self):
+        # The firmware's compact line for a >=700 ms hold (R24 step 3, firmware/arduino/Footswitch).
+        decoder = SerialDecoder(self.router)
+        decoder.feed(b'{"seq":0,"type":"action","control":"practice"}\n')
+        decoder.feed(b'{"seq":1,"type":"action","control":"loop"}\n')
+        drain(self.audio)
+        self.assertEqual(self.runtime.snapshot()["pedal"]["practice_count"], 1)
+        self.assertEqual(self.router.sources["arduino"]["accepted"], 2)
+        decoder.feed(b'{"seq":2,"type":"action","control":"filter"}\n')
+        self.assertEqual(self.router.counts["invalid"], 1, "other controls still rejected on serial")
 
     def test_loop_still_toggles_after_practice(self):
         self.router.ingest(json.dumps(ev(0)).encode())

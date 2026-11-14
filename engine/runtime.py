@@ -60,7 +60,7 @@ class SerialDecoder:
             event = decode(raw)
             if not isinstance(event, dict) or set(event) != {'seq', 'type', 'control'}:
                 raise ValueError('invalid compact line')
-            if type(event['seq']) is not int or event['seq'] < 0 or event['type'] != 'action' or event['control'] not in ('loop', 'bypass'):
+            if type(event['seq']) is not int or event['seq'] < 0 or event['type'] != 'action' or event['control'] not in ('loop', 'bypass', 'practice'):
                 raise ValueError('invalid action')
         except (ValueError, TypeError, UnicodeError, RecursionError):
             self.router.reject('invalid', 'arduino'); return
