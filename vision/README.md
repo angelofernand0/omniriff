@@ -14,7 +14,7 @@ python -m pip install -r vision/requirements.txt
 
 Download the Hand Landmarker task model from Google's official guide:
 https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/python
-Keep the model outside tracked source; supply its path explicitly.
+Keep the model outside tracked source (e.g. `models/hand_landmarker.task`); supply its path explicitly.
 
 ```bash
 python -m vision --model /path/to/hand_landmarker.task --calibrate
@@ -31,6 +31,49 @@ Default output: v1 JSON UDP datagrams to 127.0.0.1:47800, at most 20 events/s. E
 The landmarker detects up to two hands. The selector follows the nearest wrist from frame to frame, so a changed detection order does not switch control to the other hand. A wrist jump above `--max-hand-jump` (default 0.30 normalized image distance) fails closed. After 15 missed frames, the old track is discarded; the controller still requires an open-hand clutch before sending again. Keep the intended control hand in view, and avoid crossing hands; two wrists that cross can still be ambiguous.
 
 Exit metrics on stderr report actual elapsed runtime, emitted event count, average rate and minimum emission interval. `--dry-run` validates and prints JSON without UDP. No-hand frames emit nothing. Failure closes capture and socket; audio must retain its independent manual bypass. No camera frames or recordings are saved by this program.
+
+## Demo-table calibration and setup
+
+### Camera placement and lighting
+- **Distance**: Place the webcam 2–3 feet (0.6–1.0 m) from the player, facing them directly.
+- **Angle & height**: Position at laptop screen height tilted slightly upward (~10–15°), or on a small stand at chest height. Ensure the player's upper torso and free control hand are fully framed with ~1.5 ft of clear vertical travel.
+- **Lighting**: Diffuse front or overhead room lighting is ideal. **Avoid strong backlighting** (such as bright windows, stage spots, or projector beams behind the player) which silhouetted hands drop MediaPipe landmark confidence below the 0.6 gate.
+- **Framing hygiene**: Keep the control hand within the camera's central field of view. Avoid crossing the control hand over the fretting hand to ensure the nearest-wrist tracker remains locked onto the intended hand.
+
+### The one command to run at the demo table
+For the live 2-minute demonstration with Scene Morph (Clear to Cosmos blend) and live dashboard skeleton integration:
+
+```bash
+python -m vision --model models/hand_landmarker.task --scene bloom
+```
+
+This single command:
+1. Opens the webcam and loads Google's pretrained MediaPipe Hand Landmarker.
+2. Arms the open-then-pinch clutch for dual-parameter Scene Morphing (**Clear to Cosmos**: filter 1.0/reverb 0.0 → filter 0.4/reverb 0.75).
+3. Publishes 21-point normalized landmark coordinates to `ws://127.0.0.1:47802` for the dashboard live HAND skeleton panel.
+4. Sends schema-validated v1 JSON UDP datagrams to the engine on `127.0.0.1:47800` strictly bounded to $\le 20$ events/s.
+
+*(Optional 10-second calibration)*: If the player's physical range differs from default $y \in [0.8, 0.2]$, run:
+```bash
+python -m vision --model models/hand_landmarker.task --calibrate
+# Put wrist at lowest comfortable position -> press 'l'
+# Put wrist at highest comfortable position -> press 'h'
+# Press 's' to save local calibration.json, 'q' to quit
+# Then launch: python -m vision --model models/hand_landmarker.task --scene bloom --calibration calibration.json
+```
+
+## Morning hardware checklist
+Confirm each item in order before the judging window:
+- [ ] **Model file present**: `models/hand_landmarker.task` exists locally and is readable.
+- [ ] **Camera detection & dry-run**: `python -m vision --model models/hand_landmarker.task --dry-run` starts clean at $\ge 20$ FPS without OS permission errors or frame drops.
+- [ ] **Clutch gating**:
+  - Open hand in frame: HUD displays hand detected, clutch disarmed (no UDP events).
+  - Pinch thumb + index: HUD displays engaged, wrist elevation smoothly sweeps parameter.
+  - Release pinch / open hand: HUD returns to disengaged, last value holds rock steady.
+  - Move hand out of frame: HUD clears gracefully, zero events transmitted.
+- [ ] **Dashboard hand view**: Open `http://127.0.0.1:8080`. Verify the **HAND** panel renders 21 skeleton joints in real-time, highlights engagement on pinch, and clears to stale/neutral when hand leaves frame.
+- [ ] **Audible sweep test**: With guitar playing through Solo, verify pinching and raising the hand produces an audible, click-free filter/reverb sweep without audio clicks or dropouts.
+- [ ] **Subsystem isolation**: Kill vision (`Ctrl-C`) mid-riff; verify audio playback continues uninterrupted and dashboard marks vision offline.
 
 ## Validation status
 
