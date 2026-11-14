@@ -84,11 +84,11 @@ python -m tools.sim run --demo        # then open the three pages below
 | waiting for engine… | No engine yet |
 | Manual controls | 05 MANUAL |
 
-**Other owners' work.** Posted on issue #1 and waited. Angelo's Claude adopted the tagline in docs/DEVPOST.md and docs/DEMO.md, rewrote the README intro, and agreed the two-minute story is pinch + pedal + coach (PR #55). With that approval this pass adds one screenshot and caption to README.md. Nothing in `audio/`, `engine/`, `vision/`, `protocol/` or `tools/` was edited. The play room page re-skin was proposed to SM's Codex; no reply, so it is offered as a separate PR and is not part of this one.
+**Other owners' work.** Posted on issue #1 and waited. Angelo's Claude adopted the tagline in docs/DEVPOST.md and docs/DEMO.md, rewrote the README intro, and agreed the two-minute story is pinch + pedal + coach (PR #55). With that approval this pass adds one screenshot and caption to README.md. Nothing in `audio/`, `engine/`, `vision/`, `protocol/` or `tools/` was edited. The play room page re-skin was proposed to SM's Codex; no reply, so it is offered as a separate PR (#57: an override stylesheet plus a few lines of markup, no behaviour) and is not part of this one.
 
 ## Pass 3: critique and fixes
 
-Every page was rendered in headless Chrome at 1920x1080, 1280x720, 1436x780 (the play room iframe), 900 wide and 390 wide, in these states: no engine, first frame, idle with no loop, recording, playing, hand engaged, bypass, stale, manual open, coach preview, `?juice=off`, `?coach=off`, reduced motion. What that found and what was done:
+Every page was rendered in headless Chrome at 1920x1080, 1280x720, 1436x780 (the play room's frame), 900 wide and 390 wide, in these states: no engine, first frame, idle with no loop, recording, playing, hand engaged, bypass, stale, manual open, coach preview, `?juice=off`, `?coach=off`, reduced motion. What that found and what was done:
 
 | Found | Fix |
 |---|---|
@@ -136,7 +136,7 @@ This repo has no `package.json`, so there is no `npm run build`, lint or typeche
 
 - **Real hardware.** Everything above ran against `tools.sim` (synthetic guitar, scripted hand). No real engine, camera or pedal.
 - **Browsers.** Headless Chrome only. The fader has Firefox rules that were not tested. Safari was not tested.
-- **The play room iframe.** The dashboard was rendered at the iframe's size, not inside the running play room, because launching it plays audio through the speakers.
+- **The play room with sound and camera.** The dashboard was rendered inside the running play room in headless mode (no speaker output) and fits its frame. It was not checked with speakers on or with the webcam started.
 - **Two metres.** Readability was judged from screenshots, not from across a room on the projector.
 - **Riff's motion** was checked in stills and by reading its state from the page, not by watching it move. SM should watch `?coach=preview` once.
 - **The preview cues are sample text**, not coach output. The screen says `SCRIPTED PREVIEW` while it runs.
@@ -145,7 +145,7 @@ This repo has no `package.json`, so there is no `npm run build`, lint or typeche
 
 1. Watch `?coach=preview` and say whether Riff's look and movement are right before piece F is built on it.
 2. Decide at freeze whether Riff asleep stays visible if the coach does not ship (`?coach=off` hides it).
-3. The play room re-skin is a separate PR; take it or drop it.
+3. The play room re-skin is PR #57; take it or drop it.
 
 ## Files
 

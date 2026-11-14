@@ -273,7 +273,7 @@ Chat box. Settings page. Light theme. Accounts. A second route beyond the brand 
 | 1 | Use "Never put the guitar down" as the Devpost tagline and open the demo with it | Angelo | **Adopted** (PR #55): docs/DEVPOST.md and docs/DEMO.md |
 | 2 | Lead the README with the one-line and a screenshot | Angelo | **Adopted** (PR #55). Screenshot added with this pass: `docs/img/dashboard.png` (simulator). |
 | 3 | The two-minute story is pinch + pedal + coach; the rest stays for Q&A | Angelo | **Agreed** on issue #1; docs/DEMO.md says so |
-| 4 | Re-skin the play room page (`tools/virtual_guitar/web/`) with these tokens so the page around the dashboard matches it | SM's Codex | Proposed on issue #1, no reply yet. Offered as a separate small PR (styles and copy only). |
+| 4 | Re-skin the play room page (`tools/virtual_guitar/web/`) with these tokens so the page around the dashboard matches it | SM's Codex | Proposed on issue #1, no reply. Offered as PR #57 (an override stylesheet and two labels, no behaviour), for SM's Codex to take or drop. |
 | 5 | Main track stays Entertainment and Media (Angelo's final call). The practice story still fits: it is a new way to play and to learn to play. | Angelo | No change asked |
 | 6 | Riff asleep is visible by default. If the coach does not ship, either leave it (honest: `COACH OFF`) or launch with `?coach=off`. | SM | SM to decide at freeze |
 
