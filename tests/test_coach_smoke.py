@@ -1,13 +1,15 @@
 """The coach harness remains inspectable without network or API credentials."""
 import tempfile
 import unittest
+from importlib.util import find_spec
 from pathlib import Path
-
-from coach.smoke import EXPECTED, MARKER, make_agent, make_workspace, tool_names
 
 
 class CoachSmokeTests(unittest.TestCase):
+    @unittest.skipUnless(find_spec("deepagents"), "coach/requirements.txt is optional in core CI")
     def test_harness_tools_and_virtual_workspace_files(self):
+        from coach.smoke import EXPECTED, MARKER, make_agent, make_workspace, tool_names
+
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             make_workspace(root)
