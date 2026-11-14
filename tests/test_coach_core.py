@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import json
+import os
 from importlib.util import find_spec
 import tempfile
 import threading
 import time
 import unittest
+from unittest.mock import AsyncMock, patch
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -87,8 +89,15 @@ class CoachToolTests(unittest.TestCase):
                                          "worst gap under 700 ms", {"bypass": True})
             self.assertTrue((workspace / path.lstrip("/")).is_file())
             self.assertEqual(feed.frame["drill_card"]["skill"], "keep-the-hand-moving")
-            self.assertEqual(tools.say("The gap is 620 ms. Keep the arm moving."),
-                             "The gap is 620 ms. Keep the arm moving.")
+            with patch("coach.voice.Voice.from_env") as make_voice:
+                audio = {"version": 1, "type": "coach.audio", "timestamp_ms": 123,
+                         "text": "The gap is 620 ms. Keep the arm moving.",
+                         "mime": "audio/mpeg", "audio_b64": "AAAA"}
+                make_voice.return_value.render = AsyncMock(return_value=audio)
+                with patch.object(feed, "broadcast_audio") as broadcast:
+                    self.assertEqual(tools.say("The gap is 620 ms. Keep the arm moving."),
+                                     "The gap is 620 ms. Keep the arm moving.")
+                    broadcast.assert_called_once_with(audio)
             with self.assertRaises(ValueError):
                 tools.get_take_report("../private")
 
@@ -191,6 +200,23 @@ class CoachRunnerTests(unittest.TestCase):
             self.assertEqual(estimate, 15.0)
             guard.record("synthetic-test", {"model": {"input_tokens": 500_000, "output_tokens": 0}}, 1.0)
             self.assertFalse(guard.allow_new_run())
+
+
+@unittest.skipUnless(find_spec("deepagents"), "coach/requirements.txt is optional in core CI")
+class CoachAgentTests(unittest.TestCase):
+    def test_harness_has_planning_subagents_and_no_shell_tool(self):
+        from coach.agent import build_agent
+        from coach.smoke import tool_names
+
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {"ANTHROPIC_API_KEY": "offline-test-key"}):
+            root = Path(folder)
+            (root / "AGENTS.md").write_text("Offline test workspace.\n")
+            feed = CoachFeed("session-test")
+            service = CoachTools(root, feed, RigClient(fixture_mode=True), RigStateReader())
+            agent = build_agent(service)
+            names = tool_names(agent)
+            self.assertTrue({"write_todos", "task", "rig_control", "read_file", "edit_file"} <= names)
+            self.assertNotIn("execute", names)
 
 
 if __name__ == "__main__":

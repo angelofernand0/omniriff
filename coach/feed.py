@@ -48,11 +48,13 @@ def initial_frame(session_id: str) -> dict:
 class CoachFeed:
     """Owns one latest coach frame; clients receive the latest full frame on join."""
 
-    def __init__(self, session_id: str, *, host: str = "127.0.0.1", port: int = 47803):
+    def __init__(self, session_id: str, *, host: str = "127.0.0.1", port: int = 47803,
+                 scripted: bool = False):
         if host != "127.0.0.1":
             raise ValueError("coach feed must bind only to 127.0.0.1")
         self.host, self.port = host, port
         self.frame = initial_frame(session_id)
+        self.frame["scripted"] = bool(scripted)
         self.decisions: queue.Queue[dict] = queue.Queue(maxsize=16)
         self._lock = threading.Lock()
         self._loop: asyncio.AbstractEventLoop | None = None

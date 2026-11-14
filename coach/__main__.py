@@ -43,9 +43,12 @@ def main(argv: list[str] | None = None) -> int:
     workspace = prepare_workspace(WORKSPACE)
     budget = BudgetGuard(workspace / "usage.jsonl")
     session_id = uuid.uuid4().hex
-    feed = CoachFeed(session_id, port=args.feed_port)
+    feed = CoachFeed(session_id, port=args.feed_port, scripted=args.fixtures)
     state = RigStateReader(port=args.state_port)
     rig = RigClient(fixture_mode=args.fixtures, port=args.control_port)
+    if args.fixtures:
+        state.observe({"source": "synthetic_fixture", "loop": {"state": "idle"},
+                       "bypass": False, "filter": {"value": 1.0}, "reverb": {"value": 0.0}})
     service = CoachTools(workspace, feed, rig, state)
     feed.start()
     if not args.fixtures:
@@ -64,7 +67,6 @@ def main(argv: list[str] | None = None) -> int:
             from .fixtures.generate import generate
             fixture_dir = ROOT / "coach" / "fixtures" / "generated"
             generate(fixture_dir)
-            feed.publish(scripted=True)
             print("SYNTHETIC FIXTURES: no live guitar, webcam, engine or rig control.")
             for name in ("before", "after", "clean")[:args.fixture_limit]:
                 wav = fixture_dir / f"coach-{name}.wav"
