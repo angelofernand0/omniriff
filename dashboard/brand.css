@@ -25,6 +25,7 @@
   --accent-ink: #0B0B10;
   --accent-deep: #3B1A4F;
   --accent-shade: #D63FA6;
+  --accent-low: #B4318A;
   --accent-dim: #5A2A75;
   /* signal colours: each has one job */
   --rec: #FF5340;
@@ -92,7 +93,7 @@ h1, h2, h3, p { margin: 0; font-weight: 400; }
 .led.hot > span { color: var(--accent); }
 
 /* chip: a mode that changes what you hear or trust. Filled, never decorative. */
-.chip { display: inline-block; padding: 6px 8px; font: var(--p1)/1 var(--font-pixel); background: var(--warn); color: var(--accent-ink); white-space: nowrap; }
+.chip { display: inline-block; padding: var(--s1) var(--s2); font: var(--p1)/1 var(--font-pixel); background: var(--warn); color: var(--accent-ink); white-space: nowrap; }
 
 /* key: every on-screen button is a keycap. It travels 4px and lands. */
 .key {

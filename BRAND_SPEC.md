@@ -105,7 +105,7 @@ Exact values. Defined once in `dashboard/brand.css`.
 |---|---|---|---|
 | `--accent` | `#FF5CCB` | **Pink. Alive:** loop playing, hand has the control, coach awake | 6.8:1 |
 | `--accent-ink` | `#0B0B10` | Text on pink, amber or green fills | 7.1:1 on pink |
-| `--accent-shade` | `#D63FA6` | Riff's ridges, Riff asleep | |
+| `--accent-shade` / `--accent-low` | `#D63FA6` / `#B4318A` | Riff's ridges; Riff's body and ridges when asleep | |
 | `--accent-deep` / `--accent-dim` | `#3B1A4F` / `#5A2A75` | Faint graph behind the engaged number | |
 | `--rec` | `#FF5340` | Recording, clipping, meter red zone | 5.8:1 |
 | `--warn` | `#FFB547` | Bypass, stale, replay, preview, meter amber zone | 10.6:1 |
@@ -140,7 +140,7 @@ Silkscreen sizes are multiples of 8 so every stroke lands on a whole pixel. Numb
 
 ### Space, line, shape
 
-- Unit `--u` = 4 px. Every size, gap and offset is a multiple: 4, 8, 12, 16, 24, 32.
+- Unit `--u` = 4 px. Gaps and padding use the named steps `--s1` to `--s6`: 4, 8, 12, 16, 24, 32. The one exception is 2 px, allowed for strokes and for the vertical padding of small legends (key letters, CLIP).
 - Stroke 2 px. Emphasis 4 px (the engaged panel, stamps).
 - No rounded corners, no gradients, no blur. Shadows are a solid 4 px offset. The one soft thing allowed is a 2 to 4 px solid ring around a lit LED or a moving card.
 

@@ -7,7 +7,7 @@ h2, h3 { font-size: inherit; }
 /* ---------- faceplate ---------- */
 .plate { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s5); padding: var(--s3) var(--s5); background: var(--bg-bar); border-bottom: var(--stroke) solid var(--line); }
 .model { font: var(--p1)/1 var(--font-pixel); color: var(--faint); padding-left: var(--s4); border-left: var(--stroke) solid var(--line-2); margin-left: calc(var(--s2) * -1); }
-.leds { display: flex; flex-wrap: wrap; gap: var(--s2) 20px; }
+.leds { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5); }
 .led.online > i { background: var(--ok); box-shadow: 0 0 0 2px rgba(143, 227, 166, 0.22); }
 .led.online > span { color: var(--text); }
 .led.active > i { background: var(--accent); box-shadow: 0 0 0 2px rgba(255, 92, 203, 0.28); animation: blink 0.4s steps(2) infinite; }
@@ -26,11 +26,11 @@ h2, h3 { font-size: inherit; }
 .segs.small i { height: 8px; }
 .segs.small i.hold { outline: 0; background: var(--text); }
 .db { min-width: 72px; text-align: right; font-size: var(--t1); font-weight: 600; font-variant-numeric: tabular-nums; }
-.clip { font: var(--p1)/1 var(--font-pixel); padding: 2px 6px; color: var(--faint); border: var(--stroke) solid var(--line-2); }
+.clip { font: var(--p1)/1 var(--font-pixel); padding: 2px var(--s2); color: var(--faint); border: var(--stroke) solid var(--line-2); }
 .clip.on { background: var(--rec); color: var(--accent-ink); border-color: var(--rec); }
 
 /* ---------- deck: the instrument on the left, inputs and coach on the right ---------- */
-.deck { display: grid; grid-template-columns: minmax(0, 1fr) 304px; grid-template-rows: minmax(0, 1fr) minmax(0, 2fr); gap: 20px var(--s5); padding: 20px var(--s5); min-height: 0; transition: opacity var(--beat) steps(2); }
+.deck { display: grid; grid-template-columns: minmax(0, 1fr) 304px; grid-template-rows: minmax(0, 1fr) minmax(0, 2fr); gap: var(--s5); padding: var(--s5); min-height: 0; transition: opacity var(--beat) steps(2); }
 .loop { grid-column: 1; grid-row: 1; }
 .tone { grid-column: 1; grid-row: 2; }
 .side { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: var(--s4); min-height: 0; }
@@ -42,7 +42,7 @@ h2, h3 { font-size: inherit; }
 /* ---------- 01 LOOP ---------- */
 .loop-row { flex: 1; display: flex; gap: var(--s4); min-height: 0; }
 /* fixed width: READY is the widest word, and the waveform must not jump when the state changes */
-.loop-state { flex: 0 0 264px; padding: var(--s4) 20px; display: flex; flex-direction: column; justify-content: center; gap: var(--s2); }
+.loop-state { flex: 0 0 264px; padding: var(--s4) var(--s5); display: flex; flex-direction: column; justify-content: center; gap: var(--s2); }
 .loop-word { display: flex; align-items: center; gap: var(--s3); font: var(--p4)/1 var(--font-pixel); color: var(--muted); }
 .loop-dot { width: 24px; height: 24px; background: currentColor; flex: none; }
 .loop-len { font-size: var(--t3); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -63,10 +63,10 @@ h2, h3 { font-size: inherit; }
 /* ---------- 02 TONE ---------- */
 .fx-zone { flex: 1; min-width: 0; min-height: 0; position: relative; display: grid; }
 .cards { grid-area: 1 / 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); min-height: 0; transition: opacity var(--bar) var(--step); }
-.card { background: var(--panel); border: var(--stroke) solid var(--line-2); box-shadow: 4px 4px 0 var(--shadow); padding: 20px; display: flex; flex-direction: column; gap: var(--s3); min-height: 0; min-width: 0; transition: border-color var(--beat) steps(2), box-shadow var(--beat) steps(2); }
+.card { background: var(--panel); border: var(--stroke) solid var(--line-2); box-shadow: 4px 4px 0 var(--shadow); padding: var(--s5); display: flex; flex-direction: column; gap: var(--s3); min-height: 0; min-width: 0; transition: border-color var(--beat) steps(2), box-shadow var(--beat) steps(2); }
 .card > header { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); }
 .card h3 { font: var(--p3)/1 var(--font-pixel); }
-.tag { font: var(--p1)/1 var(--font-pixel); color: var(--accent-ink); background: var(--accent); padding: 4px 6px; visibility: hidden; }
+.tag { font: var(--p1)/1 var(--font-pixel); color: var(--accent-ink); background: var(--accent); padding: var(--s1) var(--s2); visibility: hidden; }
 .card.target { border-color: var(--accent); }
 .card.target .tag { visibility: visible; }
 .readout { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s1) var(--s4); }
@@ -136,7 +136,7 @@ h2, h3 { font-size: inherit; }
 /* ---------- footer ---------- */
 .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s1) var(--s5); padding: var(--s2) var(--s5); border-top: var(--stroke) solid var(--line); background: var(--bg-bar); font-size: var(--t1); color: var(--muted); }
 .keys { display: flex; align-items: center; font: var(--p1)/1 var(--font-pixel); color: var(--faint); }
-.keys kbd { font: inherit; color: var(--text); background: var(--off); padding: 2px 6px; margin: 0 var(--s2) 0 var(--s4); }
+.keys kbd { font: inherit; color: var(--text); background: var(--off); padding: 2px var(--s2); margin: 0 var(--s2) 0 var(--s4); }
 
 /* ---------- waiting for the first frame: placeholders that scan, never fake values ---------- */
 .app[data-boot="true"] .blocks i, .app[data-boot="true"] .segs i { animation: scan 1.6s steps(1) infinite; animation-delay: calc(var(--i, 0) * 60ms); }
@@ -198,11 +198,11 @@ h2, h3 { font-size: inherit; }
 /* ---------- short screens (720p projector, the play room iframe) ---------- */
 @media (max-height: 820px) and (min-width: 1081px) {
   .plate { padding-top: var(--s2); padding-bottom: var(--s2); }
-  .deck { padding-top: var(--s3); padding-bottom: var(--s3); gap: var(--s3) 20px; }
+  .deck { padding-top: var(--s3); padding-bottom: var(--s3); gap: var(--s3) var(--s4); }
   .loop-state { padding: var(--s3) var(--s4); }
   .card { padding: var(--s4); gap: var(--s2); }
   .pct { font-size: var(--p5); }
   .side { gap: var(--s3); }
   .coach { min-height: 88px; padding: var(--s2) var(--s3); }
-  .foot { padding-top: 6px; padding-bottom: 6px; }
+  .foot { padding-top: var(--s1); padding-bottom: var(--s1); }
 }

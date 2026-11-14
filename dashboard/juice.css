@@ -52,7 +52,7 @@
 .ja-state { font: var(--p3)/1 var(--font-pixel); color: var(--warn); }
 .ja-how { display: grid; grid-template-columns: auto auto; gap: var(--s2) var(--s4); margin: 0; text-align: left; align-items: center; }
 .ja-how dt { font: var(--p1)/1 var(--font-pixel); color: var(--faint); }
-.ja-how dd { margin: 0; padding: 6px 10px; background: var(--panel); border: var(--stroke) solid var(--line-2); color: var(--text); user-select: all; }
+.ja-how dd { margin: 0; padding: var(--s2) var(--s3); background: var(--panel); border: var(--stroke) solid var(--line-2); color: var(--text); user-select: all; }
 
 @media (max-width: 700px) {
   .juice-stamp { font-size: var(--p3); }
