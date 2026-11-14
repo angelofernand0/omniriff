@@ -14,6 +14,7 @@ from .setlist import Setlist
 from .metrics import FrameMetrics
 from .hand_log import HandLog, hand_record
 from .zones import Rect, StrumGuard
+from .rehearsal_check import RehearsalCheck
 
 
 def main(argv=None):
@@ -28,6 +29,7 @@ def main(argv=None):
     p.add_argument('--hand-log', type=Path, help='append both wrist positions and Unix timestamps for coach take alignment')
     p.add_argument('--strum-hand', choices=('Left', 'Right'), default='Right', help='MediaPipe label of the strumming hand for hand-log analysis; verify camera orientation')
     p.add_argument('--strum-guard', action='store_true', help='suppress control in lower camera zone y>=0.55 and during rapid reversals; rehearse framing first')
+    p.add_argument('--rehearsal', action='store_true', help='human label/framing confirmation then 30s measured check; requires overlay, --relative --strum-guard --metrics-json')
     p.add_argument('--no-hand-view', action='store_true', help='disable local dashboard landmark feed')
     p.add_argument('--hand-view-port', type=int, default=47802)
     p.add_argument('--host', default='127.0.0.1')
@@ -46,6 +48,10 @@ def main(argv=None):
     args = p.parse_args(argv)
     if args.metrics_json and args.metrics_json.exists():
         p.error('metrics file exists; choose a new file')
+    if args.rehearsal and (args.no_overlay or not args.relative or not args.strum_guard or not args.metrics_json or args.calibrate or args.scene or args.scene_file or args.setlist or args.control!='filter'):
+        p.error('rehearsal needs --relative --strum-guard --metrics-json and the overlay; omit calibration/scenes/setlist/reverb control')
+    if args.rehearsal and not args.metrics_json.parent.is_dir():
+        p.error('create the metrics output folder before starting rehearsal')
     if args.calibrate and args.no_overlay:
         p.error('calibration requires overlay')
     if not math.isfinite(args.max_hand_jump) or not 0 < args.max_hand_jump <= 1:
@@ -100,6 +106,11 @@ def main(argv=None):
     hand_view = None if args.no_hand_view else HandView(args.hand_view_port).start()
     hand_view_error_reported = False
     metrics = FrameMetrics()
+    import sys
+    rehearsal = RehearsalCheck(strum_hand=args.strum_hand,source='recorded-video' if args.video else 'webcam',
+                              transmission='dry-run' if args.dry_run else 'udp',
+                              command=[sys.executable,'-m','vision',*(sys.argv[1:] if argv is None else argv)]) if args.rehearsal else None
+    last_frame_dimensions = None
     hand_log = None
     hand_log_error_reported = False
     try:
@@ -114,6 +125,8 @@ def main(argv=None):
                     if not args.video:
                         raise RuntimeError('Camera disconnected or frame capture failed')
                     break
+                height,width = frame.shape[:2]
+                last_frame_dimensions = [width,height]
                 if args.video:
                     time.sleep(max(0, start + frame_number / fps - time.monotonic()))
                 now = time.monotonic()
@@ -123,8 +136,9 @@ def main(argv=None):
                 frame_number += 1
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 result = detector.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), stamp)
+                wrist_record = hand_record(result, captured_unix_ms, args.strum_hand) if hand_log or rehearsal else None
                 if hand_log:
-                    hand_log.record(hand_record(result, captured_unix_ms, args.strum_hand))
+                    hand_log.record(wrist_record)
                     if hand_log.error and not hand_log_error_reported:
                         import sys
                         print('Hand log: ' + hand_log.error, file=sys.stderr)
@@ -198,6 +212,10 @@ def main(argv=None):
                         minimum_interval = interval if minimum_interval is None else min(minimum_interval, interval)
                     last_sent = emitted
                 metrics.record(now, time.monotonic(), frame_events, hand_present=y is not None)
+                if rehearsal:
+                    rehearsal.observe(now,time.monotonic(),events if not args.calibrate else [],
+                                      wrist_record['hands'] if fresh_frame else [],not fresh_frame,
+                                      result.handedness[selected][0].category_name if selected is not None else None)
                 if not args.no_overlay:
                     label = 'CALIBRATE: l low, h high, s save' if args.calibrate else f'{scene.name if scene else args.control}: {controller.value} active={controller.active} events={count}'
                     if guard:
@@ -206,10 +224,23 @@ def main(argv=None):
                     if setlist:
                         cue = f'SCENE {setlist.index + 1}/{len(setlist.scenes)} | 1-9 select, n/p cycle | open hand then pinch'
                         cv2.putText(frame, cue, (10, 48), cv2.FONT_HERSHEY_SIMPLEX, .45, (0, 255, 255), 1)
+                    if rehearsal:
+                        cv2.line(frame,(0,int(height*.55)),(width-1,int(height*.55)),(0,160,255),2)
+                        for hand in wrist_record['hands']:
+                            x,y_label=hand['wrist']
+                            cv2.putText(frame,hand['handedness']+(' [STRUM LABEL]' if hand['handedness']==args.strum_hand else ''),
+                                        (max(0,min(int(x*width),width-230)),max(100,int(y_label*height)-12)),cv2.FONT_HERSHEY_SIMPLEX,.5,(255,255,0),1)
+                        cue=f'REHEARSAL {rehearsal.remaining(time.monotonic()):.1f}s | C: confirm {args.strum_hand} | Z: confirm zone'
+                        cv2.putText(frame,cue,(10,48),cv2.FONT_HERSHEY_SIMPLEX,.45,(255,255,255),1)
+                        cv2.putText(frame,rehearsal.notice,(10,70),cv2.FONT_HERSHEY_SIMPLEX,.45,(255,255,255),1)
                     cv2.imshow('OmniRiff - q quits; open hand then pinch to engage', frame)
                     key = cv2.waitKey(1) & 0xff
                     if key == ord('q'):
                         break
+                    if rehearsal:
+                        rehearsal.confirm(key,time.monotonic(),wrist_record['hands'] if fresh_frame else [])
+                        if rehearsal.done:
+                            break
                     if setlist and setlist.key(key):
                         scene = setlist.current
                         controller.rearm()
@@ -242,9 +273,15 @@ def main(argv=None):
                           transmission='dry-run' if args.dry_run else 'udp',
                           expired_frames=expired_frames,
                           note='event rate is actual output during this run, not detector accuracy or audio latency')
+            if rehearsal:
+                report['rehearsal']=rehearsal.report()
+                report['runtime']=dict(python=sys.version.split()[0],opencv=getattr(cv2,'__version__',None),
+                                       mediapipe=getattr(mp,'__version__',None),frame_dimensions=last_frame_dimensions)
             with args.metrics_json.open('x', encoding='utf-8') as file:
                 json.dump(report, file, indent=2)
                 file.write('\n')
+        if rehearsal:
+            print(rehearsal.summary(),file=sys.stderr)
         print(json.dumps(dict(events=count, elapsed_seconds=elapsed, average_hz=count / max(elapsed, .001),
                               minimum_interval_seconds=minimum_interval, strum_guard=args.strum_guard,
                               suppressed_frames=suppressed_frames, expired_frames=expired_frames)), file=sys.stderr)
