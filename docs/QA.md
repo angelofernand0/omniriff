@@ -16,7 +16,7 @@ The music keeps playing. Every input is a separate adapter that can die without 
 **Can strumming accidentally move the filter?**
 Gesture control only acts while you pinch (a clutch with hysteresis), and it only arms after it has seen an open hand, so picking up the pick doesn't engage it (tested: 0 false events over 60 frames of strumming with a pick held). It rejects low-confidence frames, tracks one specific hand and fails closed on big jumps. On the engine side, stale, duplicate, malformed or low-confidence events are dropped before they reach audio.
 
-Honest limit: if you show an open hand and *then* grab the pick and strum, the clutch is engaged and strumming moves the filter (a test reproduces it: 15 unintended moves in one second). StrumGuard, which mutes control inside the guitar zone, removes all of them in the tests. [Say whether StrumGuard is on in the demo path; today it's only in the experimental `python -m vision.spatial` mode.] On stage: release the pinch before you start strumming.
+Honest limit: if you show an open hand and *then* grab the pick and strum, the clutch is engaged and strumming moves the filter (a test reproduces it: 15 unintended moves in one second). StrumGuard, which mutes control inside the guitar zone, removes all of them in the tests. On the demo path it's opt-in with `python -m vision --strum-guard` (lower camera zone y ≥ 0.55 plus rapid up-down reversals). [Say whether we ran the demo with it on, after checking camera framing tonight.] Either way, on stage: release the pinch before you start strumming.
 
 **What effects are there?**
 A smoothed low-pass sweep, a Freeverb-style reverb, a 30-second looper, a click-free bypass, an optional noise gate and a peak limiter so loud stacks don't distort.
