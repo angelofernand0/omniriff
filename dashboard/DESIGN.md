@@ -77,18 +77,18 @@ The waveform is built in the browser from `input_peak_dbfs` frames captured whil
 
 A display-only layer on top of `app.js`. Every effect fires on a real change in an engine frame (`app.js` re-dispatches each frame as the `omniriff:frame` window event). It sends nothing, except that the keys below press the existing manual buttons.
 
-- **Loop moments:** a stamp slams onto the waveform: `REC`, `LOOP 4.0S`, `CLEARED`, plus `FX ON` when bypass ends. A 280 ms stepped screen flash in rec red or accent. The old loop crumbles off the waveform on clear.
-- **Downbeat:** when the playhead wraps, the loop panel border pulses and a few pixels spray off the start.
-- **Injection:** when filter or reverb moves, accent pixels fly from the control (the engaged tower, or the card) into the waveform at the playhead. On arrival, the waveform border flashes. While recording, loud input flies from the IN meter into the newest end of the loop.
+- **Loop moments:** a stamp slams onto the waveform: `REC`, `LOOP 4.0S`, `CLEARED`, plus `FX ON` when bypass ends. A 280 ms stepped screen flash in rec red or accent.
+- **Downbeat:** when the playhead wraps, the loop panel border pulses.
 - **Effect graphs:** each card draws its effect: the filter as a low-pass magnitude curve on a log frequency axis (2-pole approximation from `cutoff_hz`), the reverb as a dry hit plus a tail that grows with wet. The engaged panel draws the same graph large and faint behind the number.
-- **Hand takeover:** a burst flies from the hand view into the engaged panel.
 - **Bypass / clip:** bypass shakes the FX zone and flashes amber; the clip light rattles the meter.
 - **Brand mark** scales in 4 steps with the output level.
 - **Offline screen:** after 1.5 s without the engine, a full-screen OMNIRIFF card says WAITING FOR ENGINE (never connected) or ENGINE OFFLINE · RECONNECTING.
 - **Keys:** `F` fullscreen, `L` loop, `B` bypass.
 - **Short screens (≤ 820 px tall, e.g. a 720p projector):** cards, looper and side column tighten so every primary element fits.
 
-`?juice=off` disables the layer. `prefers-reduced-motion` keeps the stamps, graphs and offline screen and drops particles, flashes and shakes.
+`?juice=off` disables the layer. `prefers-reduced-motion` keeps the stamps, graphs and offline screen and drops flashes and shakes.
+
+Particles were tried and removed (SM: too noisy). Juice here should reinforce the value that changed, not decorate the screen.
 
 ## Not in v1 (needs engine or contract work)
 
