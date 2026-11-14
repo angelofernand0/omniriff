@@ -49,7 +49,7 @@
   };
   const PAL = {
     awake: { body: hex('--accent', '#FF5CCB'), light: [255, 168, 228], shade: hex('--accent-shade', '#D63FA6'), rim: hex('--accent-low', '#B4318A') },
-    asleep: { body: hex('--accent-shade', '#D63FA6'), light: hex('--accent', '#FF5CCB'), shade: hex('--accent-low', '#B4318A'), rim: hex('--accent-dim', '#5A2A75') },
+    asleep: { body: hex('--accent-shade', '#D63FA6'), light: hex('--accent', '#FF5CCB'), shade: hex('--accent-low', '#B4318A'), rim: hex('--accent-dim', '#7A2A62') },
     ink: hex('--bg', '#0B0B10'), paper: [255, 255, 255],
   };
 
@@ -139,9 +139,11 @@
     const top = -h / 2 + h * Math.max(e.lid, f.top) + f.tilt * inner * 0.9;
     const bot = h / 2 - h * f.bot;
     if (dy < top || dy > bot) return 0;
-    // glint: one paper pixel high on the outside, gone under a lid
-    const gx = w / 2 - 1.15 + p.glint * 0.3, gy = -h / 2 + 1.35;
-    if (Math.abs(dx - gx * (e.side > 0 ? 1 : 1)) < 0.62 + p.glint * 0.25 && Math.abs(dy - gy) < 0.62 + p.glint * 0.25 && dy > top + 0.3) return 2;
+    // glint: one paper pixel high on the outside. It always shows while the eye is open (SM): a lid
+    // pushes it down instead of hiding it, and the hit box is wide enough that a pixel always lands
+    const gx = w / 2 - 1.15 + p.glint * 0.3, gy = Math.min(Math.max(-h / 2 + 1.35, top + 1.1), bot - 1.1);
+    const gr = 0.78 + p.glint * 0.25;
+    if (bot - top > 1.6 && Math.abs(dx - gx) < gr && Math.abs(dy - gy) < gr) return 2;
     return 1;
   }
 
@@ -221,9 +223,8 @@
   const socket = document.querySelector('.riff-socket');
   const stageEl = document.querySelector('.riff-stage');
   const dockLine = document.getElementById('coachLine');
-  // while Riff is out, its home keeps a dotted outline and says where it went, so the bubble
-  // still points at someone
-  let ghost = null, ghostLabel = null, ghostText = '';
+  // while Riff is out, its home keeps a dotted outline, so the bubble still points at someone
+  let ghost = null;
   if (socket) {
     ghost = document.createElement('div');
     ghost.className = 'riff-ghost';
@@ -240,16 +241,9 @@
       if (edge && (x + y) % 2 === 0) { gi.data[i] = col[0]; gi.data[i + 1] = col[1]; gi.data[i + 2] = col[2]; gi.data[i + 3] = 255; }
     }
     gx.putImageData(gi, 0, 0);
-    ghostLabel = document.createElement('span');
-    ghostLabel.className = 'riff-gone';
     ghost.append(gc);
     socket.appendChild(ghost);
-    (socket.parentElement || socket).appendChild(ghostLabel);   // beside the socket, inside the row
   }
-  const placeName = (t) => {
-    const n = t && (t.dataset.riffName ? t : t.closest('[data-riff-name]'));
-    return n ? n.dataset.riffName : 'work';
-  };
   const dockSub = document.getElementById('coachSub');
 
   const st = { state: 'asleep', target: null, cue: '', mood: 'sleepy', moodSet: false };
@@ -347,6 +341,7 @@
     if ('target' in n) st.target = n.target || null;
     if ('cue' in n) st.cue = n.cue || '';
     if ('stage' in n) st.stage = !!n.stage;
+    if ('you' in n) { st.you = !!n.you; if (st.you) pop(0.6); }   // the player is talking: turn to them
     if (n.mood && MOODS.includes(n.mood)) { st.mood = n.mood; st.moodSet = true; }
     else if (!st.moodSet || 'state' in n && !('mood' in n)) st.mood = STATE_MOOD[st.state];
     el.dataset.state = st.state;
@@ -480,6 +475,7 @@
     };
     let tx = look.tx, ty = look.ty;
     if (winding || moving) [tx, ty] = [Math.cos(def.a), Math.sin(def.a)];
+    else if (st.you) [tx, ty] = [0, 0.3];                                       // listening to you: eyes on you
     else if (st.state === 'pointing' || st.state === 'listening') {
       const t = resolve(st.target) || (st.state === 'listening' ? document.querySelector('.wave') : null);
       [tx, ty] = t ? gazeAt(t) : [0, 0.2];
@@ -548,7 +544,7 @@
       ? `translate(${(-fw / 2).toFixed(1)}px, ${(B * 0.3 + fw / 2 - fh / 2 + push * fs).toFixed(1)}px) rotate(90deg)`
       : `translate(${reachLeft ? -(fw + B * 0.32) - push * fs : B * 0.32 + push * fs}px, ${(-fh / 2).toFixed(1)}px) scaleX(${reachLeft ? -1 : 1})`;
 
-    // home: while Riff is out, the ghost says where it went
+    // home: while Riff is out, a dotted outline stays
     if (ghost) {
       const hp = homePoint();
       const out = Math.hypot(pos.x - hp.x, pos.y - hp.y) > B * 0.6;   // really left, not just told to
@@ -558,10 +554,6 @@
         const gcv = ghost.firstChild;
         const gpx = (sr.width / 24) * G;
         if (gcv.style.width !== gpx + 'px') gcv.style.width = gcv.style.height = gpx + 'px';
-        const dx = pos.x - (sr.left + sr.width / 2), dy = pos.y - (sr.top + sr.height / 2);
-        const arrow = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? '←' : '→') : (dy < 0 ? '↑' : '↓');
-        const text = tgt ? `${arrow} at ${placeName(tgt)}` : `${arrow} on the way back`;
-        if (text !== ghostText) { ghostText = text; ghostLabel.textContent = text; }
       }
     }
     const scale = 1 + 0.12 * ahaK;
@@ -613,6 +605,7 @@
     set({ state: 'asleep' });
   }
 
-  window.OmniRiff.coach = { set, press, states: STATES.slice(), moods: MOODS.slice(), get: () => ({ ...st }) };
+  const nod = () => { def.vv -= 1.6; def.tv += (Math.random() - 0.5) * 0.5; };   // a small nod as you talk
+  window.OmniRiff.coach = { set, press, nod, states: STATES.slice(), moods: MOODS.slice(), get: () => ({ ...st }) };
   requestAnimationFrame(frame);
 })();

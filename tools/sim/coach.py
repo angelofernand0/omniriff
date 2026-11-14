@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+import re
 import time
 from pathlib import Path
 
@@ -36,9 +37,11 @@ WRAP_SUMMARY = 'G to C change: longest gap 430 to 110 ms. Next: push the tempo t
 NEXT_TIME = 'Push the tempo to 100 bpm'
 MARK_AT = (0.55, 0.66)   # where in the loop the scripted stall is, as a fraction of its length
 PLAY_CUE = "Free play. I'll stay quiet. Press Y for another round."
-ROUND_CUE = "Okay, what are we working on? Tap, play it, tap again."
+ROUND_CUE = "Okay, what are we working on? Hold V and tell me, or just play it."
 DECLINE_CUE = "All good, I'll leave your sound as it is."
-IDLE_CUE = "Play me something. Tap the pedal when you're ready."
+IDLE_CUE = "Hey, I'm Riff. What are you working on? Hold V and tell me, then play it for me."
+GOAL_CUE = "Got it, that's what we'll work on. Tap the pedal, play it for me, tap again."
+NOTED_CUE = "Got it, I'll keep that in mind."
 AGAIN_CUE = 'Want to run it again? Tap the pedal.'
 PAUSE_S = 0.9   # a beat of silence after Riff finishes a line, before the next thing happens
 WORDS_PER_S = 2.6
@@ -91,7 +94,7 @@ class CoachFeed:
                     msg = json.loads(raw)
                 except ValueError:
                     continue
-                if SCHEMA.is_valid(msg) and msg.get('type') in ('coach.approve', 'coach.reject'):
+                if SCHEMA.is_valid(msg) and msg.get('type') in ('coach.approve', 'coach.reject', 'coach.say'):
                     await self.decisions.put(msg)
         except Exception:
             pass
@@ -121,6 +124,14 @@ async def engine_states(url: str):
             pass
         yield None
         await asyncio.sleep(1.0)
+
+
+def goal_from(text: str) -> str:
+    """The player's own words as a goal line: drop a leading 'oh, Riff,' and keep it to 80 characters."""
+    t = ' '.join(text.split())
+    t = re.sub(r'^(?:(?:oh|hey|ok(?:ay)?|so|um+|uh+|well|riff)[\s,.!]+)+', '', t, flags=re.I).strip() or t
+    t = t[0].upper() + t[1:]
+    return t if len(t) <= 80 else t[:79].rsplit(' ', 1)[0] + '…'
 
 
 def _act(feed: CoachFeed, who: str, what: str, status: str) -> list:
@@ -155,6 +166,7 @@ class ScriptedSession:
         self.summary = None
         self.cue_at = 0.0
         self.loop_seconds = 0.0
+        self.goal = None          # the player's own words, if they told Riff what they're working on
 
     async def wait(self, seconds: float) -> None:
         await asyncio.sleep(seconds * self.pace)
@@ -224,7 +236,29 @@ class ScriptedSession:
             else:
                 await self.diagnose()
 
+    async def on_say(self, text: str) -> None:
+        """The player told Riff something (coach.say). Before the first take it is the goal."""
+        if self.loop == 'recording':               # never while playing
+            return
+        if self.mode == 'play':                    # from free play: a new round with this goal
+            await self.new_round(cue=False)
+        note = [dict(who='coach', what='write /journal/scripted/goal.md', status='done')]
+        if self.phase == 'first' and not self.history:
+            self.goal = goal_from(text)
+            await self.until_quiet()
+            self.say(state='speaking', mood='encouraging', target='player', cue=GOAL_CUE, awaiting_approval=None,
+                     session=dict(mode='practice', goal=self.goal, plan=[], drill=None, attempt=None, metric=None,
+                                  next=None, last_time=self.last_time, summary=None, next_time=None),
+                     activity=_act(self.feed, 'coach', note[0]['what'], 'done'))
+        else:
+            await self.until_quiet()
+            self.say(state='speaking', mood='encouraging', target='player', cue=NOTED_CUE,
+                     activity=_act(self.feed, 'coach', 'write /journal/scripted/notes.md', 'done'))
+
     async def on_decision(self, msg: dict) -> None:
+        if msg.get('type') == 'coach.say':
+            await self.on_say(msg['text'])
+            return
         if not self.awaiting or msg.get('approval_id') != self.awaiting:
             return
         kind = self.awaiting_kind
@@ -249,7 +283,7 @@ class ScriptedSession:
         title, skill = drills[step - 1]
         plan = [dict(title=t, status='done' if i + 1 < self.drill_step else 'now' if i + 1 == self.drill_step else 'next')
                 for i, (t, _) in enumerate(drills)]
-        return dict(mode=self.mode, goal='Clean G to C change', plan=plan,
+        return dict(mode=self.mode, goal=self.goal or 'Clean G to C change', plan=plan,
                     drill=None if done else dict(title=title, skill=skill, step=step, of=2),
                     attempt=None if done else dict(n=self.tries if attempt is None else attempt, of=3),
                     metric=dict(name='longest gap', unit='ms', target=150, lower_is_better=True, history=self.history[-12:]),
@@ -351,11 +385,13 @@ class ScriptedSession:
                  awaiting_approval=dict(id='again', summary='Another practice round', actions=[dict(control='loop')],
                                         expires_unix_ms=now_ms() + 24 * 3600_000))
 
-    async def new_round(self) -> None:
+    async def new_round(self, cue: bool = True) -> None:
         """Y in PLAY mode (a long pedal press on the real rig): start another practice session."""
         self.awaiting = self.awaiting_kind = None
         self.mode, self.phase = 'practice', 'first'
-        self.history, self.drill_step, self.tries, self.summary = [], 1, 0, None
+        self.history, self.drill_step, self.tries, self.summary, self.goal = [], 1, 0, None, None
+        if not cue:
+            return
         self.say(state='idle', mood='encouraging', target='player', cue=ROUND_CUE, awaiting_approval=None,
                  session=None, todos=[], before_after=None)
 
@@ -376,7 +412,7 @@ async def run_scripted_coach(port: int = 47803, engine_ws: str = 'ws://127.0.0.1
         session.speak = lambda text: asyncio.ensure_future(_speak(text))
 
         async def _prewarm() -> None:                # render every scripted line once, so no line waits on the network
-            for name in ('IDLE_CUE', 'TAKE_CUE', 'APPROVE_CUE', 'DRILL_CUE', 'PASS_CUE', 'WRAP_CUE', 'PLAY_CUE', 'ROUND_CUE', 'DECLINE_CUE'):
+            for name in ('IDLE_CUE', 'GOAL_CUE', 'NOTED_CUE', 'TAKE_CUE', 'APPROVE_CUE', 'DRILL_CUE', 'PASS_CUE', 'WRAP_CUE', 'PLAY_CUE', 'ROUND_CUE', 'DECLINE_CUE'):
                 try:
                     await asyncio.to_thread(voice.synthesize, globals()[name])
                 except Exception:

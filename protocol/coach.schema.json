@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/angelofernand0/omniriff/protocol/coach.schema.json",
   "title": "OmniRiff coach feed v1",
-  "description": "Loopback WebSocket ws://127.0.0.1:47803, served by the coach process (coach/feed.py). Coach -> dashboard: coach.frame, a full snapshot every time anything changes (the dashboard renders the latest one; no deltas). Coach -> dashboard: coach.audio, the spoken cue as ElevenLabs audio (the API key stays in the coach process). Dashboard -> coach: coach.approve / coach.reject for the pending approval. Display and approval only: rig changes still go through the control envelope on UDP 47800 with source 'coach'.",
+  "description": "Loopback WebSocket ws://127.0.0.1:47803, served by the coach process (coach/feed.py). Coach -> dashboard: coach.frame, a full snapshot every time anything changes (the dashboard renders the latest one; no deltas). Coach -> dashboard: coach.audio, the spoken cue as ElevenLabs audio (the API key stays in the coach process). Dashboard -> coach: coach.approve / coach.reject for the pending approval. Display and approval only: rig changes still go through the control envelope on UDP 47800 with source 'coach'. Dashboard -> coach: coach.say, one thing the player told Riff (push-to-talk or typed), e.g. what they are working on before the first take.",
   "oneOf": [
     {
       "$ref": "#/$defs/frame"
@@ -12,6 +12,9 @@
     },
     {
       "$ref": "#/$defs/decision"
+    },
+    {
+      "$ref": "#/$defs/say"
     }
   ],
   "$defs": {
@@ -699,6 +702,41 @@
           "minLength": 4,
           "maxLength": 2000000,
           "description": "Base64 MP3. Cues are two sentences, so this stays small."
+        }
+      }
+    },
+    "say": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "type",
+        "timestamp_ms",
+        "text"
+      ],
+      "description": "Dashboard -> coach. What the player told Riff, between takes, never while playing (hold V or the TALK button; typed when speech recognition is unavailable). The coach treats it as the player's own words: before the first take it is the session goal; later it is context for the next decision. The coach answers with a frame (a cue), never by echoing raw text.",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "type": {
+          "const": "coach.say"
+        },
+        "timestamp_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "via": {
+          "enum": [
+            "voice",
+            "typed"
+          ],
+          "description": "How it was entered."
         }
       }
     }

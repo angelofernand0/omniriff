@@ -19,13 +19,13 @@
   const $ = (id) => document.getElementById(id);
   const app = $('app'), dock = $('coachDock'), led = $('led-coach');
   const ui = {
+    you: $('youLine'), youText: $('youText'), youInput: $('youInput'), talkBtn: $('talkBtn'),
     map: $('steps'), line: $('coachLine'), pedal: $('pedalNext'), pedalActs: document.querySelector('#pedalNext .acts'),
     goalRow: $('pGoalRow'), goal: $('pGoal'), nowRow: $('pNow'), drill: $('pDrill'), attempt: $('pAttempt'),
     gapRow: $('pMetric'), gapName: $('pMetricName'), gap: $('pMetricNow'), target: $('pTarget'), bar: $('pChart'),
     nextRow: $('pNextRow'), next: $('pNext'), last: $('pLast'),
     agent: $('agent'), agentPlan: $('agentPlan'), agentSteps: $('agentSteps'),
-    result: $('pResult'), rDrills: $('rDrills'), rName: $('rName'), rFrom: $('rFrom'), rTo: $('rTo'), rTarget: $('rTarget'),
-    rSaved: $('rSaved'), rNext: $('rNext'), rNextRow: $('rNextRow'), mark: $('waveMark'),
+    mark: $('waveMark'),
   };
   const TARGET = { loop: '.wave', filter: '#card-filter', reverb: '#card-reverb', bypass: '#fxPower', input: '.loop-state', hand: '#handPanel' };
   const targetOf = (f) => (f.target === 'loop' && markOn ? '#waveMark' : f.target ? TARGET[f.target] || null : null);
@@ -81,7 +81,8 @@
   let held = null, waitTimer = 0, lineShown = '';
   function show(f, secs) {                   // apply a frame to Riff and the bubble
     const target = targetOf(f);
-    window.OmniRiff.coach.set({ state: f.state, target, cue: f.cue || '', mood: f.mood, stage: false });
+    const hearingYou = ['listening', 'stopping', 'typing'].includes(talk.mode);   // Riff keeps listening to you
+    if (!hearingYou) window.OmniRiff.coach.set({ state: f.state, target, cue: f.cue || '', mood: f.mood, stage: false });
     mark(target);
     if (dock) dock.dataset.state = f.state;
     if (f.cue && f.cue !== lineShown) { lineShown = f.cue; type(f.cue, secs); }
@@ -110,9 +111,10 @@
     const prevCue = frame && frame.cue;
     frame = f;
     setLed(f.scripted ? 'scripted' : 'live', f.state === 'asleep' ? 'OFF' : f.scripted ? 'SCRIPTED' : 'LIVE');
-    renderMark(f); renderRows(f); renderAgent(f); renderMap();
+    renderMark(f); renderRows(f); renderAgent(f); toasts(f, joined); renderMap();
     if (joined) { joined = false; spoken = f.cue || ''; show(f, 0); return; }   // joined mid-line: no voice, no typing
     const newLine = !!f.cue && f.cue !== prevCue;
+    if (newLine && talk.mode === 'sent') { clearTimeout(talk.hide); talk.hide = setTimeout(hideYou, 6000); talk.mode = 'idle'; }
     if (newLine) {
       held = f;                               // Riff waits for this line's voice, then everything starts at once
       const ready = pendingAudio.get(f.cue);
@@ -157,82 +159,124 @@
       ui.bar.style.setProperty('--now', `${Math.min(100, (last / top) * 100).toFixed(1)}%`);
       ui.bar.style.setProperty('--goal', `${((m.target / top) * 100).toFixed(1)}%`);
     }
+    // DONE uses the same rows (SM: the rows were clearer than a card): DONE replaces NOW, the GAP
+    // row keeps its bar with where you started, NEXT TIME replaces NEXT
     const summary = ses && ses.summary;
-    ui.nextRow.hidden = !(ses && ses.next) || !!summary;
-    if (ses && ses.next) ui.next.textContent = ses.next;
-    ui.last.hidden = !(ses && ses.last_time) || !!summary;
-    if (ses && ses.last_time) ui.last.textContent = `Last time: ${ses.last_time}`;
-    renderResult(f, !!summary);
-  }
-
-  // DONE: the session as a result, not a paragraph. Each drill, the number first → last against
-  // its target, where the coach saved it, and what's next time.
-  function renderResult(f, done) {
-    ui.result.hidden = !done;
-    if (!done) return;
-    const ses = f.session, m = ses.metric;
-    ui.gapRow.hidden = true; ui.nowRow.hidden = true;
-    ui.rDrills.replaceChildren(...(ses.plan || []).map((d) => {
-      const li = document.createElement('li');
-      li.dataset.s = d.status;
-      li.textContent = d.title;
-      return li;
-    }));
-    const h = m && m.history.length ? m.history : null;
-    ui.rName.parentElement.hidden = !h;
-    if (h) {
-      const first = h[0], last = h[h.length - 1];
-      const pass = m.lower_is_better ? last <= m.target : last >= m.target;
-      ui.rName.textContent = m.name === 'longest gap' ? 'GAP' : m.name.toUpperCase();
-      ui.rFrom.textContent = `${Math.round(first)}`;
-      ui.rTo.textContent = `${Math.round(last)} ${m.unit}`;
-      ui.rTo.dataset.pass = String(pass);
-      ui.rTarget.textContent = `${h.length} take${h.length === 1 ? '' : 's'} · target ${m.lower_is_better ? '<' : '>'}${Math.round(m.target)}`;
+    const done = !!summary;
+    ui.nowRow.querySelector('dt').textContent = done ? 'DONE' : 'NOW';
+    if (done) {
+      const drills = (ses.plan || []).filter((d) => d.status === 'done').length;
+      const takes = m ? m.history.length : 0;
+      ui.nowRow.hidden = !(drills || takes);
+      ui.drill.textContent = `✓ ${drills} drill${drills === 1 ? '' : 's'}`;
+      ui.attempt.textContent = takes ? `${takes} takes` : '';
+      if (last !== null && m.history.length > 1) ui.target.textContent = `was ${Math.round(m.history[0])} · target ${m.lower_is_better ? 'under' : 'over'} ${Math.round(m.target)}`;
     }
-    const mem = [...(f.activity || [])].reverse().find((a) => /memor/.test(a.what) && a.status === 'done');
-    const path = mem && (mem.what.match(/\/\S+/) || [])[0];
-    ui.rSaved.textContent = path ? `SAVED ${path}` : 'SAVED TO MEMORY';
-    let next = ses.next_time || null;
-    if (!next && ses.summary) { const mm = /next(?: time)?:\s*(.+)$/i.exec(ses.summary); next = mm ? mm[1] : ses.summary; }
-    ui.rNextRow.hidden = !next;
-    if (next) ui.rNext.textContent = next.replace(/\.$/, '');
+    ui.nowRow.dataset.done = String(done);
+    let next = ses && ses.next;
+    if (done) { next = ses.next_time || null; if (!next) { const mm = /next(?: time)?:\s*(.+)$/i.exec(summary); next = mm ? mm[1] : null; } }
+    ui.nextRow.querySelector('dt').textContent = done ? 'NEXT TIME' : 'NEXT';
+    ui.nextRow.hidden = !next;
+    if (next) ui.next.textContent = next.replace(/\.$/, '');
+    // last time: only before the first drill, where it sets the scene
+    ui.last.hidden = !(ses && ses.last_time) || done || !!(ses && ses.drill);
+    if (ses && ses.last_time) ui.last.textContent = `Last time: ${ses.last_time}`;
   }
 
-  // ---------- the deep agent at work: plan, subagents, skills, files, memory ----------
-  // Only what the brain reports (todos = write_todos, activity = its tool calls). Nothing invented.
-  function kindOf(a, f) {
-    const w = a.what, strip = (s) => s.replace(/^(write|edit|read)(_file)?\s+/, '');
-    let m;
-    if (a.who !== 'coach') return ['SUBAGENT', `${a.who} · ${w}`];
-    if ((m = /^open skill (.+)/.exec(w))) return ['SKILL', m[1]];
-    if (/memor/.test(w)) return ['MEMORY', strip(w)];
-    if (/^write_todos/.test(w)) return ['PLAN', 'write_todos'];
-    if (/^write_drill_card/.test(w)) return ['FILE', (f.drill_card && f.drill_card.journal_path) || 'drill card'];
-    if (/^task\b/.test(w)) return ['SUBAGENT', w];
-    if (/^(write|edit|read)/.test(w) || w.includes('/')) return ['FILE', strip(w)];
-    if ((m = /^rig_control\s*(.*)/.exec(w))) return ['RIG', m[1] || 'rig'];
-    return ['TOOL', w];
+  // ---------- Riff at work: the deep agent's steps in plain words, while it works ----------
+  // Only what the brain reports (todos = its plan, activity = its tool calls and its helpers Ears
+  // and Eyes). Nothing invented. Shown while Riff is thinking; the moments worth saying out loud
+  // (goal noted, drill card ready, saved to memory) also pop up beside Riff.
+  const human = (slug) => slug.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  function stepOf(a) {
+    const w = a.what; let m;
+    if (a.who === 'ears') return ['EARS', 'Listening back to your take'];
+    if (a.who === 'eyes') return ['EYES', 'Watching your strumming hand'];
+    if ((m = /^open skill (.+)/.exec(w))) return ['RIFF', `Picking a drill: ${human(m[1])}`];
+    if (/memor/.test(w)) return ['RIFF', 'Remembering this for next time'];
+    if (/^write_todos/.test(w)) return ['RIFF', 'Making a plan'];
+    if (/^write_drill_card/.test(w)) return ['RIFF', 'Writing your drill card'];
+    if (/goal/.test(w)) return ['RIFF', 'Noting what you’re working on'];
+    if (/^compare_takes/.test(w)) return ['RIFF', 'Comparing with your last take'];
+    if (/^rig_control/.test(w)) return ['RIFF', 'Getting your rig ready'];
+    if (/^task\b/.test(w)) return ['RIFF', 'Asking a helper'];
+    if (/^read/.test(w)) return ['RIFF', 'Checking its notes'];
+    if (/^(write|edit)/.test(w)) return ['RIFF', 'Writing it down'];
+    return ['RIFF', 'Working'];
   }
-  const GLYPH = { running: '▸', done: '✓', failed: '✗', waiting: '…' };
+  let shownSteps = new Set();
   function renderAgent(f) {
     const acts = (f && f.activity) || [], todos = (f && f.todos) || [];
-    const play = !f || f.state === 'asleep' || (f.session && f.session.mode === 'play');
-    ui.agent.hidden = play || (!acts.length && !todos.length);
-    if (ui.agent.hidden) return;
-    const done = todos.filter((t) => t.status === 'completed').length;
-    const now = todos.find((t) => t.status === 'in_progress');
-    ui.agentPlan.textContent = todos.length ? `PLAN ${done}/${todos.length}${now ? ' · ' + now.text : ''}` : '';
-    const max = innerHeight < 820 ? 3 : 4;
-    ui.agentSteps.replaceChildren(...acts.slice(-max).map((a) => {
-      const [k, text] = kindOf(a, f);
+    const working = !!f && f.state === 'thinking' && !(f.session && f.session.mode === 'play');
+    ui.agent.hidden = !working || (!acts.length && !todos.length);
+    if (ui.agent.hidden) { shownSteps = new Set(); return; }
+    // the plan as pixel dots: done, now, to do
+    ui.agentPlan.replaceChildren(...todos.map((t) => { const i = document.createElement('i'); i.dataset.s = t.status; i.title = t.text; return i; }));
+    const seen = new Set();
+    ui.agentSteps.replaceChildren(...acts.slice(innerHeight < 700 ? -2 : -3).map((a) => {
+      const [who, text] = stepOf(a);
       const li = document.createElement('li');
-      li.dataset.s = a.status;
+      li.dataset.s = a.status; li.dataset.who = who.toLowerCase();
       li.innerHTML = '<i></i><span></span><em></em>';
-      li.children[0].textContent = k;
+      li.children[0].textContent = who;
       li.children[1].textContent = text;
-      li.children[2].textContent = a.status === 'waiting' ? 'you' : GLYPH[a.status] || '';
+      li.children[2].textContent = a.status === 'done' ? '✓' : a.status === 'failed' ? '✗' : '';
+      if (!shownSteps.has(text)) li.dataset.new = 'true';
+      seen.add(text);
       return li;
     }));
+    shownSteps = seen;
+  }
+
+  // pop-ups: a moment worth saying out loud, beside Riff, for three seconds
+  const toastEl = document.createElement('div');
+  toastEl.className = 'riff-toast'; toastEl.hidden = true; toastEl.setAttribute('role', 'status');
+  toastEl.innerHTML = '<b></b><span></span>';
+  document.body.appendChild(toastEl);
+  let toastSeen = null, toastQ = [], toastBusy = false;
+  function toasts(f, quiet) {
+    const done = new Set(((f && f.activity) || []).filter((a) => a.status === 'done').map((a) => `${a.who}|${a.what}`));
+    const fresh = toastSeen === null || quiet ? [] : [...done].filter((k) => !toastSeen.has(k));
+    toastSeen = done;
+    const ses = f && f.session, m = ses && ses.metric;
+    for (const k of fresh) {
+      const what = k.split('|')[1];
+      if (/memor/.test(what)) {
+        const line = m && m.history.length > 1 ? `${ses.goal || 'Today'}: ${Math.round(m.history[0])} → ${Math.round(m.history[m.history.length - 1])} ${m.unit}`
+          : 'Riff will remember this next time';
+        toastQ.push(['SAVED TO MEMORY', line]);
+      } else if (/^write_drill_card/.test(what) && f.drill_card) toastQ.push(['DRILL READY', f.drill_card.title]);
+      else if (/goal/.test(what) && ses && ses.goal) toastQ.push(['GOAL NOTED', ses.goal]);
+    }
+    if (!toastBusy) nextToast();
+  }
+  function nextToast() {
+    const t = toastQ.shift();
+    if (!t) { toastBusy = false; return; }
+    toastBusy = true;
+    toastEl.children[0].textContent = t[0]; toastEl.children[1].textContent = t[1];
+    toastEl.hidden = false; toastEl.dataset.on = 'false';
+    toastEl.style.width = Math.min(340, innerWidth - 32) + 'px';
+    placeToast();
+    requestAnimationFrame(() => { toastEl.dataset.on = 'true'; });
+    if (window.OmniRiff.coach.nod) window.OmniRiff.coach.nod();
+    const follow = () => { if (!toastEl.hidden) { placeToast(); requestAnimationFrame(follow); } };   // it travels with Riff
+    requestAnimationFrame(follow);
+    setTimeout(() => { toastEl.hidden = true; setTimeout(nextToast, 400); }, 3200);
+  }
+  function placeToast() {                     // beside Riff's drawn body, never over it or the top bar
+    const r = document.querySelector('.riff:not(.riff-still)');
+    const k = r ? r.getBoundingClientRect() : { left: innerWidth - 300, top: 120, width: 80, height: 80 };
+    const pad = k.height * 0.3;              // the pixel body overhangs its box when it stretches or hops
+    const b = { left: k.left - pad, right: k.left + k.width + pad, top: k.top - pad, bottom: k.top + k.height + pad };
+    const w = toastEl.offsetWidth, th = toastEl.offsetHeight;
+    const bar = (document.querySelector('.bar') || document.body).getBoundingClientRect().bottom;
+    let x, y;
+    if (b.top - th - 8 >= bar + 8) { x = (b.left + b.right) / 2 - w / 2; y = b.top - th - 8; }   // above
+    else if (b.left - w - 8 >= 16) { x = b.left - w - 8; y = (b.top + b.bottom) / 2 - th / 2; }  // left
+    else { x = b.right + 8; y = (b.top + b.bottom) / 2 - th / 2; }                                 // right
+    toastEl.style.left = `${Math.round(Math.max(16, Math.min(innerWidth - w - 16, x)))}px`;
+    toastEl.style.top = `${Math.round(Math.max(bar + 8, Math.min(innerHeight - th - 16, y)))}px`;
   }
 
   // ---------- the spot in your loop the coach is talking about ----------
@@ -281,7 +325,7 @@
     else if (f && f.state === 'thinking') acts = [['WAIT', 'Riff is working on it']];
     else if (f && ['speaking', 'pointing'].includes(f.state)) acts = [['WAIT', 'Riff is talking']];
     else if (step === 4) acts = [['WAIT', 'Riff is wrapping up']];
-    else if (step === 1) acts = [['TAP', 'record what you\u2019re working on']];
+    else if (step === 1) acts = [['TAP', 'play what you\u2019re working on']];
     else acts = [['TAP', 'record the drill take']];
     if (ui.pedal) {
       const key = JSON.stringify(acts);
@@ -298,6 +342,11 @@
           return s;
         }));
       }
+    }
+    if (ui.talkBtn) {                          // talk: any time Riff is awake and you're not recording
+      ui.talkBtn.hidden = !awake || loop === 'recording' || (f && f.state === 'thinking');
+      const ask = !play && step === 1 && !(ses && ses.goal);
+      ui.talkBtn.dataset.ask = String(ask);   // Riff is asking what you're working on: the button leads
     }
     if (ui.line) ui.line.dataset.empty = play ? (awake ? 'Free play. I\u2019ll stay quiet.' : 'Coach off. The rig plays without it.')
       : step === 1 ? 'Play me what you\u2019re working on.' : '';
@@ -407,10 +456,102 @@
     talkRaf = requestAnimationFrame(tick);
   }
 
+  // ---------- talk to Riff: hold V (or TALK), say it, let go. Between takes, never while recording ----------
+  // Chrome's speech recognition turns it into text (it needs the internet); without it, or if the
+  // mic is refused, the YOU line becomes a text box. The text goes to the coach as coach.say.
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const talk = { mode: 'idle', rec: null, heard: '', hide: 0, stop: 0 };
+  function hideYou() { if (talk.mode === 'idle' && ui.you) { ui.you.hidden = true; ui.you.dataset.mode = 'idle'; } }
+  function riffListens(on) {
+    if (on) window.OmniRiff.coach.set({ state: 'listening', target: null, mood: 'curious', you: true });
+    else {
+      window.OmniRiff.coach.set({ you: false });
+      if (frame) window.OmniRiff.coach.set({ state: frame.state, target: targetOf(frame), mood: frame.mood });
+    }
+  }
+  function youMode(m, text) {
+    talk.mode = m;
+    ui.you.hidden = false; ui.you.dataset.mode = m;
+    if (text !== undefined) ui.youText.textContent = text;
+    ui.youInput.hidden = m !== 'typing';
+    if (dock) dock.dataset.talk = m;
+  }
+  function startTalk() {
+    if (talk.mode === 'listening' || talk.mode === 'typing' || !ui.you) return;
+    if (!frame || frame.state === 'asleep') return;
+    if (app && app.dataset.loop === 'recording') return;           // never while you play
+    clearTimeout(talk.hide); clearTimeout(talk.stop);
+    stopVoice(); held = null;
+    talk.heard = '';
+    riffListens(true);
+    if (!SR) { openTyping(); return; }
+    youMode('listening', '');
+    try {
+      const rec = new SR();
+      talk.rec = rec;
+      rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = true;
+      rec.onresult = (e) => {
+        talk.heard = [...e.results].map((r) => r[0].transcript).join(' ').replace(/\s+/g, ' ').trim();
+        ui.youText.textContent = talk.heard;
+        if (window.OmniRiff.coach.nod) window.OmniRiff.coach.nod();   // Riff nods as your words come in
+      };
+      rec.onerror = (e) => {
+        if (['not-allowed', 'service-not-allowed', 'network', 'audio-capture', 'language-not-supported'].includes(e.error)) {
+          talk.rec = null; openTyping(e.error === 'network' ? 'No internet for speech. Type it:' : 'Mic unavailable. Type it:');
+        }
+      };
+      rec.onend = () => {
+        if (talk.rec !== rec) return;
+        if (talk.mode === 'listening') { try { rec.start(); } catch (err) { /* ended for good */ } }   // still holding
+        else if (talk.mode === 'stopping') finishTalk();
+      };
+      rec.start();
+    } catch (e) { openTyping(); }
+  }
+  function stopTalk() {
+    if (talk.mode !== 'listening') return;
+    talk.mode = 'stopping';
+    if (talk.rec) { try { talk.rec.stop(); } catch (e) { /* gone */ } talk.stop = setTimeout(finishTalk, 1200); }
+    else finishTalk();
+  }
+  function finishTalk() {
+    if (talk.mode !== 'stopping') return;
+    clearTimeout(talk.stop);
+    talk.rec = null;
+    const text = talk.heard.trim();
+    if (text) sendSay(text, 'voice');
+    else { youMode('idle', 'Didn\u2019t catch that. Hold V and try again.'); riffListens(false); talk.hide = setTimeout(hideYou, 3000); }
+  }
+  function openTyping(why) {
+    youMode('typing', why || '');
+    ui.youInput.value = talk.heard || '';
+    setTimeout(() => ui.youInput.focus(), 0);
+  }
+  function sendSay(text, via) {
+    const msg = { version: 1, type: 'coach.say', timestamp_ms: Date.now(), text: text.slice(0, 240), via };
+    if (!ws || ws.readyState !== 1) { youMode('idle', 'Riff isn\u2019t connected.'); riffListens(false); talk.hide = setTimeout(hideYou, 3000); return; }
+    ws.send(JSON.stringify(msg));
+    youMode('sent', msg.text);
+    riffListens(false);
+    talk.hide = setTimeout(() => { if (talk.mode === 'sent') { talk.mode = 'idle'; hideYou(); } }, 20000);
+  }
+  if (ui.youInput) ui.youInput.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter' && ui.youInput.value.trim()) { e.preventDefault(); ui.youInput.blur(); sendSay(ui.youInput.value.trim(), 'typed'); }
+    else if (e.key === 'Escape') { talk.mode = 'idle'; ui.youInput.blur(); hideYou(); riffListens(false); }
+  });
+  if (ui.talkBtn) {
+    ui.talkBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); ui.talkBtn.setPointerCapture(e.pointerId); startTalk(); });
+    ui.talkBtn.addEventListener('pointerup', stopTalk);
+    ui.talkBtn.addEventListener('pointercancel', stopTalk);
+  }
+  window.addEventListener('keyup', (e) => { if (e.key.toLowerCase() === 'v') stopTalk(); });
+
   // ---------- keys (the simulator has no pedal) ----------
   window.addEventListener('keydown', (e) => {
     if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     const k = e.key.toLowerCase();
+    if (k === 'v' && !e.repeat && !e.metaKey && !e.ctrlKey) { e.preventDefault(); startTalk(); return; }
     if (k === 'y' && send('coach.approve')) e.preventDefault();
     else if (k === 'n' && send('coach.reject')) e.preventDefault();
     else if (k === 'm') {
@@ -422,7 +563,8 @@
   });
   if (dock) dock.dataset.muted = String(muted);
 
-  window.OmniRiff.coachFeed = { get: () => frame, speaking: () => !!busy(), line: () => spoken };
+  window.OmniRiff.coachFeed = { get: () => frame, speaking: () => !!busy(), line: () => spoken,
+    say: (text) => sendSay(text, 'typed'), talk: () => talk.mode };
   renderMap();
   connect();
 })();

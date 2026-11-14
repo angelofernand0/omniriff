@@ -152,6 +152,43 @@ class ScriptedCoachTests(unittest.TestCase):
         from tools.sim.coach import ROUND_CUE
         self.assertEqual(again['cue'], ROUND_CUE)
 
+    def test_player_tells_riff_the_goal(self):
+        # coach.say before the first take: the player's own words become the session goal
+        async def go():
+            from websockets.asyncio.client import connect
+            q: asyncio.Queue = asyncio.Queue()
+
+            async def states():
+                while True:
+                    yield await q.get()
+            port = asyncio.get_running_loop().create_future()
+            task = asyncio.create_task(run_scripted_coach(0, udp_port=None, pace=0, states=states(), ready=port.set_result))
+            async with connect(f'ws://127.0.0.1:{await port}') as ws:
+                async def until(pred):
+                    while True:
+                        f = json.loads(await asyncio.wait_for(ws.recv(), 2))
+                        if f['type'] == 'coach.frame' and pred(f):
+                            return f
+                q.put_nowait(state('idle'))
+                await until(lambda f: f['state'] == 'idle')
+                said = {'version': 1, 'type': 'coach.say', 'timestamp_ms': 1, 'via': 'voice',
+                        'text': "Oh, Riff, I've been struggling with this G to C change"}
+                self.assertEqual([e.message for e in COACH.iter_errors(said)], [])
+                await ws.send(json.dumps(said))
+                got = await until(lambda f: (f.get('session') or {}).get('goal'))
+                for s in ('recording', 'playing'):
+                    q.put_nowait(state(s))
+                diag = await until(lambda f: f['awaiting_approval'])
+            task.cancel()
+            return got, diag
+
+        got, diag = asyncio.run(go())
+        from tools.sim.coach import GOAL_CUE
+        self.assertEqual(got['cue'], GOAL_CUE)
+        self.assertEqual(got['session']['goal'], "I've been struggling with this G to C change")
+        self.assertEqual(diag['session']['goal'], "I've been struggling with this G to C change")
+        self.assertTrue(any('/journal/' in a['what'] for a in got['activity']))
+
     def test_pedal_approves(self):
         self.check(*self.run_session('pedal'))
 

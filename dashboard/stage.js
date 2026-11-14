@@ -60,47 +60,6 @@
     if (e.detail && e.detail.el === fx && app.dataset.bypass !== String(!shown)) show(app.dataset.bypass !== 'true', true);
   });
 
-  // ---------- knobs: the analog face of FILTER and REVERB. Stepped, like the rest of the machine ----------
-  const KG = 18;
-  const css = getComputedStyle(document.documentElement);
-  const tok = (v, d) => (css.getPropertyValue(v) || '').trim() || d;
-  const knobs = ['filter', 'reverb'].map((k) => {
-    const c = $('knob-' + k);
-    if (!c) return null;
-    c.width = c.height = KG;
-    return { k, c, ctx: c.getContext('2d'), v: -1 };
-  }).filter(Boolean);
-  function drawKnob(kn, v, lit) {
-    const q = Math.round(v * 20) / 20;                 // 21 detents
-    if (q === kn.v && lit === kn.lit) return;
-    kn.v = q; kn.lit = lit;
-    const x = kn.ctx, mid = KG / 2;
-    x.clearRect(0, 0, KG, KG);
-    const ang = (t) => (-135 + 270 * t) * Math.PI / 180 - Math.PI / 2;
-    for (let i = 0; i <= 10; i++) {                    // the scale printed around it
-      const a = ang(i / 10);
-      x.fillStyle = i / 10 <= q + 1e-6 ? (lit ? tok('--accent', '#FF5CCB') : tok('--text', '#EDEDF2')) : tok('--line-2', '#3A3A48');
-      x.fillRect(Math.round(mid - 0.5 + Math.cos(a) * 8.2), Math.round(mid - 0.5 + Math.sin(a) * 8.2), 1, 1);
-    }
-    for (let y = 0; y < KG; y++) for (let xx = 0; xx < KG; xx++) {   // the cap: a chunky pixel circle, lit top-left
-      const dx = xx + 0.5 - mid, dy = y + 0.5 - mid, r = Math.hypot(dx, dy);
-      if (r > 6.4) continue;
-      const rim = r > 5.4, lightSide = dx + dy < -2;
-      x.fillStyle = rim ? (lightSide ? tok('--muted', '#8A8A9A') : tok('--line-2', '#3A3A48')) : tok('--dim', '#4A4A5A');
-      x.fillRect(xx, y, 1, 1);
-    }
-    const a = ang(q);                                   // the pointer: centre to edge
-    x.fillStyle = lit ? tok('--accent', '#FF5CCB') : tok('--text', '#EDEDF2');
-    for (let r = 0.5; r <= 6; r += 0.25) x.fillRect(Math.floor(mid + Math.cos(a) * r), Math.floor(mid + Math.sin(a) * r), 1, 1);
-  }
-  window.addEventListener('omniriff:frame', (e) => {
-    const f = e.detail || {};
-    for (const kn of knobs) {
-      const s = f[kn.k];
-      if (s && typeof s.value === 'number') drawKnob(kn, Math.max(0, Math.min(1, s.value)), $('card-' + kn.k).classList.contains('target'));
-    }
-  });
-  knobs.forEach((kn) => drawKnob(kn, 0, false));
   new MutationObserver(status).observe(app, { attributes: true, attributeFilter: ['data-conn', 'data-replay', 'data-sim', 'data-bypass', 'data-coach'] });
   status();
 

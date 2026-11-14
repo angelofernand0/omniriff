@@ -23,10 +23,10 @@
   /* the one brand colour: anything alive (loop playing, hand engaged, coach) */
   --accent: #FF5CCB;
   --accent-ink: #0B0B10;
-  --accent-deep: #3B1A4F;
+  --accent-deep: #4A1A3C;
   --accent-shade: #D63FA6;
   --accent-low: #B4318A;
-  --accent-dim: #5A2A75;
+  --accent-dim: #7A2A62;
   /* signal colours: each has one job */
   --rec: #FF5340;
   --warn: #FFB547;
