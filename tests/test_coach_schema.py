@@ -40,8 +40,12 @@ class CoachSchemaTests(unittest.TestCase):
     def test_rejects_bad_messages(self):
         no_todos = frame()
         del no_todos['todos']
+        unlabelled = frame()
+        del unlabelled['scripted']
         bad = [
             no_todos,                                          # full snapshot: every field required
+            unlabelled,                                        # a frame must say whether a live agent is behind it
+            frame(scripted='yes'),
             frame(state='dancing'),
             frame(mood='angry'),
             frame(target='.loop-card'),                        # logical names, not CSS selectors
@@ -54,6 +58,10 @@ class CoachSchemaTests(unittest.TestCase):
             frame(awaiting_approval={**EXAMPLES[2]['awaiting_approval'], 'actions': [{'control': 'volume'}]}),
             frame(awaiting_approval={**EXAMPLES[2]['awaiting_approval'], 'actions': []}),
             frame(before_after={**EXAMPLES[3]['before_after'], 'worst_gap_ms': [430]}),
+            frame(activity=[{'who': 'planner', 'what': 'x', 'status': 'done'}]),
+            frame(activity=[{'who': 'ears', 'what': 'x', 'status': 'done'}] * 9),
+            {**EXAMPLES[4], 'mime': 'audio/wav'},
+            {**EXAMPLES[4], 'api_key': 'x'},                    # the TTS key never leaves the coach
             {'version': 1, 'type': 'coach.approve', 'timestamp_ms': 1},          # needs approval_id
             {'version': 1, 'type': 'coach.maybe', 'timestamp_ms': 1, 'approval_id': 'a1'},
         ]
