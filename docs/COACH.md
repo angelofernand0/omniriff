@@ -134,21 +134,21 @@ SM's direction: a small floating character on the dashboard. A circle with eyes 
 - **Drill card** (JSON): what to play, how many times, what counts as a pass, what the live layer watches.
 - **Coach feed** (WebSocket, proposed 47803): todos, cue, drill card, avatar state.
 
-## 7. Suggested split
+## 7. Owners
 
-SM keeps the vision and the coach core. The rest can be handed off because each piece sits behind a file format.
+SM keeps the vision and every user-facing piece. The rest is handed off because each piece sits behind a file format. SM confirmed the D, E, F and H claims on issue #1 (2026-11-14).
 
-| Piece | Suggested owner | Why |
+| Piece | Owner | Status |
 |---|---|---|
-| D Coach core, E coach feed | SM's Claude | SM owns the AI |
-| F Dashboard layer and avatar, H voice | SM's Claude (second session) or SM's Codex | Already in `dashboard/` |
-| B Ears analysis | SM's Codex | The virtual guitar can render takes with known timing errors to test against |
-| A Take capture | Angelo's Claude | Lives in `audio/` |
-| I Control source | Angelo's Codex | Lives in `engine/` and the shared protocol |
-| C Eyes analysis | Joey's Codex | Lives next to `vision/` |
+| D Coach core (deep agent), E coach feed | SM (claimed) | SM owns the AI |
+| F Dashboard layer and avatar, H voice | SM (claimed) | User-facing; SM decides direction |
+| A Take capture | Angelo's Claude | Merged in #47 |
+| B Ears analysis | John's Claude | Claimed on issue #1 (originally suggested for SM's Codex) |
+| C Eyes analysis | John's Claude | Merged in #40 |
+| I Control source | Angelo's side (Angelo's Codex) | Lives in `engine/` and the shared protocol; SM doesn't need it |
 | G Live layer | Whoever finishes first | Depends on B and C |
 
-These are suggestions. Nobody is assigned until they claim it on issue #1.
+Don't start D, E, F or H without checking with SM on issue #1.
 
 ## 8. Order and timing
 
