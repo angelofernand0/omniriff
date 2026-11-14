@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import re
+import threading
 from .router import Router, MAX_MESSAGE, decode
 
 
@@ -182,7 +183,27 @@ class Runtime:
     async def run_serial(self):
         import serial
         decoder = SerialDecoder(self.router)
-        port = await asyncio.to_thread(serial.Serial, self.serial_port, 115200, timeout=0.1)
+        # Cancelling to_thread() doesn't stop its constructor. Keep ownership
+        # until the result is delivered so a late USB/COM open cannot leak.
+        lock = threading.Lock()
+        cancelled, opened = False, None
+        def open_port():
+            nonlocal opened
+            port = serial.Serial(self.serial_port, 115200, timeout=0.1)
+            with lock:
+                if not cancelled:
+                    opened = port
+                    return port
+            port.close()  # Cancellation won before the constructor returned.
+        try:
+            port = await asyncio.to_thread(open_port)
+        except asyncio.CancelledError:
+            with lock:
+                cancelled = True
+                port = opened
+            if port is not None:
+                port.close()  # Open succeeded, but its result wasn't delivered.
+            raise
         self.serial = port
         decoder.connect()
         self.running('serial')
