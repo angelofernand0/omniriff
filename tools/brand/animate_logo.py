@@ -163,9 +163,9 @@ def pose(t):
     return dict(lift=lift, sx=sx, sy=sy, dx=dx, dy=dy, mode=mode)
 
 
-WAVES = [  # start (s), cells at the last letter, ripple letters up a cell, snap-back time (s)
-    (T_LAND, 5.0, True, 0.62),
-    (T_LAND2, 1.6, False, 0.35),
+WAVES = [  # start (s), cells at the last letter, snap-back time (s)
+    (T_LAND, 7.0, 0.62),
+    (T_LAND2, 3.0, 0.38),
 ]
 OUT = 0.10                        # shove out
 STAGGER_OUT = 0.012               # the shove hits every letter almost at once, so the gap opens
@@ -192,14 +192,12 @@ def letter_offsets(t, n=8):
     """(dx, dy) in whole cells per letter."""
     out = []
     for i in range(n):
-        dx = dy = 0.0
-        for t0, amp, ripple, back_t in WAVES:
+        dx = 0.0
+        for t0, amp, back_t in WAVES:
             tau = t - t0 - i * STAGGER_OUT
             reach = 0.45 + 0.55 * i / (n - 1)       # further letters travel further: the gap opens
             dx += amp * reach * wave_value(tau, back_t, i * STAGGER_BACK)
-            if ripple and 0.03 <= tau < 0.17:
-                dy -= 1
-        out.append([round(dx), dy])
+        out.append([round(dx), 0])
     for i in range(1, n):                           # never let a letter pass the one to its right
         out[i][0] = max(out[i][0], out[i - 1][0])
     return [tuple(o) for o in out]
