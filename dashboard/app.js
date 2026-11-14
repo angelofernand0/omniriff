@@ -172,11 +172,11 @@
       }
 
       // sources
-      status('st-vision', 'visionVal', vision, visionSeenAge, engaged ? 'pinch held' : 'watching');
+      status('st-vision', 'visionVal', vision, visionSeenAge, engaged ? 'pinch held' : 'watching', null, conn);
       const ard = s.sources && s.sources.arduino;
       const ardAge = ard && ard.last_seen_ms != null ? s.timestamp_ms - ard.last_seen_ms : Infinity;
       const serial = s.adapters && s.adapters.serial ? s.adapters.serial.status : 'disabled';
-      status('st-arduino', 'pedalVal', ard, ardAge, 'connected', serial);
+      status('st-arduino', 'pedalVal', ard, ardAge, 'connected', serial, conn);
 
       // diagnostics
       const c = s.controls || {};
@@ -193,13 +193,17 @@
     requestAnimationFrame(render);
   }
 
-  function status(boxId, valId, src, seenAge, onlineText, adapter) {
+  function status(boxId, valId, src, seenAge, onlineText, adapter, conn) {
     const box = $(boxId);
-    const online = seenAge < ONLINE_MS;
+    const online = conn === 'live' && seenAge < ONLINE_MS;
     box.classList.toggle('online', online);
-    box.classList.toggle('active', seenAge < ENGAGED_MS);
-    let text = online ? onlineText : (src ? 'quiet' : 'offline');
-    if (adapter && adapter !== 'running' && !online) text = 'serial ' + adapter;
+    box.classList.toggle('active', online && seenAge < ENGAGED_MS);
+    let text;
+    if (online) text = onlineText;
+    else if (conn === 'stale') text = 'stale';
+    else if (conn === 'offline') text = 'offline';
+    else text = src ? 'quiet' : 'offline';
+    if (conn === 'live' && adapter && adapter !== 'running' && !online) text = 'serial ' + adapter;
     $(valId).textContent = text;
   }
 
