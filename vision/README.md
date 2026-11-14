@@ -186,3 +186,26 @@ working. Takes record parameter events, not scene-name markers. Setlists need
 the overlay keyboard and cannot be combined with `--no-overlay`, calibration,
 relative mode, or another scene-selection option. No new dashboard or wire
 protocol fields are introduced.
+
+## StrumGuard & DualAxis 3D Spatial Control (python -m vision.spatial)
+
+Spatial performance mode combines spatial protection (`StrumGuard`) with multi-dimensional hand control (`DualAxisController`) and an interactive terminal stage display (`StageHUD`).
+
+### The one command to run
+```bash
+python -m vision.spatial --model models/hand_landmarker.task
+```
+
+### What judges see
+1. **Live Terminal Stage HUD**: High-visibility ASCII meters displaying real-time Filter cutoff and Reverb depth bars, active FPS, clutch engagement state, and UDP emission metrics.
+2. **StrumGuard Spatial Protection**:
+   - Picking and strumming naturally inside the guitar body envelope is recognized as the **Guitar Strum Zone** (`y >= 0.55`).
+   - The HUD displays `[STRUM GUARD: LOCKED]`; parameter sweeps are locked to protect the performance from accidental triggering while playing.
+   - Rapid pick oscillations and reversal velocities are automatically rejected.
+3. **Air Expression Zone & DualAxis 3D Control**:
+   - Moving the hand upward into the expression zone (`y < 0.55`) and pinching thumb + index engages live 3D modulation.
+   - **Hand elevation (Y-axis)** modulates the low-pass filter cutoff ($0.0 \rightarrow 1.0$).
+   - **Knuckle roll tilt (3D roll angle)** modulates reverb depth: leveling the knuckles ($0^\circ$) gives a dry tone; rolling the knuckles outward ($0^\circ \rightarrow 60^\circ$) washes the guitar signal in spacious reverb.
+   - Synchronized filter/reverb pairs are emitted at 10 pairs/s (strictly bounded to $\le 20$ events/s).
+4. **Dashboard Hand View**: Normalized 21-point hand skeleton streams simultaneously to `ws://127.0.0.1:47802` for the dashboard live HAND panel.
+
