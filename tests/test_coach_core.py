@@ -100,6 +100,18 @@ class CoachMemoryTests(unittest.TestCase):
 
 
 class CoachToolTests(unittest.TestCase):
+    def test_rig_state_tool_reports_real_activity(self):
+        with tempfile.TemporaryDirectory() as folder:
+            feed = CoachFeed("session-test")
+            state = RigStateReader()
+            tools = CoachTools(Path(folder), feed, RigClient(fixture_mode=True), state)
+            self.assertEqual(tools.get_rig_state(), {"available": False})
+            self.assertEqual(feed.frame["activity"][-1],
+                             {"who": "coach", "what": "get_rig_state", "status": "failed"})
+            state.observe({"loop": {"state": "idle"}, "bypass": False})
+            self.assertFalse(tools.get_rig_state()["bypass"])
+            self.assertEqual(feed.frame["activity"][-1]["status"], "done")
+
     def test_report_tools_compare_and_card_publish(self):
         with tempfile.TemporaryDirectory() as folder:
             workspace = Path(folder)
@@ -124,6 +136,8 @@ class CoachToolTests(unittest.TestCase):
                                          "worst gap under 700 ms", {"bypass": True})
             self.assertTrue((workspace / path.lstrip("/")).is_file())
             self.assertEqual(feed.frame["drill_card"]["skill"], "keep-the-hand-moving")
+            self.assertEqual(feed.frame["session"]["metric"]["history"], [900.0, 620.0])
+            self.assertEqual(feed.frame["session"]["metric"]["target"], 700.0)
             with patch("coach.voice.Voice.from_env") as make_voice:
                 audio = {"version": 1, "type": "coach.audio", "timestamp_ms": 123,
                          "text": "The gap is 620 ms. Keep the arm moving.",

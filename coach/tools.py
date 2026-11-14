@@ -7,7 +7,9 @@ import re
 from pathlib import Path
 
 from .feed import CoachFeed
+from .memory import last_time_cue
 from .rig import RigClient, RigStateReader
+from .session import PracticeSession
 
 
 TAKE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
@@ -35,6 +37,8 @@ class CoachTools:
         self.feed = feed
         self.rig = rig
         self.state = state
+        last_time = last_time_cue(self.workspace)
+        self.session = PracticeSession(last_time=last_time if last_time and len(last_time) <= 120 else None)
         self.current_take_id: str | None = None
 
     def _report(self, take_id: str, name: str) -> dict:
@@ -46,12 +50,16 @@ class CoachTools:
 
     def get_rig_state(self) -> dict:
         """Read the latest engine state; never infer a rig state when disconnected."""
-        return self.state.snapshot()
+        snapshot = self.state.snapshot()
+        self.feed.publish_activity("coach", "get_rig_state", "failed" if snapshot.get("available") is False else "done")
+        return snapshot
 
     def get_take_report(self, take_id: str) -> dict:
         """Read measured strum times and hesitations for a recorded take."""
         report = self._report(take_id, "take.json")
-        self.feed.publish(state="thinking", mood="concentrating", target="loop")
+        self.session.record_take(report)
+        self.feed.publish(state="thinking", mood="concentrating", target="loop",
+                          session=self.session.snapshot())
         self.feed.publish_activity("ears", "get_take_report", "done" if report.get("available", True) else "failed")
         return report
 
@@ -70,6 +78,8 @@ class CoachTools:
             raise ValueError("both TakeReports are required for comparison")
         if before.get("judgeable") is not True or after.get("judgeable") is not True:
             raise ValueError("both TakeReports must have enough strums to judge timing")
+        self.session.record_take(before)
+        self.session.record_take(after)
         bh, bg, bs = _numbers(before)
         ah, ag, ass = _numbers(after)
         result = {
@@ -79,7 +89,8 @@ class CoachTools:
             "tempo_stability": [bs, ass],
             "improved": ag < bg and ah <= bh,
         }
-        self.feed.publish(before_after=result, mood="proud" if result["improved"] else "concentrating")
+        self.feed.publish(before_after=result, mood="proud" if result["improved"] else "concentrating",
+                          session=self.session.snapshot())
         self.feed.publish_activity("coach", "compare_takes", "done")
         return result
 
@@ -113,7 +124,9 @@ class CoachTools:
             "rig": rig, "journal_path": journal_path,
         }
         # Validate the full snapshot before persisting, so the dashboard can render it.
-        self.feed.publish(drill_card=card, mood="encouraging", target="player")
+        self.session.set_drill_card(card)
+        self.feed.publish(drill_card=card, mood="encouraging", target="player",
+                          session=self.session.snapshot())
         path.write_text(json.dumps(card, indent=2) + "\n")
         self.feed.publish_activity("coach", "write_drill_card", "done")
         return journal_path
