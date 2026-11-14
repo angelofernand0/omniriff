@@ -5,7 +5,7 @@ Owner: Angelo's Claude. The signal chain is guitar → Scarlett Solo → engine 
 ## Signal chain
 
 ```
-input ch → gain → (+ loop playback) → low-pass sweep → bypass crossfade → limiter → all output channels
+input ch → gain → (+ loop playback) → low-pass sweep → (+ reverb) → bypass crossfade → limiter → all output channels
               └→ loop recorder (dry, post-gain)
 ```
 
@@ -13,7 +13,7 @@ input ch → gain → (+ loop playback) → low-pass sweep → bypass crossfade 
 - **Loop.** The `loop` action steps idle → recording → playing → idle (cleared). It holds up to 30 s, with 5 ms fades at the seam. The loop records the dry signal and plays back through the filter, so a gesture shapes both the loop and live playing.
 - **Bypass.** The `bypass` action toggles a 10 ms crossfade to the dry signal. The loop keeps playing.
 - **Limiter.** A hard ceiling at −1 dBFS. Clipped samples are counted in the snapshot.
-- **Reverb.** `reverb` is accepted, smoothed and reported, but there's no reverb DSP yet (`snapshot()["reverb"]["dsp"] == False`).
+- **Reverb.** `reverb` in [0,1] is the wet amount added after the filter. 0 adds nothing, and 1 is roughly as loud as the dry signal. It's a mono Freeverb-style design (8 combs, 4 allpasses, public-domain tunings scaled to the samplerate), with about a 3 s tail. It runs every block, so the tail doesn't cut off when the amount changes. Bypass skips it.
 
 ## Run it
 
@@ -22,7 +22,7 @@ python -m pip install -r audio/requirements.txt
 python -m audio --list-devices
 python -m audio --make-test-wav test.wav                 # synthetic chord, not a recording
 python -m audio --input-wav test.wav --output-wav out.wav --sweep 4 --loop-at 0.5,2.5
-python -m audio --input-wav test.wav --play --sweep 4    # through the default speakers
+python -m audio --input-wav test.wav --play --sweep 4 --reverb 0.3   # through the default speakers
 ```
 
 ### Live on the Windows 11 laptop + Scarlett Solo (3rd gen)
@@ -36,7 +36,7 @@ python -m audio --input-wav test.wav --play --sweep 4    # through the default s
    ```
 
    Add `--exclusive` for WASAPI exclusive mode, which usually gives lower latency. Try `--blocksize 64` or `256` if you hear dropouts. The `xruns` counter shows whether the buffer is too small.
-4. Keyboard controls while running: `b` bypass, `l` loop, `f 0.3` filter, `s` full status, `q` quit. This manual control works with every other module down.
+4. Keyboard controls while running: `b` bypass, `l` loop, `f 0.3` filter, `r 0.3` reverb, `s` full status, `q` quit. This manual control works with every other module down.
 
 ASIO: the standard `sounddevice` wheel's PortAudio may not expose ASIO devices. Check `--list-devices` for an ASIO entry, and follow the sounddevice docs if you need the ASIO-enabled build. Not yet verified on the team laptop.
 
@@ -70,4 +70,4 @@ Snapshot keys (stable; the source for `protocol/state.schema.json`):
 
 ## Real-time rules followed
 
-The callback does no I/O, logging, locks or blocking calls. Buffers are preallocated and numpy writes in place. The exception is `scipy.signal.lfilter`, which returns a small array for each 32-sample sub-block, and a one-time ramp allocation when a loop recording ends. Measured on an Apple M1 Pro (Python 3.14): a 128-frame block takes about 0.03 ms mean and 0.14 ms max, against a 2.67 ms budget. Re-check on the Windows laptop.
+The callback does no I/O, logging, locks or blocking calls. Buffers are preallocated and numpy writes in place. The exception is `scipy.signal.lfilter` (the filter and the reverb's damping), which returns small arrays for each 32-sample sub-block, and a one-time ramp allocation when a loop recording ends. Measured on an Apple M1 Pro (Python 3.14), with filter and reverb active: a 128-frame block takes about 0.25 ms mean and 0.44 ms max, against a 2.67 ms budget. Most of that is the reverb. Re-check on the Windows laptop.
