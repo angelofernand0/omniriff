@@ -34,6 +34,16 @@ Exit metrics on stderr report actual elapsed runtime, emitted event count, avera
 
 ## Demo-table calibration and setup
 
+### 60-second rehearsal & calibration routine
+Run through this quick 4-step sequence before each judge approaches:
+1. **Frame check (15s)**: Sit with guitar. Check webcam angle: ensure your control hand has an unobstructed path from picking/belt height up to mid-chest. Verify no harsh backlight silhouettes the hand.
+2. **Launch (10s)**: Start the demo vision process:
+   ```bash
+   python -m vision --model models/hand_landmarker.task --scene bloom
+   ```
+3. **Range tap (15s)**: If the player's natural height range is taller/shorter than the default $y \in [0.8, 0.2]$ normalized window, run with `--calibrate`: wrist at lowest rest position $\rightarrow$ press `l`, wrist at highest comfortable sweep $\rightarrow$ press `h`, press `s` to save `calibration.json`.
+4. **Physical dry check (20s)**: Open hand (disarmed), pinch index+thumb (HUD turns green, engaged), sweep upward (filter opens, reverb blooms), open hand (disengages, scene holds). Strum a chord to verify StrumGuard suppresses accidental sweeps. You are ready to demo!
+
 ### Camera placement and lighting
 - **Distance**: Place the webcam 2–3 feet (0.6–1.0 m) from the player, facing them directly.
 - **Angle & height**: Position at laptop screen height tilted slightly upward (~10–15°), or on a small stand at chest height. Ensure the player's upper torso and free control hand are fully framed with ~1.5 ft of clear vertical travel.
