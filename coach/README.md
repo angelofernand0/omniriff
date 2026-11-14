@@ -6,15 +6,18 @@ WebSocket `127.0.0.1:47803`, and sends a normal `source: "coach"` UDP control
 only after a player approval. Stopping it does not stop the audio engine.
 
 Install the optional dependencies with `python -m pip install -r
-coach/requirements.txt`. Put `ANTHROPIC_API_KEY` in a gitignored repo `.env` or
-`~/.config/omniriff/.env`; never copy it into the browser or repository.
+coach/requirements.txt` (requires Python 3.11+, e.g. `py -3.12` on Windows). Put
+`ANTHROPIC_API_KEY` in a gitignored repo `.env` or `~/.config/omniriff/.env`;
+never copy it into the browser or repository.
 
 The hardware-free path is `python -m coach --fixtures`. It generates three
 explicitly synthetic guitar/hand takes and waits for dashboard approval. It
 does not connect to an engine. For a noninteractive **synthetic
 fixture only** check, use `python -m coach --fixtures
 --auto-approve-fixtures`. This flag never works with a live rig. Use
-`--fixture-limit 1` to bound a first run. These runs call a paid model; the
+`--fixture-limit 1` to bound a first run. Note that `--fixtures` still requires
+`ANTHROPIC_API_KEY` and calls the paid model (synthetic takes, real model); the
+genuine zero-key, zero-cost offline check is `python -m coach.smoke --tools-only`. The
 local guard refuses new runs when its conservative estimated usage is near $8.
 `coach/workspace/usage.jsonl` stores counts and an upper-bound estimate, not
 the provider's bill. The fixture run is labeled scripted in the feed because
