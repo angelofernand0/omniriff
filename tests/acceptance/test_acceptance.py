@@ -1,9 +1,13 @@
 """Automated versions of the acceptance checks in docs/ARCHITECTURE.md.
 
-These need no hardware. Checks that depend on engine/ (adapters, staleness)
-are skipped until engine/ lands; manual checks are in MANUAL.md.
+These need no hardware. Engine control and disconnect checks use real loopback
+sockets; manual hardware checks are in MANUAL.md.
 """
 import sys
+import asyncio
+import json
+import socket
+import threading
 import unittest
 from pathlib import Path
 
@@ -81,7 +85,7 @@ class LoopReliability(unittest.TestCase):
         self.assertLess(float(np.max(np.abs(silent[SR // 20:]))), 1e-3)
 
 
-class UnsafeControlsCannotSweep(unittest.TestCase):
+class UnsafeControlsCannotSweep(unittest.IsolatedAsyncioTestCase):
     def _filter_after(self, events):
         e = Engine(EngineConfig(samplerate=SR, min_confidence=0.6))
         for ev in events:
@@ -108,21 +112,70 @@ class UnsafeControlsCannotSweep(unittest.TestCase):
         run(e, np.zeros(BLOCK, np.float32))
         self.assertGreater(e.snapshot()["filter"]["value"], 0.5)
 
-    @unittest.skip("pending engine/: replay stale and duplicate events through its UDP adapter")
-    def test_stale_and_duplicate_events_are_dropped(self):
-        pass
+    async def test_stale_and_duplicate_events_are_dropped(self):
+        from engine import Runtime
+        audio = Engine()
+        runtime = Runtime(audio, udp_port=0, ws_port=None)
+        await runtime.start()
+        client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            for _ in range(100):
+                if runtime.udp: break
+                await asyncio.sleep(0.01)
+            self.assertIsNotNone(runtime.udp)
+            now = runtime.router.clock()
+            base = dict(version=1, source='vision', seq=0, timestamp_ms=now,
+                        type='parameter', control='filter', value=0.3, confidence=0.9)
+            for event in [base, dict(base, value=0.9), dict(base, seq=1, value=0, timestamp_ms=now-1000)]:
+                client.sendto(json.dumps(event).encode(), ('127.0.0.1', runtime.udp_port))
+            for _ in range(100):
+                if sum(runtime.router.counts.values()) == 3: break
+                await asyncio.sleep(0.01)
+            run(audio, np.zeros(BLOCK, np.float32))
+            self.assertEqual(runtime.router.counts['accepted'], 1)
+            self.assertEqual(runtime.router.counts['duplicate'], 1)
+            self.assertEqual(runtime.router.counts['stale'], 1)
+            self.assertEqual(audio.snapshot()['filter']['target'], 0.3)
+        finally:
+            client.close()
+            await runtime.close()
 
 
-class DisconnectKeepsAudio(unittest.TestCase):
+class DisconnectKeepsAudio(unittest.IsolatedAsyncioTestCase):
     def test_manual_bypass_works_with_no_senders(self):
         e = Engine(EngineConfig(samplerate=SR))
         e.toggle_bypass()
         run(e, np.zeros(BLOCK * 8, np.float32))
         self.assertTrue(e.snapshot()["bypass"])
 
-    @unittest.skip("pending engine/: stop the UDP/serial adapter mid-stream and keep processing")
-    def test_killing_an_adapter_leaves_audio_running(self):
-        pass
+    async def test_killing_an_adapter_leaves_audio_running(self):
+        from engine import Runtime
+        audio = Engine()
+        runtime = Runtime(audio, udp_port=0, ws_port=None)
+        stop = threading.Event()
+        signal = np.zeros(BLOCK, np.float32)
+        output = np.zeros((BLOCK, 2), np.float32)
+        def render():
+            while not stop.wait(0.003): audio.process(signal, output)
+        worker = threading.Thread(target=render)
+        worker.start()
+        await runtime.start()
+        try:
+            for _ in range(100):
+                if runtime.udp: break
+                await asyncio.sleep(0.01)
+            self.assertIsNotNone(runtime.udp)
+            runtime.tasks['udp'].cancel()
+            await asyncio.gather(runtime.tasks['udp'], return_exceptions=True)
+            before = audio.snapshot()['blocks']
+            audio.toggle_bypass()
+            await asyncio.sleep(0.05)
+            self.assertGreater(audio.snapshot()['blocks'], before)
+            self.assertTrue(audio.snapshot()['bypass'])
+            self.assertEqual(runtime.adapters['udp']['status'], 'stopped')
+        finally:
+            stop.set(); worker.join(1)
+            await runtime.close()
 
 
 class LatencyDetection(unittest.TestCase):

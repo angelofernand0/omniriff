@@ -1,3 +1,6 @@
 jsonschema>=4.23,<5
 numpy>=1.26
 scipy>=1.11
+
+websockets>=14,<18
+pyserial>=3.5,<4
