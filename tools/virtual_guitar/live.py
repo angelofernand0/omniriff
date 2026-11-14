@@ -10,6 +10,7 @@ from concurrent.futures import Future, TimeoutError
 from contextlib import ExitStack
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import mimetypes
 from pathlib import Path
 import queue
 import threading
@@ -84,9 +85,10 @@ class LiveSource:
 class Demo:
     """Control-side coordinator. The HTTP thread submits bounded requests here."""
 
-    def __init__(self, source, audio, runtime, *, label, headless=False):
+    def __init__(self, source, audio, runtime, *, label, headless=False, camera=None, hand_port=47802):
         self.source, self.audio, self.runtime = source, audio, runtime
         self.label, self.headless = label, headless
+        self.camera, self.hand_port = camera, hand_port
         self.commands = queue.Queue(maxsize=32)
         self.published = {}
         self.seq = int(time.time() * 1000)
@@ -107,7 +109,11 @@ class Demo:
             raise ValueError('expected a command object')
         action = command.get('action')
         value = command.get('value')
-        if action == 'playing' and type(value) is bool:
+        if action == 'camera_start' and self.camera is not None:
+            self.camera.start()
+        elif action == 'camera_stop' and self.camera is not None:
+            self.camera.stop()
+        elif action == 'playing' and type(value) is bool:
             self.source.playing = value
         elif action == 'volume' and type(value) in (int, float) and 0 <= value <= 1:
             self.source.volume = float(value)
@@ -145,6 +151,8 @@ class Demo:
                               position=self.source.position / self.source.samplerate,
                               seconds=len(self.source.samples) / self.source.samplerate,
                               ws_port=self.runtime.ws_port,
+                              hand_port=self.hand_port,
+                              camera=self.camera.snapshot() if self.camera is not None else None,
                               engine=self.runtime.snapshot())
 
 
@@ -181,6 +189,15 @@ def make_server(demo, port):
             elif path in assets:
                 file, mime = assets[path]
                 self.reply(200, file.read_bytes(), mime)
+            elif path.startswith('/dashboard/'):
+                # Pick up new dashboard assets (e.g. Claude's juice.js/css)
+                # without maintaining a second copy or serving workspace files.
+                folder = (ROOT / 'dashboard').resolve()
+                file = (folder / path.removeprefix('/dashboard/')).resolve()
+                if file.is_relative_to(folder) and file.is_file() and file.suffix in ('.html', '.js', '.css', '.svg', '.png', '.woff2'):
+                    self.reply(200, file.read_bytes(), mimetypes.guess_type(file.name)[0] or 'application/octet-stream')
+                else:
+                    self.reply(404, {'error': 'not found'})
             else:
                 self.reply(404, {'error': 'not found'})
 
@@ -191,8 +208,22 @@ def make_server(demo, port):
             if host not in allowed or self.headers.get('Origin') not in (None, f'http://{host}'):
                 self.reply(403, {'error': 'local same-origin requests only'})
                 return
-            if self.path != '/api/command':
+            if self.path not in ('/api/command', '/api/frame'):
                 self.reply(404, {'error': 'not found'})
+                return
+            if self.path == '/api/frame':
+                if self.headers.get('Content-Type') != 'image/jpeg':
+                    self.reply(415, {'error': 'image/jpeg required'})
+                    return
+                try:
+                    size = int(self.headers.get('Content-Length', '0'))
+                    if not 0 < size <= 250_000:
+                        raise ValueError('frame must be 1..250000 bytes')
+                    self.connection.settimeout(2)
+                    demo.camera.submit(self.rfile.read(size))
+                    self.reply(202, {'ok': True})
+                except (ValueError, TypeError) as exc:
+                    self.reply(400, {'error': str(exc)})
                 return
             if self.headers.get('Content-Type') != 'application/json':
                 self.reply(415, {'error': 'application/json required'})
@@ -222,7 +253,11 @@ async def run_live(args, mono, samplerate, label):
     audio.set_reverb(args.reverb)
     source = LiveSource(mono, samplerate, args.blocksize, args.volume)
     runtime = Runtime(audio, udp_port=args.udp_port, ws_port=args.ws_port)
-    demo = Demo(source, audio, runtime, label=label, headless=args.headless)
+    from .browser_vision import BrowserVision
+    camera = BrowserVision(Path(args.model), udp_port=args.udp_port,
+                           hand_port=args.hand_port, scene=args.scene)
+    demo = Demo(source, audio, runtime, label=label, headless=args.headless,
+                camera=camera, hand_port=args.hand_port)
     http = make_server(demo, args.http_port)
     http_thread = None
     try:
@@ -276,6 +311,7 @@ async def run_live(args, mono, samplerate, label):
                 else:
                     await asyncio.sleep(0.02)
     finally:
+        await asyncio.to_thread(camera.close)
         await runtime.close()
         if http_thread is not None:
             await asyncio.to_thread(http.shutdown)

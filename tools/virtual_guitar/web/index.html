@@ -20,11 +20,17 @@
         <div class="sliders"><label>Filter <output id="filterValue">100%</output><input id="filter" type="range" min="0" max="1" step="0.01" value="1" disabled></label><label>Reverb <output id="reverbValue">0%</output><input id="reverb" type="range" min="0" max="1" step="0.01" value="0" disabled></label></div>
       </div>
       <p class="hint">Try this: <strong>Record loop</strong> → wait a few beats → <strong>Play loop</strong> → <strong>Pause guitar</strong>. Now shape the recorded loop with Filter and Reverb. Press <strong>Clear loop</strong> to start again.</p>
+      <div id="cameraPanel">
+        <span class="eyebrow">REAL WEBCAM · JOEY'S GESTURE TRACKER</span>
+        <div class="camera-row"><button id="cameraButton" disabled>Start webcam</button><span id="cameraStatus" role="status">Camera off</span></div>
+        <video id="webcam" autoplay muted playsinline hidden aria-label="Live webcam preview"></video>
+        <p>Start webcam, show an open hand, then pinch thumb and index finger. Move your hand up and down to morph filter and reverb. Open your hand to release. The dashboard below shows the tracked joints. Camera frames stay on this computer and are never saved.</p>
+      </div>
       <p id="error" role="alert"></p>
     </section>
     <div class="dashboard-label"><span>LIVE ENGINE &amp; DASHBOARD</span><a id="dashboardLink" target="_blank" rel="noopener">Open dashboard ↗</a></div>
     <iframe id="dashboard" title="OmniRiff dashboard"></iframe>
-    <footer>Synthesized guitar → real audio engine → laptop output. Camera and pedal remain offline until connected. Audio keeps running if this page closes; Ctrl-C in the launcher stops it. <span>Space: pause guitar · L: loop · B: bypass</span></footer>
+    <footer>Virtual guitar → real audio engine → laptop output. Webcam gestures use the real tracker; the physical pedal still needs hardware. Audio keeps running if the camera or page closes. Ctrl-C in the launcher stops the demo. <span>Space: pause guitar · L: loop · B: bypass</span></footer>
   </main>
   <script src="/app.js"></script>
 </body>

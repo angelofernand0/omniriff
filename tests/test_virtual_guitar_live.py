@@ -1,7 +1,9 @@
 """Live demo signal-path, real network control, and lifecycle checks."""
 import asyncio
 import json
+from pathlib import Path
 import threading
+import tempfile
 import unittest
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -12,6 +14,7 @@ from websockets.asyncio.client import connect
 from audio import Engine, EngineConfig
 from engine.runtime import Runtime
 from tools.virtual_guitar.live import Demo, LiveSource, make_server
+from tools.virtual_guitar.browser_vision import BrowserVision
 
 
 class LiveSignalTests(unittest.TestCase):
@@ -57,6 +60,15 @@ class LiveSignalTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 LiveSource(source, self.sr, self.block)
 
+    def test_camera_requires_a_real_model_and_never_starts_a_fake_feed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            camera = BrowserVision(Path(temp) / 'missing.task', udp_port=47800, hand_port=47802)
+            demo = Demo(self.source, self.audio, Runtime(self.audio), label='TEST', camera=camera)
+            with self.assertRaisesRegex(ValueError, 'Hand model missing'):
+                demo.apply({'action': 'camera_start'})
+            self.assertEqual(camera.snapshot()['status'], 'off')
+            self.assertFalse(camera.snapshot()['model_ready'])
+
 
 class LiveNetworkTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -68,7 +80,10 @@ class LiveNetworkTests(unittest.IsolatedAsyncioTestCase):
             if self.runtime.server is not None and self.runtime.udp is not None:
                 break
             await asyncio.sleep(0.01)
-        self.demo = Demo(source, self.audio, self.runtime, label='TEST', headless=True)
+        self.camera = BrowserVision(Path('/no/such/model.task'),
+                                    udp_port=self.runtime.udp_port, hand_port=0)
+        self.demo = Demo(source, self.audio, self.runtime, label='TEST', headless=True,
+                         camera=self.camera)
         self.http = make_server(self.demo, 0)
         self.thread = threading.Thread(target=self.http.serve_forever, daemon=True)
         self.thread.start()
@@ -96,6 +111,19 @@ class LiveNetworkTests(unittest.IsolatedAsyncioTestCase):
             if origin:
                 headers['Origin'] = origin
             req = Request(self.url + path, data=None if data is None else json.dumps(data).encode(), headers=headers)
+            try:
+                with urlopen(req, timeout=3) as response:
+                    return response.status, response.read()
+            except HTTPError as exc:
+                return exc.code, exc.read()
+        return await asyncio.to_thread(send)
+
+    async def frame_request(self, data, content_type='image/jpeg', origin=None):
+        def send():
+            headers = {'Content-Type': content_type}
+            if origin:
+                headers['Origin'] = origin
+            req = Request(self.url + '/api/frame', data=data, headers=headers)
             try:
                 with urlopen(req, timeout=3) as response:
                     return response.status, response.read()
@@ -144,6 +172,25 @@ class LiveNetworkTests(unittest.IsolatedAsyncioTestCase):
         for path in ('/', '/app.js', '/style.css', '/dashboard/', '/dashboard/app.js'):
             status, _ = await self.request(path)
             self.assertEqual(status, 200)
+
+    async def test_camera_frame_is_local_bounded_and_latest_only(self):
+        status, _ = await self.frame_request(b'JPEG')
+        self.assertEqual(status, 400)  # camera must be explicitly started
+        self.camera.status = 'running'
+        status, _ = await self.frame_request(b'old')
+        self.assertEqual(status, 202)
+        status, _ = await self.frame_request(b'new')
+        self.assertEqual(status, 202)
+        self.assertEqual(self.camera.frames.qsize(), 1)
+        self.assertEqual(self.camera.frames.get_nowait(), b'new')
+        for data, content_type, origin, expected in (
+            (b'', 'image/jpeg', None, 400),
+            (b'x' * 250_001, 'image/jpeg', None, 400),
+            (b'jpeg', 'image/png', None, 415),
+            (b'jpeg', 'image/jpeg', 'https://example.com', 403),
+        ):
+            status, _ = await self.frame_request(data, content_type, origin)
+            self.assertEqual(status, expected)
 
 
 if __name__ == '__main__':

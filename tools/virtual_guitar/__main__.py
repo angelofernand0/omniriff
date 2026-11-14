@@ -49,6 +49,9 @@ def main(argv=None) -> int:
     parser.add_argument("--http-port", type=int, default=8080)
     parser.add_argument("--ws-port", type=int, default=47801)
     parser.add_argument("--udp-port", type=int, default=47800)
+    parser.add_argument("--hand-port", type=int, default=47802, help="real hand-view WebSocket")
+    parser.add_argument("--model", default="models/hand_landmarker.task", help="MediaPipe hand model for browser webcam")
+    parser.add_argument("--scene", choices=("bloom", "rise"), default="bloom", help="Joey's live Scene Morph preset")
     parser.add_argument("--volume", type=float, default=0.35, help="live listening level, 0..1; after DSP")
     parser.add_argument("--duration", type=float, help="stop live demo after this many seconds")
     parser.add_argument("--open", action="store_true", help="open the live demo in the default browser")
@@ -73,7 +76,7 @@ def main(argv=None) -> int:
         parser.error('--live uses interactive controls; omit --demo, --controls and --play')
     if not args.live and (args.headless or args.open or args.duration is not None):
         parser.error('--headless, --open and --duration require --live')
-    if any(not 1 <= port <= 65535 for port in (args.http_port, args.ws_port, args.udp_port)):
+    if any(not 1 <= port <= 65535 for port in (args.http_port, args.ws_port, args.udp_port, args.hand_port)):
         parser.error('ports must be in 1..65535')
     if not 0 <= args.level <= 1:
         parser.error("--level must be in [0, 1]")
