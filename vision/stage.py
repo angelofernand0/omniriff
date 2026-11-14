@@ -1,6 +1,4 @@
 """Performer Stage HUD for live visual performance feedback in the terminal."""
-import os
-import sys
 import time
 from typing import Optional
 

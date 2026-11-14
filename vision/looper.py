@@ -1,8 +1,9 @@
-"""Expressive Gesture Looper and Automation Engine.
+"""[EXPERIMENTAL] Expressive Gesture Looper and Automation Engine.
 
 Enables guitarists to capture and loop expressive multi-parameter gesture curves
 (filter sweeps, reverb swells, scene morphs) over rhythmic bars, freeing both hands
 to play the instrument while continuous physical modulation repeats seamlessly.
+NOTE: This module is experimental and not part of the primary table demo path.
 """
 from dataclasses import dataclass, field
 from enum import Enum
@@ -10,7 +11,7 @@ import json
 import math
 from pathlib import Path
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 class LoopState(str, Enum):
