@@ -1,0 +1,494 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "samplerate",
+    "bypass",
+    "loop",
+    "filter",
+    "reverb",
+    "input_peak_dbfs",
+    "output_peak_dbfs",
+    "xruns",
+    "clipped_samples",
+    "blocks",
+    "events",
+    "version",
+    "timestamp_ms",
+    "controls",
+    "sources",
+    "adapters"
+  ],
+  "properties": {
+    "samplerate": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "bypass": {
+      "type": "boolean"
+    },
+    "loop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "seconds",
+        "max_seconds"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "idle",
+            "recording",
+            "playing"
+          ]
+        },
+        "seconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "value",
+        "cutoff_hz"
+      ],
+      "properties": {
+        "target": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "cutoff_hz": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "reverb": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "value",
+        "dsp"
+      ],
+      "properties": {
+        "target": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "dsp": {
+          "type": "boolean"
+        }
+      }
+    },
+    "input_peak_dbfs": {
+      "type": "number"
+    },
+    "output_peak_dbfs": {
+      "type": "number"
+    },
+    "xruns": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "clipped_samples": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "blocks": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "events": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted",
+        "rejected",
+        "low_confidence"
+      ],
+      "properties": {
+        "accepted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rejected": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "low_confidence": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "version": {
+      "const": 1
+    },
+    "timestamp_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "controls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted",
+        "invalid",
+        "stale",
+        "future",
+        "duplicate",
+        "low_confidence",
+        "audio_rejected"
+      ],
+      "properties": {
+        "accepted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "future": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duplicate": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "low_confidence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "audio_rejected": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "arduino": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "last_seen_ms",
+            "last_accepted_ms",
+            "accepted",
+            "dropped",
+            "session"
+          ],
+          "properties": {
+            "last_seen_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "last_accepted_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "accepted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dropped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "session": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "vision": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "last_seen_ms",
+            "last_accepted_ms",
+            "accepted",
+            "dropped",
+            "session"
+          ],
+          "properties": {
+            "last_seen_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "last_accepted_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "accepted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dropped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "session": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "sensecap": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "last_seen_ms",
+            "last_accepted_ms",
+            "accepted",
+            "dropped",
+            "session"
+          ],
+          "properties": {
+            "last_seen_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "last_accepted_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "accepted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dropped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "session": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "dashboard": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "last_seen_ms",
+            "last_accepted_ms",
+            "accepted",
+            "dropped",
+            "session"
+          ],
+          "properties": {
+            "last_seen_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "last_accepted_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "accepted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dropped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "session": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "manual": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "last_seen_ms",
+            "last_accepted_ms",
+            "accepted",
+            "dropped",
+            "session"
+          ],
+          "properties": {
+            "last_seen_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "last_accepted_ms": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "accepted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dropped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "session": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "adapters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "udp",
+        "serial",
+        "websocket"
+      ],
+      "properties": {
+        "udp": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "errors",
+            "last_error"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "disabled",
+                "starting",
+                "running",
+                "retrying",
+                "error",
+                "stopped"
+              ]
+            },
+            "errors": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "last_error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "serial": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "errors",
+            "last_error"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "disabled",
+                "starting",
+                "running",
+                "retrying",
+                "error",
+                "stopped"
+              ]
+            },
+            "errors": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "last_error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "websocket": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "errors",
+            "last_error"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "disabled",
+                "starting",
+                "running",
+                "retrying",
+                "error",
+                "stopped"
+              ]
+            },
+            "errors": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "last_error": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OmniRiff state v1, WebSocket 47801"
+}
