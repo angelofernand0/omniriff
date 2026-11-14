@@ -7,6 +7,7 @@ import socket
 import time
 from .control import Controller
 from .tracking import HandSelector
+from .scenes import SceneMorph, SCENES
 
 
 def main():
@@ -20,6 +21,9 @@ def main():
     p.add_argument('--port', type=int, default=47800)
     p.add_argument('--rate', type=float, default=20)
     p.add_argument('--control', choices=['filter', 'reverb'], default='filter')
+    scene_options = p.add_mutually_exclusive_group()
+    scene_options.add_argument('--scene', choices=sorted(SCENES), help='morph two effects with one gesture')
+    scene_options.add_argument('--scene-file', type=Path, help='custom named from/to filter+reverb JSON')
     p.add_argument('--relative', action='store_true', help='pick up from current output value at pinch; move wrist to change it')
     p.add_argument('--calibration', type=Path, default=Path('vision-calibration.json'))
     p.add_argument('--calibrate', action='store_true')
@@ -30,11 +34,16 @@ def main():
         p.error('calibration requires overlay')
     if not math.isfinite(args.max_hand_jump) or not 0 < args.max_hand_jump <= 1:
         p.error('--max-hand-jump must be finite and in (0, 1]')
+    scene = SceneMorph(json.loads(args.scene_file.read_text()) if args.scene_file else SCENES[args.scene]) if args.scene or args.scene_file else None
+    if scene and args.relative:
+        p.error('scene mode uses calibrated absolute position; omit --relative')
+    if scene and args.control != 'filter':
+        p.error('scene mode controls both effects; omit --control reverb')
     import cv2
     import mediapipe as mp
     from jsonschema import Draft202012Validator
     config = json.loads(args.calibration.read_text()) if args.calibration.exists() else {}
-    controller = Controller(rate=args.rate, control=args.control, relative=args.relative, **config)
+    controller = Controller(rate=args.rate / 2 if scene else args.rate, control=args.control, relative=args.relative, **config)
     schema = json.loads((Path(__file__).resolve().parents[1] / 'protocol/control.schema.json').read_text())
     validator = Draft202012Validator(schema)
     options = mp.tasks.vision.HandLandmarkerOptions(
@@ -90,7 +99,8 @@ def main():
                         for point in points:
                             cv2.circle(frame, (int(point.x * width), int(point.y * height)), 3, (0, 255, 0), -1)
                 event = controller.update(y, pinch, confidence, now, int(time.time() * 1000))
-                if event and not args.calibrate:
+                events = scene.events(event) if scene and event else ([event] if event else [])
+                for event in events if not args.calibrate else []:
                     validator.validate(event)
                     payload = json.dumps(event, separators=(',', ':'))
                     if args.dry_run:
@@ -104,7 +114,7 @@ def main():
                         minimum_interval = interval if minimum_interval is None else min(minimum_interval, interval)
                     last_sent = emitted
                 if not args.no_overlay:
-                    label = 'CALIBRATE: l low, h high, s save' if args.calibrate else f'{args.control}: {controller.value} active={controller.active} events={count}'
+                    label = 'CALIBRATE: l low, h high, s save' if args.calibrate else f'{scene.name if scene else args.control}: {controller.value} active={controller.active} events={count}'
                     cv2.putText(frame, label, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 255, 255), 1)
                     cv2.imshow('OmniRiff - q quits; open hand then pinch to engage', frame)
                     key = cv2.waitKey(1) & 0xff
