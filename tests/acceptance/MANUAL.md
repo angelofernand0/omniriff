@@ -47,7 +47,7 @@ Run this before the demo and after any change to audio/ or engine/. Write down t
 - [ ] Verify sound holds previous scene parameters; new scene does not emit until hand opens and pinches again.
 - [ ] Press `p`: wraps backward to previous scene. Sequence numbers in emitted packets stay strictly increasing.
 
-## StrumGuard & Performance Zones (needs PR #32 merged)
+## StrumGuard & Performance Zones
 - [ ] Start vision with `--strum-guard` (or `python -m vision.spatial --strum-guard`).
 - [ ] Hold guitar pick (pinched thumb and index) inside the lower guitar zone and strum:
   - Overlay shows `STRUM GUARD: MUTED`.
@@ -55,7 +55,7 @@ Run this before the demo and after any change to audio/ or engine/. Write down t
 - [ ] Move hand above strings into upper air expression zone: overlay clears to LIVE; pinch engages filter sweep.
 - [ ] Rapid strumming in air (> 2.5 m/s or rapid direction reversals): motion detector suppresses false clutch triggers.
 
-## DualAxis 3D Control (needs PR #32 merged)
+## DualAxis 3D Control
 - [ ] Run `python -m vision.spatial --dual-axis`.
 - [ ] Open hand, then pinch:
   - Vertical elevation ($Y$-axis) sweeps primary filter cutoff.
