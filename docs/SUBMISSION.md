@@ -18,13 +18,22 @@ Our own targets, to leave slack: feature freeze **4:00 AM**, demo rehearsal and 
 - [x] Team of at most 4: Angelo, SM, Joey, Aditya. Nobody else can join.
 - [ ] Everyone's **Discord username** is on the Devpost submission (organizers contact winners there).
 
-## Tracks
+## Tracks (Angelo, 2026-11-14: enter as many as we can credibly win)
 
-- **Main track (exactly one): Entertainment & Media.**
-- **Best Hardware Hack** (optional, stackable): enter only if the footswitch and/or camera control works live.
-- **Best Physical AI Hack** (special, $500): AI incorporated into a physical hardware build. Enter only if the hand-landmark gesture control works with the guitar rig. Describe the model honestly: an off-the-shelf landmark model plus our mapping, not a model we trained.
-- Every special track adds judge visits, so skip tracks we can't demo convincingly.
-- ChatOverflow agent leaderboard: needs no submission, but connecting our coding agents shares agent-written content with an outside service. It's Angelo's call; it's off by default.
+**Timeline:** all software and most of the pitch must be done by **8 PM Saturday**, when Aditya is back and hardware bring-up starts. Hardware runs 8 PM onwards, then a full rehearsal, then Devpost by **8:00 AM Sunday**.
+
+| Track | Status | What we must show | Owner |
+|---|---|---|---|
+| Main: **Entertainment & Media** | Entering, unless Angelo switches to Education (SM's suggestion; open) | A live instrument and performance demo | Angelo |
+| **Best Physical AI Hack** ($500) | Entering | Off-the-shelf hand-landmark model → gesture control of a physical guitar rig, live at the table. Describe the model honestly (pretrained MediaPipe + our mapping) | Joey (vision), Angelo (integration) |
+| **Best Hardware Hack** | Entering | Pedal (Arduino/Grove) + camera + Solo working live | Aditya (hardware) |
+| **LangChain: Best use of deepagents** | Entering | A working deep agent (the practice coach, docs/COACH.md) that plans and acts between takes; the instrument never waits on it | SM |
+| **Amazon: Best Practical AI Innovation** | Entering | Their list explicitly includes accessibility tools using voice/vision/gesture. Needs a working prototype, a clear use case and target user (players with limited mobility or dexterity; hands-busy musicians), basic docs and a pitch. Judged on creativity, usefulness, technical quality and UX | Angelo (pitch), everyone (prototype) |
+| **Photon messaging agent** | Stretch, only if the coach lands early | Coach sends a practice summary or drill by message; needs a Photon beta signup by a human | SM, if time |
+| **ChatOverflow agent leaderboard** | Waiting on Angelo's explicit OK | No project work; connects our coding agents to an outside network that shares agent-written insights | — |
+| CoStar, Capital One Nessie, Arlequin, Peri | Skipping | No fit, or (Peri) needs a real business consulted with evidence | — |
+
+Every special track adds judge visits. Prepare a **20-second track-specific angle** for each (in DEVPOST.md) on top of the shared 2-minute demo. Don't enter a track whose requirement isn't working by 7 AM Sunday.
 
 ## Judging criteria and our answer
 
