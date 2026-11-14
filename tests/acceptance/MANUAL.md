@@ -31,7 +31,7 @@ Run this before the demo and after any change to audio/ or engine/. Write down t
 - [ ] No hand in frame: panel reads `NO HAND`.
 - [ ] Hand in frame, open palm: panel displays mirrored skeleton and reads `SEEN` (never `armed`).
 - [ ] Pinch thumb and index: panel turns pink, boxes the pinch and shows the control and value (e.g. `FILTER 60%`, or `MORPH 65%` in Scene Morph).
-- [ ] Stop vision: panel ages out within 500 ms and displays `NO CAMERA`. The header still shows `ENGINE LIVE`; audio is unaffected.
+- [ ] Stop vision: panel ages out within 500 ms and displays `NO CAMERA`. The status pill still shows `LIVE` (rig drawer `D`: ENGINE LIVE); audio is unaffected.
 
 ## Scene Morph & Tone Match auditions
 - [ ] Start vision with `--scene bloom` (Clear to Cosmos).
