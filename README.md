@@ -1,15 +1,32 @@
 # OmniRiff
 
-A gesture-controlled guitar workstation for HackPrinceton Fall 2026.
+**Never put the guitar down.** OmniRiff lets a guitarist shape their sound with a pinch of the hand and a tap of the foot, live, without taking their hands off the strings. HackPrinceton Fall 2026.
 
 **Team board:** https://github.com/angelofernand0/omniriff/issues/1
 
-## Build the playable instrument first
+## What it does
 
-Guitar → Focusrite → laptop audio engine → headphones/amplifier.
-Arduino foot control and webcam hand tracking send bounded control events to that engine. SenseCAP is an optional preset/status panel. Raspberry Pi can host vision once laptop vision works. Environmental scanning is out of the MVP.
+Guitar → Focusrite Scarlett Solo → laptop audio engine (filter sweep, reverb, looper, bypass, limiter) → speakers.
+- **Hand:** a pretrained MediaPipe hand-landmark model; pinch to engage, raise or lower to sweep (`vision/`).
+- **Foot:** an Arduino footswitch for loop and bypass (`firmware/arduino/`).
+- **Screen:** a live dashboard with levels, loop, effects, sensor health and the hand skeleton (`dashboard/`).
+- **Coach (in progress):** a practice coach that hears takes and sees the hand between performances (`docs/COACH.md`).
 
-This repository currently contains the team workflow, protocol contract, architecture, diagnostics and CI. It does not yet process live audio or contain a working gesture model. No latency or prize outcome is claimed.
+Every input can fail without stopping the music. Unsafe, stale or low-confidence controls never reach the audio.
+
+## Try it
+
+```bash
+python -m pip install -r engine/requirements.txt -r vision/requirements.txt
+python -m tools.sim run --demo                  # no hardware: simulated rig + dashboard at http://127.0.0.1:8080
+python -m engine --check                        # on the demo laptop: preflight
+python -m engine.demo --open --vision --vision-args "--model models/hand_landmarker.task" \
+  --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2 --serial-port COM3
+```
+
+The full bring-up and 2-minute demo are in [docs/DEMO.md](docs/DEMO.md). Module details: [audio/](audio/README.md), [engine/](engine/README.md), [vision/](vision/README.md), [dashboard/](dashboard/README.md), [tools/](tools/).
+
+**Status:** software is complete and tested in CI (simulated and recorded inputs). The live Windows laptop + Scarlett + camera + pedal run happens Saturday night. Latency and gesture rates are reported only once measured (`tools/latency`).
 
 ## Join the workspace
 

@@ -36,14 +36,14 @@ Engine keys: `b` bypass, `l` loop, `f 0.3` filter, `r 0.3` reverb, `s` status, `
 ## 3. The 2-minute demo (rehearse to time)
 | Time | Beat |
 |---|---|
-| 0:00–0:15 | **Problem**: guitarists' hands are busy; pedals and knobs need you to stop, look down or bend over. That's harder still with limited mobility. |
+| 0:00–0:15 | **"Never put the guitar down."** Guitarists' hands are busy; knobs and pedalboards make you stop, look down or bend over. That's harder still with limited mobility. |
 | 0:15–0:40 | **Dry guitar**, then a pedal press to start a loop. Play over it. |
 | 0:40–1:10 | **Gesture**: pinch and raise the hand, and the filter sweeps over the loop. Second control on reverb (or Scene Morph). Point at the HAND panel. |
 | 1:10–1:25 | **Dashboard**: what the rig hears and sees. Mention the coach if it's built: it listens between takes and sets the next drill. |
 | 1:25–1:50 | **Why it's reliable**: audio never waits on the camera or AI, unsafe or stale controls are dropped, and manual bypass always works. Quote the measured latency. |
 | 1:50–2:00 | One honest limitation + what's next. |
 
-Track-specific 20-second angles are in [DEVPOST.md](DEVPOST.md). Likely judge questions with honest answers are in [QA.md](QA.md).
+Keep the two-minute story to **one gesture (pinch) + one pedal + the coach**. Scene Morph, setlists, DualAxis, the gesture looper and Tone Match are for Q&A or track-specific visits. Track-specific 20-second angles are in [DEVPOST.md](DEVPOST.md). Likely judge questions with honest answers are in [QA.md](QA.md).
 
 ## 4. If something fails at the table
 | Failure | Do this | Say this |

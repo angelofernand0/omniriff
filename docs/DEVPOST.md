@@ -3,7 +3,7 @@
 **This is a draft for Angelo to edit.** Bracketed items are placeholders to fill with **measured** results only. Don't paste unmeasured numbers. Facts are from the repo as of 2026-11-14; re-check anything that changed.
 
 ## Name and tagline
-**OmniRiff** — shape your guitar's sound with your hands and feet, without ever stopping playing.
+**OmniRiff** — Never put the guitar down. Shape your sound with a pinch and a tap, while your hands stay on the strings.
 
 ## Inspiration
 Every guitar effect asks you to take a hand off the strings or look down at a pedalboard. For players with limited mobility or dexterity, a small knob or a precise stomp can be the barrier between practicing and not. We wanted the instrument to listen to the player's body instead.
