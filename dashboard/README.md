@@ -18,6 +18,8 @@ python -m dashboard
 
 Then open http://127.0.0.1:8080/. It has to be served from localhost, because the engine rejects `file://` pages. To point it at another state socket, add `?ws=ws://127.0.0.1:PORT`.
 
+`?sim=...` puts an amber `SIMULATED` chip on the faceplate (`?sim=guitar` reads `SIM GUITAR`). The simulator's server adds it for you and the play room passes it to its embedded dashboard, so a synthetic guitar is always named on screen. The real engine never sets it, and it is not part of the state protocol.
+
 Without hardware, use the simulator. It runs the real engine with a synthetic guitar input and also serves the dashboard:
 
 ```bash
@@ -26,7 +28,7 @@ python -m tools.sim run --demo
 
 ## What it shows
 
-- **Faceplate:** logo, one LED each for ENGINE (LIVE / STALE / OFFLINE), CAM, PEDAL and COACH, the REPLAY and BYPASS chips, and the meter bridge (input over output, dB, peak hold, clip light).
+- **Faceplate:** logo, one LED each for ENGINE (LIVE / STALE / OFFLINE), CAM, PEDAL and COACH, the SIMULATED, REPLAY and BYPASS chips, and the meter bridge (input over output, dB, peak hold, clip light).
 - **01 LOOP:** state (READY / REC / PLAY), loop length, one hint, and the loop waveform with a playhead and a tick per second.
 - **02 TONE:** filter and reverb cards with each effect's curve. When the hand camera is actively sending, the moving effect takes over the whole zone.
 - **03 HAND:** the tracked hand's 21 joints from vision's optional feed (`ws://127.0.0.1:47802`, `protocol/hand.schema.json`), mirrored and zoomed to follow the hand. Pink with the pinch boxed and a value rail while the clutch is engaged; `SEEN` otherwise (not "armed": vision may be waiting for an open-hand re-arm); `NO HAND` / `NO CAMERA`. Frames are aged by browser receive time and cleared after 500 ms or on disconnect. `?hand=off` disables it, `?hand=ws://...` overrides it.

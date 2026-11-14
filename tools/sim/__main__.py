@@ -44,7 +44,7 @@ def _run(a) -> int:
     runtime = Runtime(audio, udp_port=a.udp_port, ws_port=a.ws_port)
     http = None
     if a.http_port:
-        http = make_server(a.http_port)
+        http = make_server(a.http_port, sim='input')  # the page then reads SIMULATED
         threading.Thread(target=http.serve_forever, daemon=True, name='omniriff-http').start()
 
     async def main():

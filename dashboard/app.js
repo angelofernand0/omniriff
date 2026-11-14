@@ -17,6 +17,10 @@
 
   const $ = (id) => document.getElementById(id);
   const app = $('app');
+  // ?sim=... names a non-live guitar on screen (BRAND_SPEC voice rule 9). The simulator and the
+  // play room set it; the engine's state frames carry no such field, so a real rig never shows it.
+  const SIM = params.get('sim');
+  if (SIM) { app.dataset.sim = SIM; $('simChip').textContent = SIM === 'guitar' ? 'SIM GUITAR' : 'SIMULATED'; }
   const css = getComputedStyle(document.documentElement);
   const color = (name) => css.getPropertyValue(name).trim();
 

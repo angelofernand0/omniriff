@@ -13,8 +13,8 @@ h2, h3 { font-size: inherit; }
 .led.active > i { background: var(--accent); box-shadow: 0 0 0 2px rgba(255, 92, 203, 0.28); animation: blink 0.4s steps(2) infinite; }
 .led.active > span { color: var(--accent); }
 .spacer { flex: 1; }
-.bypass-chip, .replay-chip { display: none; }
-.app[data-replay="true"] .replay-chip, .app[data-bypass="true"] .bypass-chip { display: inline-block; }
+.bypass-chip, .replay-chip, .sim-chip { display: none; }
+.app[data-replay="true"] .replay-chip, .app[data-bypass="true"] .bypass-chip, .app[data-sim] .sim-chip { display: inline-block; }
 
 /* meter bridge: input over output, same scale */
 .meters { display: grid; grid-template-columns: auto auto auto auto; align-items: center; gap: var(--s1) var(--s2); }
@@ -146,6 +146,10 @@ h2, h3 { font-size: inherit; }
 /* ---------- widths ---------- */
 @media (max-width: 1440px) {
   .model { display: none; }
+  /* a mode chip needs the room the wordmark takes, or the meters drop to a second row */
+  .app[data-sim] .plate .logo [data-logo] { width: 32px; overflow: hidden; }
+  .app[data-sim] .plate .logo [data-logo] svg { width: 136px; }
+  .app[data-sim] .plate, .app[data-sim] .leds { column-gap: var(--s4); }
 }
 @media (max-width: 1340px) {
   .plate .logo [data-logo] { width: 32px; overflow: hidden; }

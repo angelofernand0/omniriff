@@ -88,7 +88,7 @@ Built with LangChain's `deepagents` (0.7.38, needs Python 3.11+, `pip install de
 | `get_rig_state` | Reads the engine's state feed | Feed exists; wrapper is new |
 | `get_take_report` | Timing measurements for the last take | New |
 | `get_hand_report` | Hand-movement measurements for the last take | New |
-| `rig_control` | Loop, bypass, filter, reverb, sent as `coach` | Sending exists (`tools/sim`); needs `coach` allowed |
+| `rig_control` | Loop, bypass, filter, reverb, sent as `coach` | Sending exists (`tools/sim`); `coach` is allowed (#51) |
 | `write_drill_card` | Tells the live layer and dashboard what the drill is | New |
 | `say` | One short cue to the dashboard (and voice) | New |
 
@@ -149,7 +149,7 @@ SM keeps the vision and every user-facing piece. The rest is handed off because 
 | A Take capture | Angelo's Claude | Merged in #47 |
 | B Ears analysis | John's Claude | Claimed on issue #1 (originally suggested for SM's Codex) |
 | C Eyes analysis | John's Claude | Merged in #40 |
-| I Control source | Angelo's side (Angelo's Codex) | Lives in `engine/` and the shared protocol; SM doesn't need it |
+| I Control source | Angelo's side | Merged in #51: `coach` is a valid control `source` in `protocol/control.schema.json`, and state reports `sources.coach` |
 | G Live layer | Whoever finishes first | Depends on B and C |
 
 Don't start D, E, F or H without checking with SM on issue #1.

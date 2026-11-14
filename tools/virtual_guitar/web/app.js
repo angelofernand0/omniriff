@@ -62,7 +62,7 @@
         }
       }
       if (!$('dashboard').getAttribute('src')) {
-        const url = `/dashboard/?ws=${encodeURIComponent(`ws://127.0.0.1:${state.ws_port}`)}&hand=${encodeURIComponent(`ws://127.0.0.1:${state.hand_port}`)}`;
+        const url = `/dashboard/?ws=${encodeURIComponent(`ws://127.0.0.1:${state.ws_port}`)}&hand=${encodeURIComponent(`ws://127.0.0.1:${state.hand_port}`)}&sim=guitar`;
         $('dashboard').src = url;
         $('dashboardLink').href = url;
       }

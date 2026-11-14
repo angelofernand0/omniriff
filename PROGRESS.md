@@ -145,7 +145,18 @@ This repo has no `package.json`, so there is no `npm run build`, lint or typeche
 
 1. Watch `?coach=preview` and say whether Riff's look and movement are right before piece F is built on it.
 2. Decide at freeze whether Riff asleep stays visible if the coach does not ship (`?coach=off` hides it).
-3. The play room re-skin is PR #57; take it or drop it.
+3. ~~The play room re-skin is PR #57.~~ Done in the stabilisation pass below.
+
+## Stabilisation pass (2026-11-14, branch `sm/claude/stabilize`)
+
+A release-engineering sweep of all of `main`, not a redesign. Audit and tickets are on issue #1.
+
+- **Play room skin** (was the closed PR #57): `dashboard/playroom.css` over the play room's own stylesheet, the logo, and two labels. The camera label reads `CAM · LIVE HAND TRACKING`. No behaviour changed.
+- **`SIMULATED` chip** (voice rule 9, backlog B8): the simulator's page and the play room's embedded dashboard now say on screen that the guitar is synthetic. Set by a URL flag, `?sim=`; no protocol or state change. Under 1440 px the wordmark folds to the mark while the chip shows, so the meters stay on the top row.
+- **Font licences** travel with the fonts: `dashboard/fonts/OFL-*.txt`.
+- Two unused imports removed in `tools/virtual_guitar/guitar.py` and `tests/test_virtual_guitar.py`.
+- **Checked:** 166 tests; in headless Chrome on the simulator, the play room (`--live --headless`) and `engine.demo --headless --replay`: every button, both keys, the faders, engine offline, replay, coach preview and coach hidden, at 1920x1080, 1280x720 and the play room's iframe width. No page errors apart from the browser logging the hand socket as refused while no camera is running.
+- **Not checked:** real hardware, a real webcam (no hand model in this checkout), audible output, Firefox or Safari.
 
 ## Files
 
