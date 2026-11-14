@@ -29,6 +29,7 @@ python -m tools.sim run --demo
 - **Header:** connection (LIVE / STALE / OFFLINE), bypass, input meter in dB with peak hold and clip light, output meter.
 - **Top third:** looper state (READY / REC / PLAY), loop length, and the loop waveform with playhead.
 - **Bottom two thirds:** filter and reverb cards. When the hand camera is actively sending, the moving effect takes over the whole zone.
+- **Hand view (side column, top):** the tracked hand's 21 joints from vision's optional feed (`ws://127.0.0.1:47802`, `protocol/hand.schema.json`), mirrored and zoomed to follow the hand. Pink with the pinch boxed and a value rail while the clutch is engaged; grey "HAND SEEN" otherwise (not "armed": vision may be waiting for an open-hand re-arm); "NO HAND" / "NO FEED". Frames are aged by browser receive time and cleared after 500 ms or on disconnect. `?hand=off` disables it, `?hand=ws://...` overrides it.
 - **Side column:** hand cam and pedal status. "Manual controls" (loop, bypass, two sliders) is collapsed by default.
 - **Footer:** xruns, clipped samples, event counters.
 
