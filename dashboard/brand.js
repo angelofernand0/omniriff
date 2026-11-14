@@ -125,5 +125,10 @@
     }
   } else {
     root.OmniBrand = api;
+    // pages that cannot run an inline script (the play room) opt in with <html data-brand="auto">
+    if (document.documentElement.dataset.brand === 'auto') {
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => mount());
+      else mount();
+    }
   }
 })(typeof window !== 'undefined' ? window : globalThis);
