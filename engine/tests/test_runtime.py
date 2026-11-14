@@ -293,6 +293,31 @@ class NetworkTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(router.counts['stale'],1)
         self.assertFalse(self.audio.snapshot()['bypass'])
 
+    async def test_busy_udp_port_reports_once_and_recovers(self):
+        occupied = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        occupied.bind(('127.0.0.1',0))
+        runtime = Runtime(self.audio, udp_port=occupied.getsockname()[1], ws_port=None)
+        try:
+            with self.assertLogs('omniriff.adapters',level='WARNING') as logs:
+                await runtime.start()
+                for _ in range(150):
+                    if runtime.adapters['udp']['errors'] >= 2: break
+                    await asyncio.sleep(.01)
+                self.assertGreaterEqual(runtime.adapters['udp']['errors'],2)
+                self.assertEqual(len(logs.output),1)
+                self.assertIn('udp adapter failed',logs.output[0])
+                process(self.audio)
+                self.assertGreater(self.audio.snapshot()['blocks'],0)
+            occupied.close()
+            for _ in range(150):
+                if runtime.adapters['udp']['status']=='running': break
+                await asyncio.sleep(.01)
+            self.assertEqual(runtime.adapters['udp']['status'],'running')
+            self.assertNotIn('udp',runtime.reported_errors)
+        finally:
+            occupied.close()
+            await runtime.close()
+
     async def test_missing_serial_does_not_stop_other_adapters(self):
         from websockets.asyncio.client import connect
         self.runtime.serial_port = '/no/such/omniriff-device'
