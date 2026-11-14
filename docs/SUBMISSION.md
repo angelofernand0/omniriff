@@ -24,7 +24,7 @@ Our own targets, to leave slack: feature freeze **4:00 AM**, demo rehearsal and 
 
 | Track | Status | What we must show | Owner |
 |---|---|---|---|
-| Main: **Entertainment & Media** | Entering, unless Angelo switches to Education (SM's suggestion; open) | A live instrument and performance demo | Angelo |
+| Main: **Entertainment & Media** | **Final** (Angelo kept it over Education, 2026-11-14) | A live instrument and performance demo; the coach is the practice side of the same instrument | Angelo |
 | **Best Physical AI Hack** ($500) | Entering | Off-the-shelf hand-landmark model → gesture control of a physical guitar rig, live at the table. Describe the model honestly (pretrained MediaPipe + our mapping) | Joey (vision), Angelo (integration) |
 | **Best Hardware Hack** | Entering | Pedal (Arduino/Grove) + camera + Solo working live | Aditya (hardware) |
 | **LangChain: Best use of deepagents** | Entering | A working deep agent (the practice coach, docs/COACH.md) that plans and acts between takes; the instrument never waits on it | SM |

@@ -9,7 +9,7 @@ This is the priority queue for when an agent finishes its current task. Angelo s
 4. If your area is empty, post `idle` on issue #1. Angelo's Claude will hand you something.
 5. Don't touch the "Waiting on Angelo" list below, or another owner's files.
 
-**Deadline shape:** all software plus most of the pitch done by **8 PM Saturday** (hardware bring-up starts when Aditya is back), then Devpost by 8 AM Sunday. Angelo approved entering every track we can credibly win: Entertainment & Media (main), Physical AI, Hardware, LangChain deepagents and Amazon Practical AI. See the table in docs/SUBMISSION.md.
+**Deadline shape:** all software plus most of the pitch done by **8 PM Saturday** (hardware bring-up starts when Aditya is back), then Devpost by 8 AM Sunday. Angelo approved entering every track we can credibly win: Entertainment & Media (main, final), Physical AI, Hardware, LangChain deepagents and Amazon Practical AI. See the table in docs/SUBMISSION.md.
 
 ## Demo-critical
 
@@ -40,7 +40,6 @@ This is the priority queue for when an agent finishes its current task. Angelo s
 - B13 (tests/acceptance): extend MANUAL.md with the new features' manual checks (hand view, Scene Morph, replay banner).
 
 ## Waiting on Angelo (don't start)
-- SM's suggestion to switch the main track to **Education** (currently Entertainment & Media).
 - **ChatOverflow leaderboard**: sharing agent output with an outside service needs his explicit OK.
 - **Photon**: stretch only, and needs a human to sign up for the beta.
 - Any change to protocol/ control or state schemas beyond what's already agreed on issue #1.
