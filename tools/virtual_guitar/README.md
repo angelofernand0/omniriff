@@ -42,11 +42,22 @@ play room in Chrome or another browser with camera permission and allow access
 to `127.0.0.1`. (The Codex in-app browser may not complete camera permission.)
 It shows a local webcam preview
 and feeds frames in memory to Joey's real MediaPipe hand tracker, clutch/scene
-controller and hand-view publisher. Open hand → pinch thumb and index → move
-up/down to morph the filter and reverb; open again to release. **Stop webcam**
+controller and hand-view publisher. Open hand → pinch thumb and index → drag
+up/down to move the filter; open again to hold. **Stop webcam**
 ends capture while guitar playback and manual bypass keep working. No camera
 frame or recording is saved. This is real webcam input with a simulated guitar.
-You can change the scene with `--scene rise`, or the model path with `--model PATH`.
+The default is a **single filter slider**: open hand, pinch to grab the current
+engine target, drag up to increase brightness or down to decrease it, then release
+to hold. Re-pinching picks up the latest target, including manual changes between
+gestures. At 100% the filter is fully open; move down first to hear a change.
+Keep the hand lit from the front. Tracking loss/low confidence requires a fresh
+open-hand arm. This does not change the camera model or make dim-light tracking
+accurate. Manual bypass remains independent.
+
+Advanced, absolute Scene Morph remains opt-in with `--scene bloom` or
+`--scene rise`; it is not the default pinch-slider demo. Set the model path with
+`--model PATH`. Native webcam/physical Scarlett listening validation is separate
+from deterministic control tests.
 
 If another engine/simulator is already running (for example Claude's dashboard
 preview), run alongside it without stopping that process:

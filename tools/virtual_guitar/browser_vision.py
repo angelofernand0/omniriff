@@ -19,15 +19,17 @@ from vision.control import Controller
 from vision.hand_view import HandView
 from vision.scenes import SCENES, SceneMorph
 from vision.tracking import HandSelector
+from vision.slider import FilterSlider
 
 
 class BrowserVision:
     MAX_FRAME = 250_000
 
-    def __init__(self, model: Path, *, udp_port: int, hand_port: int, scene: str = 'bloom'):
+    def __init__(self, model: Path, *, udp_port: int, hand_port: int, scene=None, read_filter=None):
         self.model = Path(model).resolve()
         self.udp_port, self.hand_port = udp_port, hand_port
         self.scene_name = scene
+        self.read_filter = read_filter
         self.frames = queue.Queue(maxsize=1)
         self.stop_event = threading.Event()
         self.thread = None
@@ -75,7 +77,7 @@ class BrowserVision:
     def snapshot(self):
         return dict(status=self.status, error=self.error, frames=self.frame_count,
                     events=self.event_count, model_ready=self.model.is_file(),
-                    scene=self.scene_name)
+                    scene=self.scene_name, control='filter' if self.scene_name is None else 'scene')
 
     def _run(self):
         try:
@@ -95,8 +97,11 @@ class BrowserVision:
         try:
             if not hand_view.ready.wait(2) or hand_view.error:
                 raise RuntimeError(f'Hand-view port unavailable: {hand_view.error or self.hand_port}')
-            scene = SceneMorph(SCENES[self.scene_name])
-            controller = Controller(rate=10)
+            scene = SceneMorph(SCENES[self.scene_name]) if self.scene_name else None
+            if scene is None and self.read_filter is None:
+                raise ValueError('Slider mode requires the current engine filter target')
+            slider = FilterSlider(self.read_filter) if scene is None else None
+            controller = slider.controller if slider else Controller(rate=10)
             selector = HandSelector()
             options = mp.tasks.vision.HandLandmarkerOptions(
                 base_options=mp.tasks.BaseOptions(model_asset_path=str(self.model)),
@@ -113,7 +118,7 @@ class BrowserVision:
                     except queue.Empty:
                         if self.last_frame_at and time.monotonic() - self.last_frame_at > 0.7:
                             controller.update(None, None, 0., time.monotonic(), int(time.time() * 1000))
-                            hand_view.publish(self._hand_frame(None, controller, 0., [], int(time.time() * 1000)))
+                            hand_view.publish(self._hand_frame(None, controller, 0., [], int(time.time() * 1000), scene))
                             self.status = 'waiting'
                             self.last_frame_at = 0.0
                         continue
@@ -139,10 +144,12 @@ class BrowserVision:
                             pinch = distance(4, 8) / scale
                             confidence = result.handedness[selected][0].score
                     wall_ms = int(time.time() * 1000)
-                    gesture = controller.update(y, pinch, confidence, now, wall_ms)
+                    gesture = (slider or controller).update(y, pinch, confidence, now, wall_ms)
+                    if slider:
+                        self.error = slider.error
                     landmarks = [[min(1., max(0., p.x)), min(1., max(0., p.y))] for p in points] if y is not None else []
-                    hand_view.publish(self._hand_frame(y, controller, confidence, landmarks, wall_ms))
-                    for event in scene.events(gesture) if gesture else []:
+                    hand_view.publish(self._hand_frame(y, controller, confidence, landmarks, wall_ms, scene))
+                    for event in (scene.events(gesture) if scene else [gesture]) if gesture else []:
                         sock.sendto(json.dumps(event, allow_nan=False, separators=(',', ':')).encode(), ('127.0.0.1', self.udp_port))
                         self.event_count += 1
                     self.frame_count += 1
@@ -152,8 +159,8 @@ class BrowserVision:
             self.hand_view = None
 
     @staticmethod
-    def _hand_frame(y, controller, confidence, landmarks, wall_ms):
+    def _hand_frame(y, controller, confidence, landmarks, wall_ms, scene=None):
         return dict(version=1, type='hand', timestamp_ms=wall_ms,
                     present=y is not None, engaged=controller.active,
-                    confidence=confidence, control=None, value=controller.value,
+                    confidence=confidence, control=None if scene else 'filter', value=controller.value,
                     landmarks=landmarks)

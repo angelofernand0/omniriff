@@ -32,50 +32,47 @@ The landmarker detects up to two hands. The selector follows the nearest wrist f
 
 Exit metrics on stderr report actual elapsed runtime, emitted event count, average rate and minimum emission interval. `--dry-run` validates and prints JSON without UDP. No-hand frames emit nothing. Failure closes capture and socket; audio must retain its independent manual bypass. No camera frames or recordings are saved by this program.
 
-## Demo-table calibration and setup
+## Demo-table entry point (R15/R16)
 
-### 60-second rehearsal & calibration routine
-Run through this quick 4-step sequence before each judge approaches:
-1. **Frame check (15s)**: Sit with guitar. Check webcam angle: ensure your control hand has an unobstructed path from picking/belt height up to mid-chest. Verify no harsh backlight silhouettes the hand.
-2. **Launch (10s)**: Start the demo vision process:
-   ```bash
-   python -m vision --model models/hand_landmarker.task --scene bloom
-   ```
-3. **Range tap (15s)**: If the player's natural height range is taller/shorter than the default $y \in [0.8, 0.2]$ normalized window, run with `--calibrate`: wrist at lowest rest position $\rightarrow$ press `l`, wrist at highest comfortable sweep $\rightarrow$ press `h`, press `s` to save `calibration.json`.
-4. **Physical dry check (20s)**: Open hand (disarmed), pinch index+thumb (HUD turns green, engaged), sweep upward (filter opens, reverb blooms), open hand (disengages, scene holds). Strum a chord to verify StrumGuard suppresses accidental sweeps. You are ready to demo!
-
-### Camera placement and lighting
-- **Distance**: Place the webcam 2–3 feet (0.6–1.0 m) from the player, facing them directly.
-- **Angle & height**: Position at laptop screen height tilted slightly upward (~10–15°), or on a small stand at chest height. Ensure the player's upper torso and free control hand are fully framed with ~1.5 ft of clear vertical travel.
-- **Lighting**: Diffuse front or overhead room lighting is ideal. **Avoid strong backlighting** (such as bright windows, stage spots, or projector beams behind the player) which silhouetted hands drop MediaPipe landmark confidence below the 0.6 gate.
-- **Framing hygiene**: Keep the control hand within the camera's central field of view. Avoid crossing the control hand over the fretting hand to ensure the nearest-wrist tracker remains locked onto the intended hand.
-
-### The one command to run at the demo table
-For the live 2-minute demonstration with Scene Morph (Clear to Cosmos blend) and live dashboard skeleton integration:
+The standard native capture entry point is **`python -m vision`**. The separate
+`python -m vision.spatial` experiment is **not the two-minute demo path**.
+For the browser-camera / virtual-guitar demo, run:
 
 ```bash
-python -m vision --model models/hand_landmarker.task --scene bloom
+python -m tools.virtual_guitar --live --model models/hand_landmarker.task
 ```
 
-This single command:
-1. Opens the webcam and loads Google's pretrained MediaPipe Hand Landmarker.
-2. Arms the open-then-pinch clutch for dual-parameter Scene Morphing (**Clear to Cosmos**: filter 1.0/reverb 0.0 → filter 0.4/reverb 0.75).
-3. Publishes 21-point normalized landmark coordinates to `ws://127.0.0.1:47802` for the dashboard live HAND skeleton panel.
-4. Sends schema-validated v1 JSON UDP datagrams to the engine on `127.0.0.1:47800` strictly bounded to $\le 20$ events/s.
+Open the printed localhost URL in a camera-enabled browser. The default is now
+one filter slider: open hand to arm, pinch to pick up the **current engine filter
+target**, drag up for brighter/down for darker, then open hand to hold. The first
+pinch and each re-pinch preserve the current target, including intervening manual
+changes. At 100% brightness, move down first. Explicit `--scene bloom|rise` opts
+back into the advanced absolute morph demonstration.
 
-*(Optional 10-second calibration)*: If the player's physical range differs from default $y \in [0.8, 0.2]$, run:
+For native capture alongside a separately running engine:
+
 ```bash
-python -m vision --model models/hand_landmarker.task --calibrate
-# Put wrist at lowest comfortable position -> press 'l'
-# Put wrist at highest comfortable position -> press 'h'
-# Press 's' to save local calibration.json, 'q' to quit
-# Then launch: python -m vision --model models/hand_landmarker.task --scene bloom --calibration calibration.json
+python -m vision --model models/hand_landmarker.task --relative
 ```
+
+Native `--relative` uses local defaults/last emitted value, **not engine feedback**;
+its pickup guarantee is narrower than the play room's. Set `--port` to the actual
+engine UDP port. Do not run both camera senders into one engine.
+
+Before performing, light the hand from the front, keep the intended control hand
+in view, avoid crossing wrists, and rehearse first pinch, drag, release, re-pinch,
+tracking loss and manual bypass. This is a manual acceptance check, not a claim
+that lighting or detection accuracy was verified by automated tests.
+
+Native calibration: `--calibrate`, press `l` at the low wrist position, `h` at the
+high position, then `s`. The default output is `vision-calibration.json`, which
+native capture reads automatically. Browser capture currently uses the default
+normalized range (0.8 to 0.2), not that native calibration file.
 
 ## Morning hardware checklist
 Confirm each item in order before the judging window:
 - [ ] **Model file present**: `models/hand_landmarker.task` exists locally and is readable.
-- [ ] **Camera detection & dry-run**: `python -m vision --model models/hand_landmarker.task --dry-run` starts clean at $\ge 20$ FPS without OS permission errors or frame drops.
+- [ ] **Camera detection & dry-run**: `python -m vision --model models/hand_landmarker.task --dry-run` starts clean; measure actual FPS rather than assuming 20 FPS.
 - [ ] **Clutch gating**:
   - Open hand in frame: HUD displays hand detected, clutch disarmed (no UDP events).
   - Pinch thumb + index: HUD displays engaged, wrist elevation smoothly sweeps parameter.
