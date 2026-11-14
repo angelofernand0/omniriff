@@ -12,9 +12,10 @@ from .hand_view import HandView
 from .take import TakeRecorder
 from .setlist import Setlist
 from .metrics import FrameMetrics
+from .hand_log import HandLog, hand_record
 
 
-def main():
+def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--model', required=True, help='MediaPipe hand_landmarker.task model path')
     p.add_argument('--video', help='Recorded video; otherwise use webcam')
@@ -23,6 +24,8 @@ def main():
                    help='maximum normalized wrist movement per frame before tracking fails closed')
     p.add_argument('--record-take', type=Path, help='save control events as replay JSONL; refuses overwrite')
     p.add_argument('--metrics-json', type=Path, help='save measured processing/rate summary on exit; refuses overwrite')
+    p.add_argument('--hand-log', type=Path, help='append both wrist positions and Unix timestamps for coach take alignment')
+    p.add_argument('--strum-hand', choices=('Left', 'Right'), default='Right', help='MediaPipe label of the strumming hand for hand-log analysis; verify camera orientation')
     p.add_argument('--no-hand-view', action='store_true', help='disable local dashboard landmark feed')
     p.add_argument('--hand-view-port', type=int, default=47802)
     p.add_argument('--host', default='127.0.0.1')
@@ -38,7 +41,7 @@ def main():
     p.add_argument('--calibrate', action='store_true')
     p.add_argument('--no-overlay', action='store_true')
     p.add_argument('--dry-run', action='store_true', help='Validate and print events without UDP')
-    args = p.parse_args()
+    args = p.parse_args(argv)
     if args.metrics_json and args.metrics_json.exists():
         p.error('metrics file exists; choose a new file')
     if args.calibrate and args.no_overlay:
@@ -91,7 +94,11 @@ def main():
     hand_view = None if args.no_hand_view else HandView(args.hand_view_port).start()
     hand_view_error_reported = False
     metrics = FrameMetrics()
+    hand_log = None
+    hand_log_error_reported = False
     try:
+        if args.hand_log:
+            hand_log = HandLog(args.hand_log)
         if args.record_take:
             take = TakeRecorder(args.record_take)
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock, mp.tasks.vision.HandLandmarker.create_from_options(options) as detector:
@@ -104,11 +111,18 @@ def main():
                 if args.video:
                     time.sleep(max(0, start + frame_number / fps - time.monotonic()))
                 now = time.monotonic()
+                captured_unix_ms = int(time.time() * 1000)
                 stamp = max(last_stamp + 1, int((now - start) * 1000))
                 last_stamp = stamp
                 frame_number += 1
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 result = detector.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), stamp)
+                if hand_log:
+                    hand_log.record(hand_record(result, captured_unix_ms, args.strum_hand))
+                    if hand_log.error and not hand_log_error_reported:
+                        import sys
+                        print('Hand log: ' + hand_log.error, file=sys.stderr)
+                        hand_log_error_reported = True
                 y = pinch = None
                 confidence = 0.
                 centers = [(hand[0].x, hand[0].y) for hand in result.hand_landmarks]
@@ -180,6 +194,11 @@ def main():
                             args.calibration.write_text(json.dumps(pending) + '\n')
                             break
     finally:
+        if hand_log:
+            hand_log.close()
+            if hand_log.error:
+                import sys
+                print('Hand log: ' + hand_log.error, file=sys.stderr)
         if take:
             take.close()
             if take.error:
