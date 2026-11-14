@@ -17,3 +17,53 @@ v1 has no sender session ID: one active producer per source is supported. A UDP 
 The state snapshot is best effort across audio/control threads. Missing source entries mean no valid envelope has arrived. An adapter in error/retrying records the last failure (not a current audio failure). Old errors remain for diagnosis after recovery. Stopping a source leaves its last parameter value in place; it does not create a sweep or mute audio. Manual bypass stays available.
 
 Tests: `python -m unittest discover -s engine/tests -v` after installing requirements. tests/test_engine.py bridges this suite into the repository CI discovery. No callback or DSP changes are included here.
+
+## Windows 11 quickstart — Scarlett Solo (3rd gen)
+
+**Windows verification pending.** These commands are prepared from the Python/PortAudio and pySerial interfaces and this repo's CLI; they have not been run on Angelo's Windows laptop or Scarlett Solo. COM3 below is an example, not a detected port. No measured guitar-to-output latency is claimed.
+
+Run PowerShell in the repository root. Install Python 3.12 with the Windows launcher if `py -3.12 --version` fails. Install the official Scarlett Solo 3rd-gen Windows driver from [Focusrite Downloads](https://downloads.focusrite.com/focusrite/scarlett-3rd-gen/scarlett-solo-3rd-gen), then attach the interface and reboot if its installer requests it.
+
+```powershell
+py -3.12 --version
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r engine/requirements.txt
+```
+
+Using the venv's Python directly avoids needing PowerShell activation or an execution-policy change. For optional development checks, install `requirements-dev.txt` and run unittest discovery with that same Python.
+
+### Identify the actual devices
+
+```powershell
+.\.venv\Scripts\python.exe -m audio --list-devices
+.\.venv\Scripts\python.exe -m serial.tools.list_ports -v
+```
+
+The first command prints sound-device indexes, names, host APIs and channel counts. Find the Focusrite input and output entries under WASAPI. The engine's `--in`/`--out` accept the shown numeric indexes or case-insensitive name substrings; indexes can change after reconnects. If the printed name does not contain Focusrite, use its actual name/index instead. `--input-channel 2` is the Solo's instrument input, not the microphone input.
+
+For the Arduino, compare the serial list with the board disconnected and reconnected. Use the COM port that appears; confirm it in Arduino IDE's port menu or Windows Device Manager → Ports (COM & LPT). A charge-only USB cable will not create a port. Close Arduino Serial Monitor and other serial tools before the engine opens it; only one program should own that COM port.
+
+### Live demo command
+
+Plug the guitar into input 2, enable INST, and turn Direct Monitor off to avoid double monitoring. Connect headphones/monitor output to the Solo, start with low physical output volume, and keep the engine terminal focused for manual controls. After replacing COM3 with the detected port:
+
+```powershell
+.\.venv\Scripts\python.exe -m engine --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2 --out-channels 2 --samplerate 48000 --blocksize 128 --serial-port COM3
+```
+
+Without a pedal, omit `--serial-port COM3`; audio and the UDP/WebSocket adapters still run. Type commands followed by Enter: `b` bypass, `l` loop, `f 0.3` filter, `r 0.3` reverb, `s` audio status, `q` stop. Do not use `--no-keyboard` for the live demo: the local bypass is the independent fallback. Dashboard state is at `ws://127.0.0.1:47801`; serve the dashboard on localhost. Camera controls go to UDP 47800 on the same laptop. The dashboard and vision are separate processes, not started by this command.
+
+If audio drops out, try `--blocksize 256` and check `xruns`. Test `--exclusive` only with WASAPI devices; it may conflict with another program using the same device. Buffer settings and reported PortAudio latency are not a real round-trip measurement. Follow `tests/acceptance/MANUAL.md` and `tools/latency/README.md` on the actual hardware.
+
+ASIO is an optional comparison, not required for the first demo. Current pip-installed sounddevice Windows builds document setting `$env:SD_ENABLE_ASIO = "1"` **before starting Python**, then listing devices again and choosing an actual ASIO entry. This depends on the installed sounddevice/PortAudio build and is unverified here; do not assume a device is available just because the flag exists. Use `--hostapi ASIO` only when listing confirms it; omit `--exclusive` for ASIO.
+
+### Hardware-free sanity check
+
+```powershell
+.\.venv\Scripts\python.exe -m engine --headless --no-keyboard --duration 5
+```
+
+This processes silence and starts the control servers. It cannot establish driver functionality, audibility, camera recognition, pedal wiring or live latency.
+
+References: [sounddevice installation and ASIO](https://python-sounddevice.readthedocs.io/en/latest/installation.html), [pySerial port enumeration](https://pyserial.readthedocs.io/en/latest/tools.html#serial-tools-list-ports). All Windows/device-specific bring-up remains pending until tested at the laptop.
