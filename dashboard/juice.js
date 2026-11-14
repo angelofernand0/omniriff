@@ -1,10 +1,11 @@
-// OmniRiff dashboard "juice": visual feedback layered on top of app.js. Display only.
+// OmniRiff dashboard feedback layer, on top of app.js. Display only.
 // It reads the same v1 state frames (app.js re-dispatches each one as 'omniriff:frame')
 // and the data-* attributes app.js sets on #app. It never invents state: every effect is
-// triggered by a real change in an engine frame. The only inputs it adds are keyboard
-// shortcuts that press the existing manual buttons.
+// triggered by a real change in an engine frame, and it lands on the element that changed
+// (BRAND_SPEC.md section 8). The only inputs it adds are keyboard shortcuts that press the
+// existing manual keys.
 //   ?juice=off            disables all of it
-//   prefers-reduced-motion keeps the stamps and the effect graphs, drops flash/shake
+//   prefers-reduced-motion keeps the stamps and the effect graphs, drops hits and shakes
 'use strict';
 
 (() => {
@@ -18,16 +19,11 @@
   const C = (n) => css.getPropertyValue(n).trim();
   const P = {
     accent: C('--accent'), rec: C('--rec'), warn: C('--warn'), ok: C('--ok'), text: C('--text'),
-    muted: C('--muted'), off: C('--off'), deep: C('--accent-deep'), dim: '#4A4858',
+    muted: C('--muted'), off: C('--off'), deep: C('--accent-deep'), dim: C('--dim'), panel2: C('--panel-2'),
   };
   const TICK_MS = 1000 / 30;  // graphs redraw at 30 Hz
 
   // ---------- layers ----------
-  const flash = document.createElement('div');
-  flash.className = 'juice-flash';
-  flash.setAttribute('aria-hidden', 'true');
-  document.body.append(flash);
-
   // effect graphs: one small canvas per card, one big faint one behind the engaged panel
   function addViz(parent, before, cls) {
     const c = document.createElement('canvas');
@@ -42,22 +38,23 @@
   };
   const engagedBg = addViz($('engaged'), $('engaged').firstChild, 'juice-bg');
 
-  // offline "attract" screen: honest about the engine being gone, but not a dead page
+  // offline screen: says the engine is gone and how to start one. The LED row scans because
+  // the page really is retrying the socket.
   const attract = document.createElement('div');
   attract.className = 'juice-attract';
   attract.setAttribute('role', 'status');
   attract.innerHTML =
-    '<div class="ja-logo"><span class="ja-mark"></span>OMNIRIFF</div>' +
-    '<div class="ja-bars" aria-hidden="true">' + '<i></i>'.repeat(24) + '</div>' +
-    '<div class="ja-state" id="jaState">WAITING FOR ENGINE</div>' +
-    '<div class="ja-hint" id="jaHint">python -m tools.sim run --demo</div>';
-  attract.querySelectorAll('.ja-bars i').forEach((b, i) => {
-    b.style.animationDelay = (-(i * 0.09) % 1.2).toFixed(2) + 's';
-  });
+    '<div class="logo x6"><span data-logo="lockup"></span></div>' +
+    '<div class="ja-scan" aria-hidden="true">' + '<i></i>'.repeat(8) + '</div>' +
+    '<div class="ja-state" id="jaState">NO ENGINE</div>' +
+    '<dl class="ja-how" id="jaHint">' +
+    '<dt>RIG</dt><dd>python -m engine.demo --open</dd>' +
+    '<dt>SIM</dt><dd>python -m tools.sim run --demo</dd></dl>';
+  attract.querySelectorAll('.ja-scan i').forEach((b, i) => { b.style.animationDelay = (i * 0.15 - 1.2).toFixed(2) + 's'; });
   document.body.appendChild(attract);
+  if (window.OmniBrand) window.OmniBrand.mount(attract);
 
   // ---------- helpers ----------
-  const level = (db) => Math.max(0, Math.min(1, (db + 60) / 60));
 
   function restart(el, cls, ms) {
     el.classList.remove(cls);
@@ -66,17 +63,18 @@
     clearTimeout(el['_j' + cls]);
     el['_j' + cls] = setTimeout(() => el.classList.remove(cls), ms);
   }
-  function doFlash(color) {
+  // a hit: the panel that changed flashes its border in the colour of the change
+  function hit(el, color) {
     if (!motion) return;
-    flash.style.background = color;
-    restart(flash, 'go', 300);
+    el.style.setProperty('--hit', color);
+    restart(el, 'juice-hit', 260);
   }
   function shake(el) { if (motion) restart(el, 'juice-shake', 260); }
   function stamp(text, color) {
     const host = document.querySelector('.wave');
     host.querySelectorAll('.juice-stamp').forEach((n) => n.remove());
     const d = document.createElement('div');
-    d.className = 'juice-stamp';
+    d.className = 'stamp juice-stamp';
     d.textContent = text;
     d.style.color = color;
     host.appendChild(d);
@@ -133,6 +131,18 @@
     }
   }
 
+  const wavePanel = document.querySelector('.wave');
+  function fxStamp(text, color) {
+    const host = document.querySelector('.fx-zone');
+    host.querySelectorAll('.juice-stamp').forEach((n) => n.remove());
+    const d = document.createElement('div');
+    d.className = 'stamp juice-stamp';
+    d.textContent = text;
+    d.style.color = color;
+    host.appendChild(d);
+    setTimeout(() => d.remove(), 1100);
+  }
+
   // ---------- frame-driven events ----------
   let s = null, lastLoop = null, playStart = 0, lastPos = 0;
   let lastBypass = null, lastClip = false, everLive = false, offlineSince = performance.now();
@@ -147,14 +157,14 @@
     const ls = f.loop && f.loop.state;
     if (!first && ls !== lastLoop) {
       if (ls === 'recording') {
-        stamp('REC', P.rec); doFlash(P.rec);
+        stamp('REC', P.rec); hit(wavePanel, P.rec);
       } else if (ls === 'playing') {
         playStart = now; lastPos = 0;
         if (lastLoop === 'recording') {
-          stamp('LOOP ' + (f.loop.seconds || 0).toFixed(1) + 'S', P.accent); doFlash(P.accent);
+          stamp('LOOP ' + (f.loop.seconds || 0).toFixed(1) + 'S', P.accent); hit(wavePanel, P.accent);
         }
       } else if (ls === 'idle' && lastLoop) {
-        stamp('CLEARED', P.muted);
+        stamp('CLEARED', P.muted); hit(wavePanel, P.muted);
       }
     }
     if (ls === 'playing' && first) playStart = now;
@@ -163,15 +173,13 @@
     // bypass slam
     if (!first && lastBypass !== null && !!f.bypass !== lastBypass) {
       shake(document.querySelector('.fx-zone'));
-      doFlash(f.bypass ? P.warn : P.ok);
-      if (!f.bypass) stamp('FX ON', P.ok);
+      if (!f.bypass) fxStamp('FX ON', P.ok);
     }
     lastBypass = !!f.bypass;
   });
 
   // ---------- per-tick work ----------
   let lastTick = 0;
-  const brand = document.querySelector('.brand-mark');
   function tick(now) {
     requestAnimationFrame(tick);
     if (now - lastTick < TICK_MS) return;
@@ -183,7 +191,7 @@
     const showAttract = now - offlineSince > 1500;
     attract.classList.toggle('on', showAttract);
     if (showAttract) {
-      $('jaState').textContent = everLive ? 'ENGINE OFFLINE · RECONNECTING' : 'WAITING FOR ENGINE';
+      $('jaState').textContent = everLive ? 'ENGINE LOST · RETRYING' : 'NO ENGINE · START ONE';
       $('jaHint').style.visibility = everLive ? 'hidden' : 'visible';
     }
 
@@ -196,16 +204,11 @@
         }
         lastPos = pos;
       }
-      // the brand mark breathes with the output level, in steps
-      const lv = Math.round(level(s.output_peak_dbfs) * 4) / 4;
-      brand.style.transform = 'scale(' + (1 + lv * 0.3).toFixed(2) + ')';
-    } else {
-      brand.style.transform = '';
     }
 
     // clip light came on
     const clip = $('inClip').classList.contains('on');
-    if (clip && !lastClip) shake(document.querySelector('.bar .meter'));
+    if (clip && !lastClip) shake(document.querySelector('.meters'));
     lastClip = clip;
 
     const fxState = app.dataset.fx;
@@ -214,11 +217,11 @@
     if (s) {
       for (const k of ['filter', 'reverb']) {
         const tgt = $('card-' + k).classList.contains('target');
-        drawGraph(viz[k], k, s, { bw: 6, gap: 2, q: 4, color: tgt ? P.accent : P.text, offColor: P.off });
+        drawGraph(viz[k], k, s, { bw: 6, gap: 2, q: 4, color: tgt ? P.accent : P.dim, offColor: P.off });
       }
       if (fxState === 'engaged') {
         const k = $('engName').textContent.toLowerCase();
-        if (k === 'filter' || k === 'reverb') drawGraph(engagedBg, k, s, { bw: 14, gap: 4, q: 8, color: P.deep, offColor: '#1A1822', mark: '#5A2A75' });
+        if (k === 'filter' || k === 'reverb') drawGraph(engagedBg, k, s, { bw: 12, gap: 4, q: 8, color: P.deep, offColor: P.panel2, mark: C('--accent-dim') });
       }
     }
 
@@ -226,7 +229,12 @@
   requestAnimationFrame(tick);
 
   // ---------- keyboard ----------
-  // F fullscreen, L loop, B bypass (the same as pressing the manual buttons)
+  // F fullscreen, L loop, B bypass (the same as pressing the manual keys; the key travels too)
+  function tap(btn) {
+    btn.classList.add('down');
+    setTimeout(() => btn.classList.remove('down'), 100);
+    btn.click();
+  }
   document.addEventListener('keydown', (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
     const t = e.target;
@@ -234,7 +242,7 @@
     const k = e.key.toLowerCase();
     if (k === 'f') {
       if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {});
-    } else if (k === 'l') $('btnLoop').click();
-    else if (k === 'b') $('btnBypass').click();
+    } else if (k === 'l') tap($('btnLoop'));
+    else if (k === 'b') tap($('btnBypass'));
   });
 })();

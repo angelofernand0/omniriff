@@ -23,7 +23,7 @@
   // ---------- build repeated elements ----------
   function fill(el, n, cls) {
     const out = [];
-    for (let i = 0; i < n; i++) { const b = document.createElement('i'); if (cls) b.className = cls(i); el.appendChild(b); out.push(b); }
+    for (let i = 0; i < n; i++) { const b = document.createElement('i'); if (cls) b.className = cls(i); b.style.setProperty('--i', i); el.appendChild(b); out.push(b); }
     return out;
   }
   const inSegs = fill($('inSegs'), SEGS);
@@ -85,6 +85,7 @@
   // ---------- frame handling ----------
   function onFrame(s) {
     if (!s || s.version !== 1) return;
+    if (!state) delete app.dataset.boot;  // first frame: placeholders become values
     state = s;
     lastFrameAt = performance.now();
     window.dispatchEvent(new CustomEvent('omniriff:frame', { detail: s }));  // for juice.js
@@ -135,6 +136,9 @@
     const conn = !state ? 'offline' : (ws && age < STALE_MS ? 'live' : (ws ? 'stale' : 'offline'));
     app.dataset.conn = conn;
     $('conn').textContent = conn === 'live' ? 'LIVE' : conn === 'stale' ? 'STALE' : 'OFFLINE';
+    $('led-engine').classList.toggle('on', conn === 'live');
+    $('led-engine').classList.toggle('warn', conn === 'stale');
+    $('btnLoop').disabled = $('btnBypass').disabled = $('slFilter').disabled = $('slReverb').disabled = conn === 'offline';
 
     if (state) {
       const s = state;
@@ -155,14 +159,15 @@
       renderMeter(outSegs, meters.out, s.output_peak_dbfs, now);
       if (s.input_peak_dbfs >= -1) clipUntil = now + 2000;
       $('inClip').classList.toggle('on', now < clipUntil);
-      $('inDb').textContent = s.input_peak_dbfs <= METER_FLOOR ? '–∞ dB' : s.input_peak_dbfs.toFixed(1) + ' dB';
+      $('inDb').textContent = s.input_peak_dbfs <= METER_FLOOR ? '-inf dB' : s.input_peak_dbfs.toFixed(1) + ' dB';
 
       // looper
       app.dataset.loop = loop.state;
       $('loopWord').textContent = { idle: 'READY', recording: 'REC', playing: 'PLAY' }[loop.state] || '—';
-      $('loopLen').textContent = loop.state === 'idle' ? 'no loop' : loop.seconds.toFixed(1) + ' s';
-      $('loopHint').textContent = { idle: 'tap pedal to record', recording: 'tap to close loop', playing: 'tap to clear' }[loop.state] || '';
-      $('waveNote').textContent = loop.partial ? 'loop recorded before this page opened' : '';
+      $('loopLen').textContent = loop.state === 'idle' ? '--' : loop.seconds.toFixed(1) + ' s';
+      $('loopHint').textContent = { idle: 'Press pedal to record', recording: 'Press again to close', playing: 'Press to clear' }[loop.state] || '';
+      $('loopMeta').textContent = s.loop && s.loop.max_seconds ? Math.round(s.loop.max_seconds) + ' S MAX' : '';
+      $('waveNote').textContent = loop.partial ? 'Recorded before this page opened. Shape not shown.' : '';
 
       // fx cards
       const vision = s.sources && s.sources.vision;
@@ -181,8 +186,8 @@
         card.classList.toggle('target', k === target && (fx[k].movedAt > 0));
         card.classList.toggle('live', now < fx[k].liveUntil);
       }
-      $('sub-filter').textContent = s.filter ? (s.filter.value >= 0.995 ? 'open' : Math.round(s.filter.cutoff_hz) + ' Hz low-pass') : '';
-      $('sub-reverb').textContent = s.reverb ? (s.reverb.value <= 0.005 ? 'dry' : 'wet ' + Math.round(s.reverb.value * 100) + '%') : '';
+      $('sub-filter').textContent = s.filter ? (s.filter.value >= 0.995 ? 'Open' : 'Low-pass ' + Math.round(s.filter.cutoff_hz) + ' Hz') : '';
+      $('sub-reverb').textContent = s.reverb ? (s.reverb.value <= 0.005 ? 'Dry' : 'Wet mix') : '';
 
       if (engaged) {
         const v = s[target].value;
@@ -193,20 +198,23 @@
       }
 
       // sources
-      status('st-vision', 'visionVal', vision, visionSeenAge, engaged ? 'pinch held' : 'watching', null, conn);
+      status('st-vision', 'visionVal', vision, visionSeenAge, engaged ? 'PINCH' : 'ON', null, conn);
       const ard = s.sources && s.sources.arduino;
       const ardAge = ard && ard.last_seen_ms != null ? s.timestamp_ms - ard.last_seen_ms : Infinity;
       const serial = s.adapters && s.adapters.serial ? s.adapters.serial.status : 'disabled';
-      status('st-arduino', 'pedalVal', ard, ardAge, 'connected', serial, conn);
+      status('st-arduino', 'pedalVal', ard, ardAge, 'ON', serial, conn);
 
       // diagnostics
       const c = s.controls || {};
-      $('diag').textContent = `xruns ${s.xruns} · clipped ${s.clipped_samples} · events ok ${c.accepted ?? 0} · stale ${c.stale ?? 0} · dup ${c.duplicate ?? 0} · invalid ${c.invalid ?? 0} · low-conf ${c.low_confidence ?? 0}`;
+      $('diag').textContent = `xruns ${s.xruns} · clipped ${s.clipped_samples} · events ${c.accepted ?? 0} ok · ${c.stale ?? 0} stale · ${c.duplicate ?? 0} dup · ${c.invalid ?? 0} invalid · ${c.low_confidence ?? 0} low-conf`;
 
       // sync manual sliders unless being dragged
       for (const k of ['filter', 'reverb']) {
         const el = $(k === 'filter' ? 'slFilter' : 'slReverb');
         if (document.activeElement !== el && s[k]) el.value = s[k].target;
+        const pct = Math.round(parseFloat(el.value) * 100);
+        el.style.setProperty('--v', pct + '%');
+        $(k === 'filter' ? 'outFilter' : 'outReverb').textContent = pct + '%';
       }
     }
 
@@ -222,10 +230,10 @@
     box.classList.toggle('active', online && seenAge < ENGAGED_MS);
     let text;
     if (online) text = onlineText;
-    else if (conn === 'stale') text = 'stale';
-    else if (conn === 'offline') text = 'offline';
-    else text = src ? 'quiet' : 'offline';
-    if (conn === 'live' && adapter && adapter !== 'running' && !online) text = 'serial ' + adapter;
+    else if (conn === 'stale') text = 'STALE';
+    else if (conn === 'offline') text = 'OFF';
+    else text = src ? 'IDLE' : 'OFF';
+    if (conn === 'live' && adapter && adapter !== 'running' && !online) text = adapter === 'disabled' ? 'NO PORT' : String(adapter).toUpperCase();
     $(valId).textContent = text;
   }
 
@@ -243,14 +251,14 @@
     const pad = 12, bw = 6, gap = 2;
     const cols = Math.max(1, Math.floor((w - pad * 2) / (bw + gap)));
     const mid = h / 2, maxH = h / 2 - pad;
-    const accent = color('--accent'), dim = color('--off'), rec = color('--rec');
+    const accent = color('--accent'), dim = color('--off'), rec = color('--rec'), unplayed = color('--dim');
     const smp = loop.samples;
 
     // grid: one tick per second of loop (or of max length while recording)
     let pos = 0;
     if (loop.state === 'playing' && loop.seconds > 0) pos = ((now - loop.playStart) / 1000 / loop.seconds) % 1;
 
-    for (let c = 0; c < cols; c++) {
+    for (let c = 0; c < cols && loop.state !== 'idle'; c++) {  // idle: the empty state says it
       let v;
       if (loop.state === 'idle') v = 0.02;
       else if (smp.length === 0) v = loop.state === 'playing' ? 0.25 + 0.15 * Math.abs(Math.sin(c * 0.7)) : 0.02;
@@ -265,13 +273,17 @@
       const bh = Math.max(2, Math.round(v * maxH));
       let fillc = dim;
       if (loop.state === 'recording') fillc = rec;
-      else if (loop.state === 'playing') fillc = c / cols <= pos ? accent : '#4A4858';
+      else if (loop.state === 'playing') fillc = c / cols <= pos ? accent : unplayed;
       ctx.fillStyle = fillc;
       ctx.fillRect(pad + c * (bw + gap), Math.round(mid - bh), bw, bh * 2);
     }
-    if (loop.state === 'playing') {
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(Math.round(pad + pos * (w - pad * 2)), 0, 3, h);
+    // ruler: one tick per second of loop, so the length reads without the number
+    if (loop.state === 'playing' && loop.seconds > 0) {
+      ctx.fillStyle = color('--line-2');
+      const span = w - pad * 2;
+      for (let t = 0; t <= loop.seconds + 1e-6; t += 1) ctx.fillRect(Math.round(pad + (t / loop.seconds) * span), h - 8, 2, 8);
+      ctx.fillStyle = color('--text');
+      ctx.fillRect(Math.round(pad + pos * span), 0, 4, h);
     }
   }
 
@@ -287,15 +299,17 @@
     const fresh = hand.frame && now - hand.at < HAND_STALE_MS;
     if (!fresh) hand.frame = null;  // stale or disconnected: never keep an old hand on screen
     const f = hand.frame;
-    let mode = 'off', label = HAND_URL ? 'NO FEED' : 'OFF';
+    let mode = 'off', label = HAND_URL ? 'NO CAMERA' : 'OFF';
     if (f && !f.present) { mode = 'none'; label = 'NO HAND'; }
     else if (f && f.engaged) {
       mode = 'engaged';
       const pct = typeof f.value === 'number' ? Math.round(f.value * 100) + '%' : '';
       label = (f.control ? f.control.toUpperCase() : 'MORPH') + ' ' + pct;
-    } else if (f) { mode = 'seen'; label = 'HAND SEEN'; }  // not "armed": may be waiting for an open-hand re-arm
+    } else if (f) { mode = 'seen'; label = 'SEEN'; }  // not "armed": may be waiting for an open-hand re-arm
     $('handPanel').dataset.hand = mode;
     $('handState').textContent = label;
+    $('handEmptyWord').textContent = mode === 'none' ? 'NO HAND' : HAND_URL ? 'NO CAMERA' : 'HAND VIEW OFF';
+    $('handEmptyHint').textContent = mode === 'none' ? 'Show one hand to the camera.' : HAND_URL ? 'Start vision to see your hand.' : 'Remove ?hand=off to turn it on.';
 
     const dpr = window.devicePixelRatio || 1;
     const w = handCanvas.clientWidth, h = handCanvas.clientHeight;
@@ -330,7 +344,7 @@
     hctx.beginPath();
     for (const [a, b] of BONES) { hctx.moveTo(P[a][0], P[a][1]); hctx.lineTo(P[b][0], P[b][1]); }
     hctx.stroke();
-    hctx.fillStyle = engaged ? '#FFFFFF' : color('--text');
+    hctx.fillStyle = color('--text');
     for (const [x, y] of P) hctx.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
     if (engaged) {  // the pinch: thumb tip + index tip
       hctx.strokeStyle = color('--accent'); hctx.lineWidth = 2;
@@ -340,11 +354,22 @@
   connectHand();
 
   // ---------- manual controls ----------
-  $('btnLoop').addEventListener('click', () => send('loop'));
-  $('btnBypass').addEventListener('click', () => send('bypass'));
-  for (const [id, control] of [['slFilter', 'filter'], ['slReverb', 'reverb']]) {
+  // a key lights pink when the engine socket took the event, and nudges amber when it could not
+  function press(btn, ok) {
+    const cls = ok ? 'sent' : 'fail';
+    btn.classList.remove('sent', 'fail');
+    void btn.offsetWidth;
+    btn.classList.add(cls);
+    clearTimeout(btn._t);
+    btn._t = setTimeout(() => btn.classList.remove(cls), 260);
+  }
+  $('btnLoop').addEventListener('click', (e) => press(e.currentTarget, send('loop')));
+  $('btnBypass').addEventListener('click', (e) => press(e.currentTarget, send('bypass')));
+  for (const [id, control, out] of [['slFilter', 'filter', 'outFilter'], ['slReverb', 'reverb', 'outReverb']]) {
     let last = 0;
+    const show = (el) => { const pct = Math.round(parseFloat(el.value) * 100); el.style.setProperty('--v', pct + '%'); $(out).textContent = pct + '%'; };
     $(id).addEventListener('input', (e) => {
+      show(e.target);
       const t = performance.now();
       if (t - last < 40) return;  // ~25 Hz
       last = t; send(control, parseFloat(e.target.value));

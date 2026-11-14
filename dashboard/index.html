@@ -4,102 +4,127 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OmniRiff</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="brand.css">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="juice.css">
+<link rel="stylesheet" href="riff.css">
 </head>
 <body>
-<div class="app" id="app" data-conn="offline" data-bypass="false" data-loop="idle" data-fx="idle">
+<div class="app" id="app" data-conn="offline" data-boot="true" data-bypass="false" data-loop="idle" data-fx="idle">
 
-  <header class="bar">
-    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span class="brand-word">OMNIRIFF</span></div>
-    <span class="chip conn" id="conn" role="status">OFFLINE</span>
-    <span class="chip replay-chip" id="replayChip" role="status" title="Scripted backup controls, not live sensors">REPLAY</span>
-    <span class="spacer"></span>
-    <span class="chip bypass-chip" id="bypassChip">BYPASS</span>
-    <div class="meter" aria-label="Input level">
-      <span class="meter-label">IN</span>
-      <div class="segs" id="inSegs"></div>
-      <span class="clip" id="inClip" aria-label="Clip indicator">CLIP</span>
-      <span class="db" id="inDb">–∞ dB</span>
+  <!-- faceplate: who we are, what is connected, what is coming in and going out -->
+  <header class="plate">
+    <div class="logo"><span data-logo="lockup"></span></div>
+    <span class="model">PRACTICE RIG</span>
+    <div class="leds" role="group" aria-label="Connections">
+      <span class="led" id="led-engine"><i aria-hidden="true"></i><b>ENGINE</b><span id="conn" role="status">OFFLINE</span></span>
+      <span class="led" id="st-vision"><i aria-hidden="true"></i><b>CAM</b><span id="visionVal">OFF</span></span>
+      <span class="led" id="st-arduino"><i aria-hidden="true"></i><b>PEDAL</b><span id="pedalVal">OFF</span></span>
+      <span class="led" id="led-coach"><i aria-hidden="true"></i><b>COACH</b><span>OFF</span></span>
     </div>
-    <div class="meter small" aria-label="Output level">
+    <span class="chip replay-chip" id="replayChip" role="status" title="Scripted backup controls, not live sensors">REPLAY</span>
+    <span class="chip bypass-chip" id="bypassChip" role="status">BYPASS</span>
+    <span class="spacer"></span>
+    <div class="meters" role="group" aria-label="Levels">
+      <span class="meter-label">IN</span>
+      <div class="segs" id="inSegs" aria-label="Input level"></div>
+      <span class="db" id="inDb">-- dB</span>
+      <span class="clip" id="inClip" aria-label="Clip indicator">CLIP</span>
       <span class="meter-label">OUT</span>
-      <div class="segs" id="outSegs"></div>
+      <div class="segs small" id="outSegs" aria-label="Output level"></div>
     </div>
   </header>
 
-  <!-- top third: the looper -->
-  <section class="looper">
-    <div class="loop-state panel">
-      <div class="loop-word"><span class="loop-dot" aria-hidden="true"></span><span id="loopWord">READY</span></div>
-      <span class="loop-len" id="loopLen">no loop</span>
-      <span class="hint" id="loopHint">tap pedal to record</span>
-    </div>
-    <div class="wave panel">
-      <canvas id="wave" aria-label="Loop waveform"></canvas>
-      <span class="wave-note" id="waveNote"></span>
-    </div>
-  </section>
+  <main class="deck">
 
-  <!-- bottom two thirds: effects -->
-  <section class="fx">
-    <div class="fx-zone">
-      <div class="cards" id="cards">
-        <article class="card" id="card-filter" data-control="filter">
-          <header><h2>FILTER</h2><span class="tag">PINCH</span></header>
-          <div class="pct" id="pct-filter">100%</div>
-          <div class="blocks" id="blocks-filter"></div>
-          <span class="sub" id="sub-filter">open</span>
-        </article>
-        <article class="card" id="card-reverb" data-control="reverb">
-          <header><h2>REVERB</h2><span class="tag">PINCH</span></header>
-          <div class="pct" id="pct-reverb">0%</div>
-          <div class="blocks" id="blocks-reverb"></div>
-          <span class="sub" id="sub-reverb">dry</span>
-        </article>
-      </div>
-      <div class="engaged" id="engaged" aria-live="polite">
-        <div class="engaged-text">
-          <span class="engaged-name" id="engName">REVERB</span>
-          <span class="engaged-pct" id="engPct">0%</span>
+    <!-- 01 LOOP -->
+    <section class="mod loop" aria-labelledby="h-loop">
+      <h2 class="label" id="h-loop"><i data-icon="loop"></i><span class="n">01</span>LOOP<span class="grow"></span><span class="label-r" id="loopMeta"></span></h2>
+      <div class="loop-row">
+        <div class="loop-state panel">
+          <div class="loop-word"><span class="loop-dot" aria-hidden="true"></span><span id="loopWord">READY</span></div>
+          <span class="loop-len" id="loopLen">--</span>
+          <span class="hint" id="loopHint">Press pedal to record</span>
         </div>
-        <div class="tower" id="tower"></div>
+        <div class="wave panel">
+          <canvas id="wave" aria-label="Loop waveform"></canvas>
+          <div class="empty wave-empty" id="waveEmpty"><i data-icon="pedal" class="x4"></i><b>NO LOOP</b><span>Press pedal. Play. Press again.</span></div>
+          <span class="wave-note" id="waveNote"></span>
+        </div>
       </div>
-      <div class="bypass-stamp" aria-hidden="true">BYPASS</div>
-    </div>
+    </section>
+
+    <!-- 02 TONE -->
+    <section class="mod tone" aria-labelledby="h-tone">
+      <h2 class="label" id="h-tone"><i data-icon="tone"></i><span class="n">02</span>TONE</h2>
+      <div class="fx-zone">
+        <div class="cards" id="cards">
+          <article class="card" id="card-filter" data-control="filter">
+            <header><h3>FILTER</h3><span class="tag">MOVED</span></header>
+            <div class="readout"><span class="pct" id="pct-filter">--</span><span class="sub" id="sub-filter"></span></div>
+            <div class="blocks" id="blocks-filter"></div>
+          </article>
+          <article class="card" id="card-reverb" data-control="reverb">
+            <header><h3>REVERB</h3><span class="tag">MOVED</span></header>
+            <div class="readout"><span class="pct" id="pct-reverb">--</span><span class="sub" id="sub-reverb"></span></div>
+            <div class="blocks" id="blocks-reverb"></div>
+          </article>
+        </div>
+        <div class="engaged" id="engaged" aria-live="polite">
+          <div class="engaged-text">
+            <span class="engaged-name" id="engName">REVERB</span>
+            <span class="engaged-pct" id="engPct">0%</span>
+          </div>
+          <div class="tower" id="tower"></div>
+        </div>
+        <div class="bypass-stamp" aria-hidden="true"><b>BYPASS</b><span>Effects off. Dry signal.</span></div>
+      </div>
+    </section>
 
     <aside class="side">
-      <div class="panel hand" id="handPanel" data-hand="off">
-        <div class="hand-head"><span class="status-name">HAND</span><span class="hand-state" id="handState" role="status">NO FEED</span></div>
-        <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
-      </div>
-      <div class="panel status" id="st-vision">
-        <span class="status-dot" aria-hidden="true"></span>
-        <div><span class="status-name">HAND CAM</span><span class="status-val" id="visionVal">offline</span></div>
-      </div>
-      <div class="panel status" id="st-arduino">
-        <span class="status-dot" aria-hidden="true"></span>
-        <div><span class="status-name">PEDAL</span><span class="status-val" id="pedalVal">offline</span></div>
-      </div>
-      <details class="panel manual">
-        <summary>Manual controls</summary>
+      <!-- 03 HAND -->
+      <section class="mod" aria-labelledby="h-hand">
+        <h2 class="label" id="h-hand"><i data-icon="hand"></i><span class="n">03</span>HAND<span class="grow"></span><span class="label-r hand-state" id="handState" role="status">NO CAMERA</span></h2>
+        <div class="panel hand" id="handPanel" data-hand="off" data-perch="bl">
+          <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
+          <div class="empty hand-empty"><i data-icon="cam" class="x4"></i><b id="handEmptyWord">NO CAMERA</b><span id="handEmptyHint">Start vision to see your hand.</span></div>
+        </div>
+      </section>
+
+      <!-- 04 COACH: Riff's dock. The character is drawn by riff.js; nothing here is AI yet. -->
+      <section class="mod" id="coachDock" data-state="asleep" aria-labelledby="h-coach">
+        <h2 class="label" id="h-coach"><i data-icon="coach"></i><span class="n">04</span>COACH<span class="grow"></span><span class="label-r preview-tag">SCRIPTED PREVIEW</span></h2>
+        <div class="panel coach">
+          <div class="riff-socket" aria-hidden="true"></div>
+          <div class="coach-text"><b id="coachLine">COACH OFF</b><span id="coachSub">Not running. The rig plays without it.</span></div>
+        </div>
+      </section>
+
+      <!-- 05 MANUAL: the fallback. Pedal and hand come first. -->
+      <details class="mod manual">
+        <summary class="label"><span class="n">05</span>MANUAL<span class="grow"></span><span class="twist" aria-hidden="true"></span></summary>
         <div class="manual-body">
           <div class="row">
-            <button type="button" id="btnLoop">LOOP</button>
-            <button type="button" id="btnBypass">BYPASS</button>
+            <button type="button" class="key" id="btnLoop"><kbd>L</kbd>LOOP</button>
+            <button type="button" class="key" id="btnBypass"><kbd>B</kbd>BYPASS</button>
           </div>
-          <label>Filter <input type="range" id="slFilter" min="0" max="1" step="0.01" value="1"></label>
-          <label>Reverb <input type="range" id="slReverb" min="0" max="1" step="0.01" value="0"></label>
+          <label class="fader"><span>FILTER</span><output id="outFilter">--</output><input type="range" id="slFilter" min="0" max="1" step="0.01" value="1"></label>
+          <label class="fader"><span>REVERB</span><output id="outReverb">--</output><input type="range" id="slReverb" min="0" max="1" step="0.01" value="0"></label>
         </div>
       </details>
     </aside>
-  </section>
+  </main>
 
-  <footer class="diag" id="diag">waiting for engine…</footer>
+  <footer class="foot">
+    <span id="diag">No engine yet</span>
+    <span class="keys" aria-label="Keyboard shortcuts"><kbd>F</kbd>FULL<kbd>L</kbd>LOOP<kbd>B</kbd>BYPASS</span>
+  </footer>
 </div>
+<script src="brand.js"></script>
+<script>OmniBrand.mount();</script>
 <script src="app.js"></script>
 <script src="juice.js"></script>
+<script src="riff.js"></script>
 </body>
 </html>

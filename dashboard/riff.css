@@ -1,0 +1,45 @@
+/* Riff, the coach character (riff.js). The only round thing on screen: see BRAND_SPEC.md section 7. */
+
+.riff { position: fixed; left: 0; top: 0; z-index: 40; width: 72px; height: 72px; cursor: pointer; will-change: transform; -webkit-tap-highlight-color: transparent; }
+.riff-still { position: relative; z-index: auto; cursor: default; }
+.riff-sq { position: relative; width: 100%; height: 100%; transform-origin: 50% 62%; will-change: transform; }
+.riff svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+.riff-body path { fill: var(--accent); }
+.riff-ticks line { stroke: var(--accent-shade); stroke-width: 3; stroke-linecap: round; }
+.riff-white { fill: #FFFFFF; }
+.riff-pupil ellipse { fill: var(--bg); }
+.riff-glint { fill: #FFFFFF; }
+.riff-lid { fill: var(--accent); }
+.riff-arc { display: none; fill: none; stroke: var(--bg); stroke-width: 4; stroke-linecap: round; }
+
+/* pleased: eyes become two arches. asleep: two resting curves once the lids are down. */
+.riff[data-state="pleased"] .riff-eye > g { display: none; }
+.riff[data-state="pleased"] .riff-arc-happy { display: block; }
+.riff[data-state="asleep"][data-shut="true"] .riff-arc-sleep { display: block; }
+.riff[data-state="asleep"] .riff-body path { fill: var(--accent-shade); }
+.riff[data-state="asleep"] .riff-lid { fill: var(--accent-shade); }
+.riff[data-state="asleep"] .riff-ticks line { stroke: #B4318A; }
+
+/* the z is machine type: it steps */
+.riff-z { display: none; position: absolute; right: -6px; top: -10px; font: 16px/1 var(--font-pixel); color: var(--muted); animation: riffz 2.4s steps(4) infinite; }
+.riff[data-state="asleep"] .riff-z { display: block; }
+@keyframes riffz { 0% { transform: translate(0, 4px); opacity: 0; } 25% { opacity: 1; } 100% { transform: translate(8px, -12px); opacity: 0; } }
+
+/* what Riff says is printed by the machine: square, stepped */
+.riff-cue {
+  display: none; position: absolute; top: 50%; width: max-content; max-width: 320px; transform: translateY(-50%);
+  padding: 8px 12px; background: var(--bg); border: 2px solid var(--accent); box-shadow: 4px 4px 0 var(--shadow);
+  font: 600 var(--t3)/1.3 var(--font-mono); color: var(--text); cursor: default;
+}
+.riff[data-cue="true"] .riff-cue { display: block; animation: riffcue var(--bar) steps(3); }
+.riff[data-side="right"] .riff-cue { left: calc(100% + 16px); }
+.riff[data-side="left"] .riff-cue { right: calc(100% + 16px); }
+.riff-cue::before { content: ''; position: absolute; top: 50%; width: 8px; height: 8px; margin-top: -4px; background: var(--accent); }
+.riff[data-side="right"] .riff-cue::before { left: -10px; }
+.riff[data-side="left"] .riff-cue::before { right: -10px; }
+@keyframes riffcue { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .riff-z, .riff[data-cue="true"] .riff-cue { animation: none; }
+}
