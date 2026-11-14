@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OmniRiff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app" id="app" data-conn="offline" data-bypass="false" data-loop="idle" data-fx="idle">
+
+  <header class="bar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span class="brand-word">OMNIRIFF</span></div>
+    <span class="chip conn" id="conn" role="status">OFFLINE</span>
+    <span class="spacer"></span>
+    <span class="chip bypass-chip" id="bypassChip">BYPASS</span>
+    <div class="meter" aria-label="Input level">
+      <span class="meter-label">IN</span>
+      <div class="segs" id="inSegs"></div>
+      <span class="clip" id="inClip" aria-label="Clip indicator">CLIP</span>
+      <span class="db" id="inDb">–∞ dB</span>
+    </div>
+    <div class="meter small" aria-label="Output level">
+      <span class="meter-label">OUT</span>
+      <div class="segs" id="outSegs"></div>
+    </div>
+  </header>
+
+  <!-- top third: the looper -->
+  <section class="looper">
+    <div class="loop-state panel">
+      <div class="loop-word"><span class="loop-dot" aria-hidden="true"></span><span id="loopWord">READY</span></div>
+      <span class="loop-len" id="loopLen">no loop</span>
+      <span class="hint" id="loopHint">tap pedal to record</span>
+    </div>
+    <div class="wave panel">
+      <canvas id="wave" aria-label="Loop waveform"></canvas>
+      <span class="wave-note" id="waveNote"></span>
+    </div>
+  </section>
+
+  <!-- bottom two thirds: effects -->
+  <section class="fx">
+    <div class="fx-zone">
+      <div class="cards" id="cards">
+        <article class="card" id="card-filter" data-control="filter">
+          <header><h2>FILTER</h2><span class="tag">PINCH</span></header>
+          <div class="pct" id="pct-filter">100%</div>
+          <div class="blocks" id="blocks-filter"></div>
+          <span class="sub" id="sub-filter">open</span>
+        </article>
+        <article class="card" id="card-reverb" data-control="reverb">
+          <header><h2>REVERB</h2><span class="tag">PINCH</span></header>
+          <div class="pct" id="pct-reverb">0%</div>
+          <div class="blocks" id="blocks-reverb"></div>
+          <span class="sub" id="sub-reverb">dry</span>
+        </article>
+      </div>
+      <div class="engaged" id="engaged" aria-live="polite">
+        <div class="engaged-text">
+          <span class="engaged-name" id="engName">REVERB</span>
+          <span class="engaged-pct" id="engPct">0%</span>
+        </div>
+        <div class="tower" id="tower"></div>
+      </div>
+      <div class="bypass-stamp" aria-hidden="true">BYPASS</div>
+    </div>
+
+    <aside class="side">
+      <div class="panel status" id="st-vision">
+        <span class="status-dot" aria-hidden="true"></span>
+        <div><span class="status-name">HAND CAM</span><span class="status-val" id="visionVal">offline</span></div>
+      </div>
+      <div class="panel status" id="st-arduino">
+        <span class="status-dot" aria-hidden="true"></span>
+        <div><span class="status-name">PEDAL</span><span class="status-val" id="pedalVal">offline</span></div>
+      </div>
+      <details class="panel manual">
+        <summary>Manual controls</summary>
+        <div class="manual-body">
+          <div class="row">
+            <button type="button" id="btnLoop">LOOP</button>
+            <button type="button" id="btnBypass">BYPASS</button>
+          </div>
+          <label>Filter <input type="range" id="slFilter" min="0" max="1" step="0.01" value="1"></label>
+          <label>Reverb <input type="range" id="slReverb" min="0" max="1" step="0.01" value="0"></label>
+        </div>
+      </details>
+    </aside>
+  </section>
+
+  <footer class="diag" id="diag">waiting for engine…</footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
