@@ -85,3 +85,7 @@ The terminal announces `REPLAY CONTROL MODE`. WS state includes `replay:{label:"
 ### Serial read responsiveness
 
 The worker waits for one byte when idle, then drains bytes already queued, up to 256 per read. It does not ask pySerial to fill a 256-byte read before processing a short footswitch line. The idle timeout remains 100 ms for shutdown/reconnect handling; this is not an added per-message delay when a byte arrives. Partial and oversized lines still pass through the bounded NDJSON decoder. The [pySerial read contract](https://pyserial.readthedocs.io/en/latest/pyserial_api.html#serial.Serial.read) documents size/timeout behavior. Unit checks verify this read policy; actual pedal-to-audio latency on Windows is unmeasured.
+
+### Adapter startup diagnostics
+
+A missing COM port or occupied control/state port produces a terminal warning naming the failing adapter. Identical failures are suppressed while retries continue; a new failure after recovery is reported again. State still retains error counters and the last error for diagnosis. Audio and local keyboard bypass remain independent. If a port is busy, stop the other demo/engine process or choose unused `--udp-port`/`--ws-port` values and point the senders/dashboard at those ports. Do not kill unrelated processes automatically.

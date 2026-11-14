@@ -2,8 +2,12 @@
 from __future__ import annotations
 import asyncio
 import json
+import logging
 import re
 from .router import Router, MAX_MESSAGE, decode
+
+
+LOG = logging.getLogger('omniriff.adapters')
 
 
 class Datagram(asyncio.DatagramProtocol):
@@ -80,6 +84,7 @@ class Runtime:
         self.udp_port, self.ws_port = None if replay is not None else udp_port, ws_port
         self.serial_port, self.hz = serial_port, hz
         self.adapters = {key: dict(status='disabled', errors=0, last_error=None) for key in ('udp', 'serial', 'websocket')}
+        self.reported_errors = {}
         self.tasks = {}
         self.udp = None
         self.server = None
@@ -89,6 +94,13 @@ class Runtime:
         item = self.adapters[name]
         item['status'] = 'error'; item['errors'] += 1
         item['last_error'] = f'{type(exc).__name__}: {exc}'[:240]
+        if self.reported_errors.get(name) != item['last_error']:
+            LOG.warning('%s adapter failed (retrying independently of audio): %s', name, item['last_error'])
+            self.reported_errors[name] = item['last_error']
+
+    def running(self, name):
+        self.adapters[name]['status'] = 'running'
+        self.reported_errors.pop(name, None)
 
     def snapshot(self):
         state = dict(self.audio.snapshot(), version=1, timestamp_ms=self.router.clock(),
@@ -133,7 +145,7 @@ class Runtime:
         transport, _ = await loop.create_datagram_endpoint(lambda: Datagram(self), local_addr=('127.0.0.1', self.udp_port))
         self.udp = transport
         self.udp_port = transport.get_extra_info('sockname')[1]
-        self.adapters['udp']['status'] = 'running'
+        self.running('udp')
         try: await asyncio.Future()
         finally: transport.close(); self.udp = None
 
@@ -145,7 +157,7 @@ class Runtime:
                          max_size=MAX_MESSAGE, max_queue=8, close_timeout=1, compression=None) as server:
             self.server = server
             self.ws_port = server.sockets[0].getsockname()[1]
-            self.adapters['websocket']['status'] = 'running'
+            self.running('websocket')
             try: await asyncio.Future()
             finally: self.server = None
 
@@ -173,7 +185,7 @@ class Runtime:
         port = await asyncio.to_thread(serial.Serial, self.serial_port, 115200, timeout=0.1)
         self.serial = port
         decoder.connect()
-        self.adapters['serial']['status'] = 'running'
+        self.running('serial')
         try:
             while True:
                 data = await asyncio.to_thread(read_serial_chunk, port)
