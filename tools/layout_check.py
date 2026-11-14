@@ -2,6 +2,7 @@
 Loads the dashboard in headless Chrome at 1288x734 (a laptop window), 1280x720, 1440x900 and 1920x1080 and, every STEP s through a session, reports text that overflows its box, readouts that escape their panel, overlapping coach-column parts and page scroll. Needs Google Chrome (macOS path below) and websockets.
   python -m tools.sim run --demo --coach-sim --no-voice --http-port 19001 ...   then
   python tools/layout_check.py "http://127.0.0.1:19001/?ws=...&coachws=..." 34 1.5      # expect TOTAL 0
+"""
 import asyncio, json, subprocess, sys, time, urllib.request
 from websockets.asyncio.client import connect
 
