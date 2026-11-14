@@ -5,14 +5,14 @@ Owner: Angelo's Claude. The signal chain is guitar → Scarlett Solo → engine 
 ## Signal chain
 
 ```
-input ch → gain → (+ loop playback) → low-pass sweep → (+ reverb) → bypass crossfade → limiter → all output channels
+input ch → gain → (+ loop playback) → low-pass sweep → (+ reverb) → bypass crossfade → peak limiter → safety clip → all output channels
               └→ loop recorder (dry, post-gain)
 ```
 
 - **Low-pass sweep.** `filter` in [0,1] sets the cutoff exponentially from 120 Hz (0) to 18 kHz (1). The default is 1, fully open, so nothing changes until a control moves it. It's smoothed (40 ms) and updated every 32 samples.
 - **Loop.** The `loop` action steps idle → recording → playing → idle (cleared). It holds up to 30 s, with 5 ms fades at the seam. The loop records the dry signal and plays back through the filter, so a gesture shapes both the loop and live playing.
 - **Bypass.** The `bypass` action toggles a 10 ms crossfade to the dry signal. The loop keeps playing.
-- **Limiter.** A hard ceiling at −1 dBFS. Clipped samples are counted in the snapshot.
+- **Limiter.** A peak limiter holds the output just under −1 dBFS. Attack is instant per 32-sample sub-block, release is smooth (150 ms), and quiet signals pass untouched. A hard clip at −1 dBFS stays behind it as a safety net. `clipped_samples` counts only samples that reach that safety clip, so it should stay at 0. Loop + live + heavy reverb at +12 dB input gain produced 0 clipped samples in tests. Too-hot *input* still shows on `input_peak_dbfs` and the Solo's gain halo; fix that with the Solo's gain knob, not the limiter.
 - **Reverb.** `reverb` in [0,1] is the wet amount added after the filter. 0 adds nothing, and 1 is roughly as loud as the dry signal. It's a mono Freeverb-style design (8 combs, 4 allpasses, public-domain tunings scaled to the samplerate), with about a 3 s tail. It runs every block, so the tail doesn't cut off when the amount changes. Bypass skips it.
 
 ## Run it

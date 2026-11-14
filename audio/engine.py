@@ -21,7 +21,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .dsp import LowPass, Smoother, db_to_gain, filter_cutoff_hz, gain_to_db
+from .dsp import LowPass, PeakLimiter, Smoother, db_to_gain, filter_cutoff_hz, gain_to_db
 from .looper import Looper
 from .reverb import Reverb
 
@@ -39,6 +39,7 @@ class EngineConfig:
     filter_max_hz: float = 18000.0
     filter_q: float = 0.9
     output_ceiling_db: float = -1.0
+    limiter_release_ms: float = 150.0
     max_loop_seconds: float = 30.0
     loop_level: float = 1.0
     bypass_fade_ms: float = 10.0
@@ -82,6 +83,8 @@ class Engine:
         if c.subblock > self._reverb.min_delay:
             raise ValueError("subblock must not exceed the shortest reverb delay")
         self._rv = np.zeros(c.subblock, np.float32)
+        # Slightly under the ceiling so float rounding can't reach the safety clip.
+        self._limiter = PeakLimiter(self._ceiling * 0.999, sr, c.subblock, c.limiter_release_ms)
 
         self._bypass = False
         self._bmix = 0.0  # 0 = effected, 1 = dry
@@ -215,15 +218,17 @@ class Engine:
         mono *= r
         mono += wet
 
+        self._limiter.process(mono)
         out_peak = float(np.max(np.abs(mono))) if n else 0.0
-        if out_peak > self._ceiling:
+        if out_peak > self._ceiling:  # safety net; the limiter should keep this at zero
             self._clipped += int(np.count_nonzero(np.abs(mono) > self._ceiling))
             np.clip(mono, -self._ceiling, self._ceiling, out=mono)
+            out_peak = self._ceiling
         in_peak = float(np.max(np.abs(dry))) if n else 0.0
 
         d = c.meter_decay
         self._in_peak = max(in_peak, self._in_peak * d)
-        self._out_peak = max(min(out_peak, self._ceiling), self._out_peak * d)
+        self._out_peak = max(out_peak, self._out_peak * d)
         self._blocks += 1
 
         out[:n] = mono[:, None]
