@@ -30,6 +30,7 @@ def main(argv=None):
     p.add_argument('--latency', default='low')
     p.add_argument('--gain-db', type=float, default=0)
     p.add_argument('--no-keyboard', action='store_true')
+    p.add_argument('--take-dir', help='save each finished loop take as WAV + JSON for the practice coach (audio/takes.py)')
     p.add_argument('--check', action='store_true', help='preflight: packages, Focusrite, Arduino, free ports; opens no audio')
     a = p.parse_args(argv)
     if a.check:
@@ -47,6 +48,10 @@ def main(argv=None):
         logging.basicConfig(level=logging.WARNING, format='%(levelname)s %(message)s')
     from audio import Engine, EngineConfig
     audio = Engine(EngineConfig(samplerate=a.samplerate, input_gain_db=a.gain_db))
+    takes = None
+    if a.take_dir:
+        from audio.takes import TakeWriter
+        takes = TakeWriter(audio, a.take_dir).start()
     stop = threading.Event()
     errors = []
     if a.headless:
@@ -89,6 +94,10 @@ def main(argv=None):
         print(json.dumps(runtime.snapshot(), allow_nan=False))
     try: asyncio.run(run())
     except KeyboardInterrupt: stop.set(); worker.join(2)
+    finally:
+        if takes:
+            takes.stop()
+            print(f'saved {len(takes.saved)} take(s) to {takes.directory}', flush=True)
     if errors: raise SystemExit(f'audio failed: {errors[0]}')
     return 0
 

@@ -44,6 +44,10 @@ ASIO: the standard `sounddevice` wheel's PortAudio may not expose ASIO devices. 
 
 **Not yet verified:** this hasn't been run on the Windows laptop or the Solo. Round-trip latency is **unmeasured**. `stream.latency` (printed on exit) is PortAudio's reported buffer latency, not a measured guitar-to-ear time.
 
+## Take capture (practice coach input)
+
+`--take-dir DIR` on `python -m audio` or `python -m engine` saves each finished loop recording as `take-<time>-<n>.wav` (16-bit, mono, the **dry post-gain input** the looper recorded, with its 5 ms seam fades) plus `take-<time>-<n>.json`. The sidecar has version 1, take_id, wav, samplerate, frames, seconds, started_unix_ms and ended_unix_ms (wall clock, to line up with vision's hand data), source "loop", signal, input_gain_db, gate_open_db and seam_fade_ms. The audio callback only bumps counters. A background thread copies and writes, and skips (counts as missed) a take whose buffer was already overwritten by a new recording. Headless mode runs slower than real time, so headless takes are shorter than the wall-clock window.
+
 ## Interface for engine/
 
 ```python

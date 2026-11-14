@@ -1,6 +1,8 @@
 """Single-track looper: idle -> recording -> playing -> idle (cleared)."""
 from __future__ import annotations
 
+import time
+
 import numpy as np
 
 IDLE = "idle"
@@ -16,12 +18,21 @@ class Looper:
         self.length = 0
         self.pos = 0
         self.state = IDLE
+        # Take capture handshake (read by a non-audio thread; ints/floats only):
+        self.takes_finished = 0       # increments each time a recording completes
+        self.recordings_started = 0   # increments each time recording starts (buffer about to be overwritten)
+        self.take_started_ms = 0.0
+        self.take_ended_ms = 0.0
+        self.take_length = 0          # frames of the last finished take; kept after the loop is cleared
+        self.take_generation = 0      # recordings_started value that produced the last finished take
 
     def toggle(self) -> None:
         if self.state == IDLE:
             self.length = 0
             self.pos = 0
             self.state = RECORDING
+            self.recordings_started += 1
+            self.take_started_ms = time.time() * 1000.0
         elif self.state == RECORDING:
             self._finish_recording()
         else:
@@ -40,7 +51,11 @@ class Looper:
             self.buf[:fade] *= ramp
             self.buf[self.length - fade:self.length] *= ramp[::-1]
         self.pos = 0
+        self.take_ended_ms = time.time() * 1000.0
+        self.take_length = self.length
+        self.take_generation = self.recordings_started
         self.state = PLAYING
+        self.takes_finished += 1
 
     def process(self, dry: np.ndarray, out: np.ndarray) -> None:
         """Record from `dry` and/or write loop playback into `out` (same length)."""
