@@ -295,5 +295,33 @@ class ReverbTests(unittest.TestCase):
             Engine(EngineConfig(samplerate=SR, subblock=1024))
 
 
+class LevelCheckTests(unittest.TestCase):
+    def test_advice_bands(self):
+        from audio.levels import analyze_levels
+        cases = {
+            "silent": np.zeros(SR, np.float32),
+            "turn_up": sine(196, 1.0, amp=0.02),     # about -34 dBFS peak
+            "good": sine(196, 1.0, amp=0.25),        # about -12 dBFS peak
+            "turn_down": sine(196, 1.0, amp=0.7),    # about -3 dBFS peak
+        }
+        for expected, signal in cases.items():
+            with self.subTest(expected=expected):
+                self.assertEqual(analyze_levels(signal)["advice"], expected)
+
+    def test_clipping_is_reported_even_at_moderate_rms(self):
+        from audio.levels import analyze_levels
+        x = sine(196, 1.0, amp=0.1)
+        x[1000:1010] = 1.0
+        result = analyze_levels(x)
+        self.assertEqual(result["advice"], "turn_down")
+        self.assertEqual(result["clipped_samples"], 10)
+
+    def test_levels_in_dbfs(self):
+        from audio.levels import analyze_levels
+        r = analyze_levels(sine(1000, 1.0, amp=0.5))
+        self.assertAlmostEqual(r["peak_dbfs"], -6.0, delta=0.1)
+        self.assertAlmostEqual(r["rms_dbfs"], -9.0, delta=0.1)
+
+
 if __name__ == "__main__":
     unittest.main()

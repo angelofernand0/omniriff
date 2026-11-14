@@ -109,3 +109,11 @@ def play(engine: Engine, mono: np.ndarray, output_device: int | None, out_channe
                          dtype="float32", channels=out_channels, callback=callback):
         while not (done.is_set() or stop.is_set()):
             stop.wait(0.1)
+
+
+def record_input(input_device: int | None, input_channel: int, seconds: float, samplerate: int) -> np.ndarray:
+    """Record one input channel for `seconds` (blocking; never used in the audio callback)."""
+    frames = int(seconds * samplerate)
+    data = sd.rec(frames, samplerate=samplerate, channels=input_channel, dtype="float32", device=input_device)
+    sd.wait()
+    return data[:, input_channel - 1].copy()
