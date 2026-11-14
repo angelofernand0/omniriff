@@ -11,8 +11,9 @@ import numpy as np
 from vision.__main__ import main
 
 
-def run_trace(trace, guarded):
+def run_trace(trace, guarded, delays=None):
     clock=[0.]
+    frame_index=[0]
     frames=[]
     class Capture:
         def __init__(self,*args):self.index=0
@@ -21,13 +22,16 @@ def run_trace(trace, guarded):
         def read(self):
             if self.index>=len(trace):return False,None
             self.index+=1;clock[0]+=1/30
+            frame_index[0]=self.index-1
             return True,np.zeros((480,640,3),np.uint8)
         def release(self):pass
     class Detector:
         def __enter__(self):return self
         def __exit__(self,*args):pass
         def detect_for_video(self,*args):
-            y,pinch,confidence=trace[round(clock[0]*30)-1]
+            index=frame_index[0]
+            y,pinch,confidence=trace[index]
+            clock[0]+=(delays or {}).get(index,0.)
             if y is None:return NS(hand_landmarks=[],handedness=[])
             hand=[NS(x=.5,y=.5) for _ in range(21)]
             hand[0]=NS(x=.5,y=y);hand[5]=NS(x=.4,y=.5);hand[17]=NS(x=.6,y=.5)

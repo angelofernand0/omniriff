@@ -90,6 +90,7 @@ def main(argv=None):
     guard = StrumGuard(strum_zone=Rect(ymin=.55, xmin=0., ymax=1., xmax=1.)) if args.strum_guard else None
     guard_reason = 'off'
     suppressed_frames = 0
+    expired_frames = 0
     frame_number = count = 0
     last_stamp = -1
     pending = {}
@@ -145,8 +146,15 @@ def main(argv=None):
                     if not args.no_overlay:
                         for point in points:
                             cv2.circle(frame, (int(point.x * width), int(point.y * height)), 3, (0, 255, 0), -1)
+                fresh_frame = time.monotonic() - now <= .25
                 control_y, control_pinch = y, pinch
-                if guard:
+                if not fresh_frame:
+                    control_y = control_pinch = None
+                    expired_frames += 1
+                    guard_reason = 'expired_frame'
+                    if guard:
+                        guard.reset()
+                elif guard:
                     if y is not None and confidence >= controller.confidence:
                         suppressed, guard_reason = guard.update(points[0].x, y, now)
                         if suppressed:
@@ -156,15 +164,16 @@ def main(argv=None):
                         guard.reset()
                         guard_reason = 'no_hand' if y is None else 'low_confidence'
                 # Suppression disarms without discarding native relative pickup history.
-                event = controller.update(control_y, control_pinch, confidence, now, int(time.time() * 1000))
+                event = controller.update(control_y, control_pinch, confidence, now, captured_unix_ms)
                 if hand_view:
                     if hand_view.error and not hand_view_error_reported:
                         import sys
                         print('Hand view unavailable: ' + hand_view.error, file=sys.stderr)
                         hand_view_error_reported = True
-                    landmarks = [[min(1., max(0., p.x)), min(1., max(0., p.y))] for p in points] if y is not None else []
-                    hand_view.publish(dict(version=1, type='hand', timestamp_ms=int(time.time() * 1000),
-                        present=y is not None, engaged=controller.active, confidence=confidence,
+                    display_present = y is not None and fresh_frame
+                    landmarks = [[min(1., max(0., p.x)), min(1., max(0., p.y))] for p in points] if display_present else []
+                    hand_view.publish(dict(version=1, type='hand', timestamp_ms=captured_unix_ms,
+                        present=display_present, engaged=controller.active, confidence=confidence if fresh_frame else 0.,
                         control=None if scene else args.control, value=controller.value, landmarks=landmarks))
                 events = scene.events(event) if scene and event else ([event] if event else [])
                 frame_events = 0
@@ -231,13 +240,14 @@ def main(argv=None):
         if args.metrics_json:
             report = dict(metrics.snapshot(), input='recorded-video' if args.video else 'webcam',
                           transmission='dry-run' if args.dry_run else 'udp',
+                          expired_frames=expired_frames,
                           note='event rate is actual output during this run, not detector accuracy or audio latency')
             with args.metrics_json.open('x', encoding='utf-8') as file:
                 json.dump(report, file, indent=2)
                 file.write('\n')
         print(json.dumps(dict(events=count, elapsed_seconds=elapsed, average_hz=count / max(elapsed, .001),
                               minimum_interval_seconds=minimum_interval, strum_guard=args.strum_guard,
-                              suppressed_frames=suppressed_frames)), file=sys.stderr)
+                              suppressed_frames=suppressed_frames, expired_frames=expired_frames)), file=sys.stderr)
 
 
 if __name__ == '__main__':

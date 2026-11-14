@@ -84,6 +84,15 @@ Confirm each item in order before the judging window:
 
 ## Validation status
 
+Native capture disarms and emits no controls when frame processing takes more
+than 250 ms. A late open-hand frame cannot arm a later pinch; a fresh open/pinch
+cycle is required. Late hand-view snapshots clear instead of displaying an old
+pose as current. Control and hand-view timestamps retain frame-availability time
+so downstream stale gates can still reject transport delays. The exit summary
+and `--metrics-json` report `expired_frames`. Historical `--hand-log` rows keep
+their original timestamps, including late observations. This measures processing
+age; camera exposure/buffering and hardware audio latency are separate unknowns.
+
 For the coach, opt into timestamped **both-hand wrist logs** with `--hand-log
 runs/hands.jsonl --strum-hand Right` (or Left after verifying the camera labels).
 The [hand-log guide](HAND-LOG.md) explains take-window analysis, coverage gates,
