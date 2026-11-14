@@ -21,7 +21,7 @@ def state(loop, bypass=False):
 
 
 class ScriptedCoachTests(unittest.TestCase):
-    def run_session(self, approve_with):
+    def run_session(self):
         udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp.bind(('127.0.0.1', 0))
         udp.setblocking(False)
@@ -50,16 +50,11 @@ class ScriptedCoachTests(unittest.TestCase):
                 await until(lambda f: f['state'] == 'idle')
                 for s in ('idle', 'recording', 'playing'):          # take 1 by pedal
                     await q.put(state(s))
-                ask = await until(lambda f: f['awaiting_approval'] is not None)
-                if approve_with == 'dashboard':
-                    await ws.send(json.dumps({'version': 1, 'type': 'coach.approve', 'timestamp_ms': 1,
-                                              'approval_id': ask['awaiting_approval']['id']}))
-                    await until(lambda f: f['awaiting_approval'] is None)
-                    await q.put(state('recording', bypass=True))
-                else:
-                    await q.put(state('recording'))                  # the pedal is the "go"
-                    await until(lambda f: f['awaiting_approval'] is None)
-                    await q.put(state('recording', bypass=True))
+                # Riff goes to FX and takes the effects off while it says so: no approval to wait for
+                ask = await until(lambda f: f['target'] == 'bypass')
+                await until(lambda f: any(a['what'] == 'rig_control bypass' and a['status'] == 'done' for a in f['activity']))
+                await until(lambda f: f['state'] == 'listening')         # "tap the pedal when you're ready"
+                await q.put(state('recording', bypass=True))             # the drill take
                 await q.put(state('playing', bypass=True))
                 done = await until(lambda f: f['state'] == 'pleased')
             task.cancel()
@@ -83,10 +78,13 @@ class ScriptedCoachTests(unittest.TestCase):
             self.assertTrue(f['scripted'])                         # always labelled as scripted
         self.assertEqual(ask['drill_card']['skill'], 'keep-the-hand-moving')
         self.assertEqual(ask['target'], 'bypass')
+        self.assertIsNone(ask['awaiting_approval'])                  # SM review 4: no waiting for a yes
+        from tools.sim.coach import APPROVE_CUE
+        self.assertEqual(ask['cue'], APPROVE_CUE)
         self.assertTrue(done['before_after']['improved'])
         whos = {a['who'] for f in frames for a in f['activity']}
         self.assertEqual(whos, {'ears', 'eyes', 'coach'})          # the harness is visible
-        # bypass on after approval, back off after the drill; coach source, schema-valid envelopes
+        # bypass on while Riff says so, back off after the drill; coach source, schema-valid envelopes
         self.assertEqual([(e['source'], e['control']) for e in sent], [('coach', 'bypass'), ('coach', 'bypass')])
 
     def test_holds_a_line_until_it_is_said(self):
@@ -107,6 +105,8 @@ class ScriptedCoachTests(unittest.TestCase):
 
     def test_full_session_flow(self):
         # ROADMAP §1 "How you use it": take → drill 1 → drill 2 → wrap-up → PLAY → Y → new round
+        from tools.sim.coach import DRILL_CUE
+
         async def go():
             from websockets.asyncio.client import connect
             q: asyncio.Queue = asyncio.Queue()
@@ -129,8 +129,8 @@ class ScriptedCoachTests(unittest.TestCase):
                 take = lambda: [q.put_nowait(state(s)) for s in ('recording', 'playing')]  # noqa: E731
                 q.put_nowait(state('idle'))
                 take()
-                await until(lambda f: f['awaiting_approval'])                       # drill 1 proposed
-                take()                                                              # pedal = yes, drill 1 take
+                await until(lambda f: f['state'] == 'listening' and f['cue'] == DRILL_CUE)   # drill 1 set up
+                take()                                                              # drill 1 take
                 d2 = await until(lambda f: (f.get('session') or {}).get('drill', {}) and f['session']['drill']['step'] == 2)
                 take()                                                              # drill 2 take
                 play = await until(lambda f: (f.get('session') or {}).get('mode') == 'play')
@@ -178,7 +178,7 @@ class ScriptedCoachTests(unittest.TestCase):
                 got = await until(lambda f: (f.get('session') or {}).get('goal'))
                 for s in ('recording', 'playing'):
                     q.put_nowait(state(s))
-                diag = await until(lambda f: f['awaiting_approval'])
+                diag = await until(lambda f: f.get('drill_card'))
             task.cancel()
             return got, diag
 
@@ -189,11 +189,17 @@ class ScriptedCoachTests(unittest.TestCase):
         self.assertEqual(diag['session']['goal'], "I've been struggling with this G to C change")
         self.assertTrue(any('/journal/' in a['what'] for a in got['activity']))
 
-    def test_pedal_approves(self):
-        self.check(*self.run_session('pedal'))
+    def test_riff_takes_effects_off_as_it_says_so(self):
+        self.check(*self.run_session())
 
-    def test_dashboard_approves(self):
-        self.check(*self.run_session('dashboard'))
+    def test_riff_works_long_enough_to_watch(self):
+        # SM review 4: the deep agent's steps stay up long enough to read (diagnosis ~10 s at pace 1)
+        import inspect
+        from tools.sim.coach import ScriptedSession
+        src = inspect.getsource(ScriptedSession.diagnose)
+        waits = [float(x) for x in __import__('re').findall(r'self\.wait\(([\d.]+)\)', src)]
+        self.assertGreaterEqual(sum(waits), 9.0)
+        self.assertGreaterEqual(len(waits), 5)
 
 
 if __name__ == '__main__':

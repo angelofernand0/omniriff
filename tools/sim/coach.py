@@ -4,11 +4,12 @@
   python -m tools.sim run --demo --coach-sim # inside the simulator
 
 It serves ws://127.0.0.1:47803 like the real coach (coach/, piece D) and reacts to real events:
-the engine's loop state (the pedal) and the dashboard's coach.approve / coach.reject. The
+the engine's loop state (the pedal) and the dashboard's coach.say / coach.approve. The
 diagnosis, numbers and drill are SCRIPTED: every frame says scripted=true and the dashboard must
 label it. Two uses: building the dashboard before the coach brain exists, and a labelled fallback
-at the demo table if the live coach is unavailable. It may toggle bypass (source "coach") after
-the player approves, through the same validated control path as every other source.
+at the demo table if the live coach is unavailable. It toggles bypass (source "coach") while Riff
+says it is taking the effects off for the drill (SM review 4: no waiting for a yes), and gives
+the sound back after the drill take, through the same validated control path as every other source.
 """
 from __future__ import annotations
 
@@ -29,8 +30,8 @@ SCHEMA = Draft202012Validator(json.loads((ROOT / 'protocol/coach.schema.json').r
 SKILL = 'keep-the-hand-moving'
 # Riff's voice: a laid-back session player who teaches (BRAND_SPEC.md section 7, "Riff's voice").
 TAKE_CUE = "Ooh, close. Your strumming hand stops right at the G to C change. Keep it swinging, even if you miss a string."
-APPROVE_CUE = "Okay, I'll take the effects off so you can hear the timing. Tap the pedal when you're ready."
-DRILL_CUE = 'Just the change, four times, no rush. Let the hand keep moving.'
+APPROVE_CUE = "I'm taking the effects off so you can hear your timing."   # said while Riff presses FX (SM review 4)
+DRILL_CUE = "Just the change, four times, no rush. Tap the pedal when you're ready."
 PASS_CUE = "Nice. That gap went from almost half a second to about a tenth. Now play the whole pattern over your loop."
 WRAP_CUE = "That's the session. Your change went from half a second to about a tenth; next time let's push the tempo to 100."
 WRAP_SUMMARY = 'G to C change: longest gap 430 to 110 ms. Next: push the tempo to 100 bpm.'
@@ -38,7 +39,6 @@ NEXT_TIME = 'Push the tempo to 100 bpm'
 MARK_AT = (0.55, 0.66)   # where in the loop the scripted stall is, as a fraction of its length
 PLAY_CUE = "Free play. I'll stay quiet. Press Y for another round."
 ROUND_CUE = "Okay, what are we working on? Hold V and tell me, or just play it."
-DECLINE_CUE = "All good, I'll leave your sound as it is."
 IDLE_CUE = "Hey, I'm Riff. What are you working on? Hold V and tell me, then play it for me."
 GOAL_CUE = "Got it, that's what we'll work on. Tap the pedal, play it for me, tap again."
 NOTED_CUE = "Got it, I'll keep that in mind."
@@ -146,7 +146,7 @@ def _todos(done: int, extra: list | None = None) -> list:
 
 
 class ScriptedSession:
-    """take 1 → scripted diagnosis + drill proposal → approval → drill take → before/after → again."""
+    """take 1 → scripted diagnosis → Riff takes the effects off as it says so → drill take → before/after → again."""
 
     def __init__(self, feed: CoachFeed, sender: Sender | None, pace: float = 1.0, speak=None):
         self.feed, self.sender, self.pace, self.speak = feed, sender, pace, speak
@@ -161,7 +161,7 @@ class ScriptedSession:
         self.drill_step = 1
         self.mode = 'practice'
         self.tries = 0            # tries on the current drill (3 max)
-        self.awaiting_kind = None  # 'drill' (the pedal is yes) or 'again' (Y only: PLAY mode keeps the pedal for looping)
+        self.awaiting_kind = None  # 'again' (Y only: PLAY mode keeps the pedal for looping)
         self.last_time = None
         self.summary = None
         self.cue_at = 0.0
@@ -221,8 +221,6 @@ class ScriptedSession:
         if self.mode == 'play':                    # free play: the pedal is the looper; Riff stays quiet
             return
         if new == 'recording':
-            if self.awaiting and self.awaiting_kind == 'drill':   # the pedal is the player's "go"
-                await self.approve(via='pedal')
             self.takes += 1
             if self.phase in ('drill1', 'drill2'):
                 self.tries += 1
@@ -262,17 +260,8 @@ class ScriptedSession:
         if not self.awaiting or msg.get('approval_id') != self.awaiting:
             return
         kind = self.awaiting_kind
-        if msg['type'] == 'coach.approve':
-            if kind == 'again':
-                await self.new_round()
-            else:
-                await self.approve(via='dashboard')
-        elif kind == 'drill':
-            self.awaiting = self.awaiting_kind = None
-            self.phase = 'first'
-            await self.until_quiet()
-            self.say(state='idle', mood='neutral', target='player', cue=DECLINE_CUE, awaiting_approval=None,
-                     drill_card=None, activity=_act(self.feed, 'coach', 'rig_control bypass', 'failed'))
+        if msg['type'] == 'coach.approve' and kind == 'again':
+            await self.new_round()
 
     # ---- the session (ROADMAP §1 "How you use it") ------------------------
     def session(self, attempt: int | None = None) -> dict:
@@ -293,15 +282,21 @@ class ScriptedSession:
     async def diagnose(self) -> None:
         """Step 1-2: the first take sets the goal; drill 1 is proposed."""
         f = self.feed
+        # Riff's work is paced to be watched (SM review 4): ~10 s, longer than one loop playback
         self.say(state='thinking', mood='curious', target='loop', cue=None, before_after=None, drill_card=None,
                  todos=_todos(0), activity=[dict(who='ears', what='get_take_report', status='running')])
-        await self.wait(1.4)
+        await self.wait(2.6)
         self.say(target='hand', mood='concentrating', todos=_todos(1),
                  activity=_act(f, 'ears', 'get_take_report', 'done') + [dict(who='eyes', what='get_hand_report', status='running')])
-        await self.wait(1.6)
+        await self.wait(2.6)
+        self.say(target='loop', mood='curious',
+                 activity=_act(f, 'eyes', 'get_hand_report', 'done') + [dict(who='coach', what='read_file /memories/player.md', status='running')])
+        await self.wait(1.8)
         self.say(mood='aha', todos=_todos(2),
-                 activity=_act(f, 'eyes', 'get_hand_report', 'done') + [dict(who='coach', what=f'open skill {SKILL}', status='running')])
-        await self.wait(0.9)
+                 activity=_act(f, 'coach', 'read_file /memories/player.md', 'done') + [dict(who='coach', what=f'open skill {SKILL}', status='running')])
+        await self.wait(2.0)
+        self.say(activity=_act(f, 'coach', f'open skill {SKILL}', 'done') + [dict(who='coach', what='write_drill_card', status='running')])
+        await self.wait(1.2)
         card = dict(skill=SKILL, title='Keep the hand moving', passage='G to C change, bars 2-3', reps=4,
                     pass_rule='longest gap under 150 ms', rig=dict(bypass=True),
                     journal_path=f'/journal/scripted/{self.take_id()}.md')
@@ -311,29 +306,21 @@ class ScriptedSession:
         mark = dict(start_s=round(secs * MARK_AT[0], 2), end_s=round(secs * MARK_AT[1], 2), label='430 ms gap')
         self.say(state='pointing', mood='concerned', target='loop', mark=mark, cue=TAKE_CUE, drill_card=card, todos=_todos(3),
                  session=self.session(0),
-                 activity=_act(f, 'coach', f'open skill {SKILL}', 'done') + [dict(who='coach', what='write_drill_card', status='done')])
+                 activity=_act(f, 'coach', 'write_drill_card', 'done'))
         await self.until_quiet()
-        self.awaiting, self.awaiting_kind = f'a{self.takes}', 'drill'
-        self.say(state='pointing', mood='encouraging', target='bypass', cue=APPROVE_CUE, mark=None,
-                 awaiting_approval=dict(id=self.awaiting, summary='Effects off so you hear your timing dry.',
-                                        actions=[dict(control='bypass')], expires_unix_ms=now_ms() + 60_000),
-                 activity=_act(f, 'coach', 'rig_control bypass', 'waiting'))
-        asyncio.ensure_future(self._expire(self.awaiting))
+        await self.set_up_drill()
 
-    async def _expire(self, approval_id: str) -> None:
-        await asyncio.sleep(60)                   # real time, never paced: the player needs the full minute
-        if self.awaiting == approval_id and self.awaiting_kind == 'drill':
-            await self.on_decision(dict(type='coach.reject', approval_id=approval_id))
-
-    async def approve(self, via: str) -> None:
-        """Step 3: the player said yes (pedal or Y). Set up the rig, then the drill take."""
-        self.awaiting = self.awaiting_kind = None
+    async def set_up_drill(self) -> None:
+        """Step 3 (SM review 4): Riff takes the effects off while it says so; no waiting for a yes.
+        The next pedal tap records the drill take."""
         self.phase = 'drill1'
+        self.say(state='pointing', mood='encouraging', target='bypass', cue=APPROVE_CUE, mark=None, awaiting_approval=None,
+                 todos=_todos(3), activity=_act(self.feed, 'coach', 'rig_control bypass', 'running'))
+        await self.wait(1.4)                       # Riff walks over; its finger lands on FX mid-line
         if not self.bypass and self.sender is not None:
             self.sender.send('bypass')
             self.we_bypassed = True
-            await self.wait(0.7)                   # let the player see Riff press it before moving on
-        self.say(awaiting_approval=None, todos=_todos(4), activity=_act(self.feed, 'coach', 'rig_control bypass', 'done'),
+        self.say(todos=_todos(4), activity=_act(self.feed, 'coach', 'rig_control bypass', 'done'),
                  session=self.session(max(self.tries, 1)))
         await self.until_quiet()                   # never walk away mid-sentence
         self.say(state='listening', mood='concentrating', target='loop', cue=DRILL_CUE)
@@ -342,8 +329,10 @@ class ScriptedSession:
         await self.until_quiet()
         self.say(state='thinking', mood='curious', target='loop', cue=None,
                  todos=_todos(4, [dict(text=label, status='in_progress')]),
-                 activity=_act(self.feed, 'coach', 'compare_takes', 'running'))
-        await self.wait(1.5)
+                 activity=_act(self.feed, 'ears', 'get_take_report', 'running'))
+        await self.wait(2.4)
+        self.say(activity=_act(self.feed, 'ears', 'get_take_report', 'done') + [dict(who='coach', what='compare_takes', status='running')])
+        await self.wait(2.2)
         if self.we_bypassed and self.sender is not None:
             self.sender.send('bypass')             # give the player their sound back
             self.we_bypassed = False
@@ -412,7 +401,7 @@ async def run_scripted_coach(port: int = 47803, engine_ws: str = 'ws://127.0.0.1
         session.speak = lambda text: asyncio.ensure_future(_speak(text))
 
         async def _prewarm() -> None:                # render every scripted line once, so no line waits on the network
-            for name in ('IDLE_CUE', 'GOAL_CUE', 'NOTED_CUE', 'TAKE_CUE', 'APPROVE_CUE', 'DRILL_CUE', 'PASS_CUE', 'WRAP_CUE', 'PLAY_CUE', 'ROUND_CUE', 'DECLINE_CUE'):
+            for name in ('IDLE_CUE', 'GOAL_CUE', 'NOTED_CUE', 'TAKE_CUE', 'APPROVE_CUE', 'DRILL_CUE', 'PASS_CUE', 'WRAP_CUE', 'PLAY_CUE', 'ROUND_CUE'):
                 try:
                     await asyncio.to_thread(voice.synthesize, globals()[name])
                 except Exception:
