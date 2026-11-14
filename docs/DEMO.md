@@ -52,10 +52,10 @@ Keep the two-minute story to **one gesture (pinch) + one pedal + the coach**. Sc
 | Pedal | Keyboard `l`/`b` or dashboard buttons | Same point, about the pedal |
 | Dropouts or crackle | Restart the engine with `--blocksize 256` | — |
 | Solo / guitar dead | `python -m engine --replay engine/demo-controls.jsonl` (labeled REPLAY on the dashboard), or `python -m tools.virtual_guitar --demo --play` (labeled synthesis) | **Always say it's a replay or simulation.** |
-| Everything | Play the labeled backup video **(pending B16)** | Same |
+| Everything | Play the labeled backup video, recorded beforehand with `python -m tools.backup_video` (needs `pip install playwright imageio-ffmpeg`; see tools/backup_video/README.md; SIM GUITAR / REPLAY / NO HARDWARE stay on screen) | Same |
 
 ## 5. Before Devpost (by 7 AM Sunday)
 - [ ] Measured latency + xruns recorded on issue #1 and in DEVPOST.md
 - [ ] A track's requirement isn't working → remove that track (SUBMISSION.md rule)
-- [ ] Video ≤ 2 min uploaded (real hardware preferred; label any simulation)
+- [ ] Video ≤ 2 min uploaded: record the real rig after 8 PM if it works; otherwise the labeled backup from `python -m tools.backup_video`
 - [ ] All four Discord usernames on the submission

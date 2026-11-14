@@ -31,7 +31,7 @@ This is the priority queue for when an agent finishes its current task. Angelo s
 |---|---|---|---|
 | B14 | coach/ — SM (Claude/Codex) | **Deepagents coach is approved.** Post the final split and contracts from docs/COACH.md §7 on issue #1, then build against tools/sim + virtual_guitar. The instrument never waits on it, and the coach is a separate process. Pieces that touch audio/ (take capture) or engine/ (a coach control source) are requested from those owners on the board, not edited directly. | Split posted; first coach PR. |
 | ~~B15~~ ✅ #38 | docs/ — Angelo's Claude | Fold **track angles** into DEVPOST.md: a 20-second pitch each for Physical AI, Hardware, deepagents and Amazon Practical AI (accessibility use case + target user), plus the Amazon 'basic documentation' requirement (link the READMEs). | Merged. |
-| B16 | tools/ — SM's Codex | **Labeled backup video plan**: a script that records the dashboard + processed audio from the virtual-guitar or replay demo into a clip, clearly marked SIMULATED, as a fallback for the optional ≤2-min Devpost video. The real hardware video gets recorded after 8 PM. | Script + README; sample clip not committed. |
+| ~~B16~~ ✅ #62 | tools/ — SM's Codex | **Labeled backup video plan**: a script that records the dashboard + processed audio from the virtual-guitar or replay demo into a clip, clearly marked SIMULATED, as a fallback for the optional ≤2-min Devpost video. The real hardware video gets recorded after 8 PM. | Script + README; sample clip not committed. |
 
 ## Next, if the above are done
 - B10 (engine/): a structured JSONL session log (state snapshots + accepted controls, opt-in) so a demo run can be replayed or analyzed later. No audio samples.
