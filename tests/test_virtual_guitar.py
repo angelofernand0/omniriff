@@ -10,12 +10,25 @@ from tools.virtual_guitar.render import (
     render_virtual_guitar,
     synthetic_signal,
 )
+from tools.virtual_guitar.guitar import fret_frequency, pluck_string
 
 ROOT = Path(__file__).resolve().parents[1]
 SR = 16000
 
 
 class VirtualGuitarTests(unittest.TestCase):
+    def test_physical_string_is_tuned_near_requested_note(self):
+        rng = np.random.default_rng(3)
+        requested = fret_frequency(0, 0)  # low E
+        tone = pluck_string(requested, 1.0, SR, rng)
+        # Ignore the pick attack, then find the strongest bin near the expected fundamental.
+        segment = tone[SR // 10:] * np.hanning(len(tone) - SR // 10)
+        spectrum = np.abs(np.fft.rfft(segment))
+        freqs = np.fft.rfftfreq(len(segment), 1 / SR)
+        band = (freqs > requested * 0.75) & (freqs < requested * 1.25)
+        detected = freqs[band][np.argmax(spectrum[band])]
+        self.assertAlmostEqual(detected, requested, delta=requested * 0.03)
+
     def test_synthetic_render_is_deterministic_finite_and_labeled(self):
         signal = synthetic_signal(0.5, SR, seed=11)
         a, report_a = render_virtual_guitar(signal, SR, tail_seconds=0.1, blocksize=128)

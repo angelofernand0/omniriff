@@ -8,9 +8,9 @@ from pathlib import Path
 import numpy as np
 
 from audio import Engine, EngineConfig
-from audio.fileio import make_test_signal
 from engine.replay import Replay
-from tools.sim.synth import SyntheticGuitar
+
+from .guitar import performance
 
 
 def load_control_script(path: str | Path) -> list[tuple[int, dict]]:
@@ -20,28 +20,9 @@ def load_control_script(path: str | Path) -> list[tuple[int, dict]]:
 
 def synthetic_signal(seconds: float, samplerate: int, bpm: float = 92.0, seed: int = 7,
                      level: float = 0.28, blocksize: int = 256) -> np.ndarray:
-    """Return deterministic synthetic guitar-like mono audio.
-
-    ``SyntheticGuitar`` provides note movement and decays. A quieter sawtooth
-    chord adds pick-like upper harmonics so low-pass tuning is meaningful; the
-    live simulator's three-harmonic plucks alone contain almost no energy above
-    3 kHz.
-    """
-    frames = max(0, int(round(seconds * samplerate)))
-    guitar = SyntheticGuitar(samplerate, bpm=bpm, seed=seed, level=level)
-    chunks = []
-    remaining = frames
-    while remaining:
-        n = min(blocksize, remaining)
-        chunks.append(guitar.block(n))
-        remaining -= n
-    plucks = np.concatenate(chunks) if chunks else np.zeros(0, np.float32)
-    if not frames:
-        return plucks
-    bright = make_test_signal(seconds, samplerate)[:frames]
-    mixed = plucks * 0.82 + bright * level
-    np.clip(mixed, -0.98, 0.98, out=mixed)
-    return mixed.astype(np.float32)
+    """Return the deterministic six-string physical-model performance."""
+    del blocksize  # retained for API compatibility with the first release
+    return performance(seconds, samplerate, bpm=bpm, seed=seed, level=level)
 
 
 def _db(value: float) -> float:
