@@ -15,7 +15,7 @@ Emits schema-compliant v1 parameter envelopes strictly within 10 pairs/s (20 Hz)
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import math
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -37,10 +37,10 @@ class CanvasConfig:
     ymax: float = 0.50  # Above guitar strum zone
 
     # Corner Presets
-    top_left: CornerPreset = CornerPreset('Cosmic Shimmer', 0.95, 0.85)
-    top_right: CornerPreset = CornerPreset('Crisp Bite', 0.90, 0.10)
-    bottom_left: CornerPreset = CornerPreset('Submerged Wash', 0.25, 0.75)
-    bottom_right: CornerPreset = CornerPreset('Warm Acoustic', 0.35, 0.05)
+    top_left: CornerPreset = field(default_factory=lambda: CornerPreset('Cosmic Shimmer', 0.95, 0.85))
+    top_right: CornerPreset = field(default_factory=lambda: CornerPreset('Crisp Bite', 0.90, 0.10))
+    bottom_left: CornerPreset = field(default_factory=lambda: CornerPreset('Submerged Wash', 0.25, 0.75))
+    bottom_right: CornerPreset = field(default_factory=lambda: CornerPreset('Warm Acoustic', 0.35, 0.05))
 
     pair_rate: float = 10.0   # 10 pairs/sec = 20 events/sec
     tau: float = 0.10         # Smoothing time constant
