@@ -69,6 +69,29 @@ class GateTests(unittest.TestCase):
         self.assertEqual(self.router.sources['vision']['session'], 2)
         self.assertFalse(self.send(event(11, timestamp_ms=self.now-10)))
 
+    def test_restart_recovers_when_sequence_zero_was_lost(self):
+        self.assertTrue(self.send(event(200)))
+        self.now += 100
+        self.assertFalse(self.send(event(0, timestamp_ms=self.now)))
+        self.now += 1001
+        self.assertTrue(self.send(event(21, timestamp_ms=self.now)))
+        self.assertEqual(self.router.sources['vision']['session'], 2)
+        # Retrying the same action identity after an idle period isn't a restart.
+        self.now += 1001
+        self.assertFalse(self.send(event(21, timestamp_ms=self.now)))
+
+    def test_equal_zero_action_is_not_replayed_after_idle(self):
+        action = dict(version=1, source='dashboard', seq=0, timestamp_ms=self.now,
+                      type='action', control='bypass')
+        self.assertTrue(self.send(action))
+        process(self.audio)
+        self.assertTrue(self.audio.snapshot()['bypass'])
+        self.now += 1100
+        self.assertFalse(self.send(dict(action, timestamp_ms=self.now)))
+        process(self.audio)
+        self.assertTrue(self.audio.snapshot()['bypass'])
+        self.assertEqual(self.router.counts['accepted'], 1)
+
     def test_serial_partial_lines_duplicate_reset_and_reconnect(self):
         decoder = SerialDecoder(self.router)
         decoder.connect()
@@ -139,6 +162,45 @@ class NetworkTests(unittest.IsolatedAsyncioTestCase):
                 self.assertGreater(self.audio.snapshot()['blocks'], before)
         finally:
             stop.set(); worker.join(1)
+
+    async def test_serial_device_failure_reopens_with_new_session(self):
+        import time
+        from unittest.mock import patch
+        ports = []
+        class FakePort:
+            def __init__(self, *args, **kwargs):
+                self.number = len(ports)
+                self.reads = 0
+                self.closed = False
+                ports.append(self)
+            def read(self, size):
+                self.reads += 1
+                if self.reads == 1:
+                    return b'{"seq":0,"type":"action","control":"bypass"}\n'
+                if self.number == 0: raise OSError('simulated USB disconnect')
+                time.sleep(0.01)
+                return b''
+            def close(self): self.closed = True
+        self.runtime.serial_port = 'FAKE'
+        with patch('serial.Serial', FakePort):
+            task = asyncio.create_task(self.runtime.supervise('serial', self.runtime.run_serial))
+            self.runtime.tasks['serial'] = task
+            try:
+                for _ in range(250):
+                    process(self.audio)
+                    if self.runtime.router.counts['accepted'] >= 2: break
+                    await asyncio.sleep(0.01)
+                self.assertGreaterEqual(len(ports), 2)
+                self.assertTrue(ports[0].closed)
+                self.assertEqual(self.runtime.router.counts['accepted'], 2)
+                self.assertEqual(self.runtime.router.sources['arduino']['session'], 2)
+                process(self.audio)
+                self.assertFalse(self.audio.snapshot()['bypass'])
+                self.assertEqual(self.runtime.adapters['serial']['status'], 'running')
+            finally:
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+        self.assertTrue(all(port.closed for port in ports))
 
     async def test_missing_serial_does_not_stop_other_adapters(self):
         from websockets.asyncio.client import connect

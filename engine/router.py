@@ -69,7 +69,10 @@ class Router:
         previous = self.last.get(source)
         if previous:
             seq, stamp, received = previous
-            restarted = event['seq'] == 0 and tick - received >= self.restart_ms and event['timestamp_ms'] > stamp
+            # A restarted producer may have already emitted/lost seq 0 while
+            # we were inside the quiet interval. Recover on a strict decrease;
+            # equal identities are duplicates even after idle.
+            restarted = event['seq'] < seq and tick - received >= self.restart_ms and event['timestamp_ms'] > stamp
             if restarted:
                 health['session'] += 1
             elif event['seq'] <= seq or event['timestamp_ms'] < stamp:
