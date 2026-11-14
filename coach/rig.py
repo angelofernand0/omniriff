@@ -14,6 +14,7 @@ from jsonschema import Draft202012Validator
 
 CONTROL_SCHEMA = json.loads((Path(__file__).resolve().parents[1] / "protocol" / "control.schema.json").read_text())
 CONTROL_VALIDATOR = Draft202012Validator(CONTROL_SCHEMA)
+STATE_MAX_AGE_S = 2.0
 
 
 def control_message(control: str, value: float | None, seq: int, timestamp_ms: int) -> dict:
@@ -65,7 +66,9 @@ class RigStateReader:
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
         self._latest: dict | None = None
+        self._received_at = 0.0
         self._recording_counter = 0
+        self._pending_actions: dict[str, object] = {}
 
     def observe(self, state: dict) -> None:
         """Accept one engine frame; also useful for a no-network runner test."""
@@ -79,10 +82,34 @@ class RigStateReader:
             if current == "recording" and old != "recording":
                 self._recording_counter += 1
             self._latest = copy.deepcopy(state)
+            self._received_at = time.monotonic()
+            for control, desired in tuple(self._pending_actions.items()):
+                actual = state.get("bypass") if control == "bypass" else current
+                if actual == desired:
+                    del self._pending_actions[control]
 
     def snapshot(self) -> dict:
         with self._lock:
-            return copy.deepcopy(self._latest) if self._latest else {"available": False}
+            if self._latest is None or time.monotonic() - self._received_at > STATE_MAX_AGE_S:
+                return {"available": False}
+            return copy.deepcopy(self._latest)
+
+    def action_pending(self, control: str) -> bool:
+        with self._lock:
+            return control in self._pending_actions
+
+    def mark_action_pending(self, control: str, desired: object) -> None:
+        with self._lock:
+            current = self._latest.get("bypass") if control == "bypass" and self._latest else None
+            if control == "loop" and self._latest:
+                loop = self._latest.get("loop")
+                current = loop.get("state") if isinstance(loop, dict) else None
+            if current != desired:
+                self._pending_actions[control] = desired
+
+    def mark_disconnected(self) -> None:
+        with self._lock:
+            self._received_at = 0.0
 
     def recording_counter(self) -> int:
         with self._lock:
@@ -114,6 +141,8 @@ class RigStateReader:
                                     pass
                 except (OSError, TimeoutError, ConnectionClosed):
                     self._stop.wait(0.5)
+                finally:
+                    self.mark_disconnected()
 
         self._thread = threading.Thread(target=run, name="omniriff-coach-rig-state", daemon=True)
         self._thread.start()
@@ -124,3 +153,4 @@ class RigStateReader:
         if self._thread is not None:
             self._thread.join(3)
             self._thread = None
+        self.mark_disconnected()

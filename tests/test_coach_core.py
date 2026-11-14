@@ -64,6 +64,16 @@ class CoachRigTests(unittest.TestCase):
         reader.observe({"loop": {"state": "recording"}})
         self.assertEqual(reader.recording_counter(), 2)
 
+    def test_stale_state_is_unavailable(self):
+        reader = RigStateReader()
+        with patch("coach.rig.time.monotonic", return_value=100.0):
+            reader.observe({"loop": {"state": "idle"}, "bypass": False})
+        with patch("coach.rig.time.monotonic", return_value=103.0):
+            self.assertEqual(reader.snapshot(), {"available": False})
+        reader.observe({"loop": {"state": "idle"}, "bypass": False})
+        reader.mark_disconnected()
+        self.assertEqual(reader.snapshot(), {"available": False})
+
 
 class CoachMemoryTests(unittest.TestCase):
     def test_fixture_profile_is_separate_and_preserves_its_own_history(self):
@@ -99,7 +109,7 @@ class CoachToolTests(unittest.TestCase):
                 directory = workspace / "takes" / take_id
                 directory.mkdir(parents=True)
                 (directory / "take.json").write_text(json.dumps({
-                    "take_id": take_id, "intervals_ms": [500, 500, gap],
+                    "take_id": take_id, "judgeable": True, "intervals_ms": [500, 500, gap],
                     "tempo_stability": 0.9, "findings": [{"type": "hesitation"}] * hes,
                 }))
             self.assertEqual(tools.get_hand_report("before"), {"available": False, "take_id": "before"})
@@ -126,8 +136,90 @@ class CoachToolTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 tools.get_take_report("../private")
 
+    def test_short_or_legacy_reports_never_publish_a_comparison(self):
+        with tempfile.TemporaryDirectory() as folder:
+            workspace = Path(folder)
+            feed = CoachFeed("session-test")
+            tools = CoachTools(workspace, feed, RigClient(fixture_mode=True), RigStateReader())
+            for take_id, judgeable in (("before", True), ("short", False), ("legacy", None)):
+                directory = workspace / "takes" / take_id
+                directory.mkdir(parents=True)
+                report = {"take_id": take_id, "intervals_ms": [], "findings": []}
+                if judgeable is not None:
+                    report["judgeable"] = judgeable
+                (directory / "take.json").write_text(json.dumps(report))
+            for after_id in ("short", "legacy"):
+                with self.assertRaisesRegex(ValueError, "enough strums"):
+                    tools.compare_takes("before", after_id)
+            self.assertIsNone(feed.frame["before_after"])
+
+    def test_toggle_tools_require_fresh_state_and_do_not_reverse_or_repeat(self):
+        with tempfile.TemporaryDirectory() as folder:
+            feed = CoachFeed("session-test")
+            state = RigStateReader()
+            rig = RigClient(fixture_mode=True)
+            tools = CoachTools(Path(folder), feed, rig, state)
+            self.assertIn("unavailable", tools.rig_control("bypass"))
+            self.assertEqual(rig.sent, [])
+            state.observe({"loop": {"state": "idle"}, "bypass": False})
+            self.assertIn("Fixture logged", tools.rig_control("bypass"))
+            self.assertIn("confirmation", tools.rig_control("bypass"))
+            self.assertEqual(len(rig.sent), 1)
+            state.observe({"loop": {"state": "recording"}, "bypass": True})
+            self.assertIn("already active", tools.rig_control("bypass"))
+            self.assertIn("already active", tools.rig_control("loop"))
+            state.observe({"loop": {"state": "playing"}, "bypass": True})
+            self.assertIn("not idle", tools.rig_control("loop"))
+            state.observe({"loop": {"state": "idle"}, "bypass": True})
+            self.assertIn("Fixture logged", tools.rig_control("loop"))
+            self.assertIn("confirmation", tools.rig_control("loop"))
+            self.assertEqual([event["control"] for event in rig.sent], ["bypass", "loop"])
+
 
 class CoachRunnerTests(unittest.TestCase):
+    def test_duplicate_toggle_requests_cannot_share_one_approval(self):
+        result = {"__interrupt__": [SimpleNamespace(value={"action_requests": [
+            {"name": "rig_control", "args": {"control": "bypass"}},
+            {"name": "rig_control", "args": {"control": "bypass"}},
+        ]})]}
+        with self.assertRaisesRegex(ValueError, "duplicate toggle"):
+            _pending_actions(result)
+
+    def test_unjudgeable_take_skips_agent_and_preserves_valid_baseline(self):
+        from tools.ears.analyze import TakeReport
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            feed = CoachFeed("session-test")
+            state = RigStateReader()
+            service = CoachTools(root / "workspace", feed, RigClient(fixture_mode=True), state)
+            runner = CoachRunner(None, service, feed, state, BudgetGuard(root / "usage.jsonl"),
+                                 fixture_mode=True)
+            reports = [
+                TakeReport(take_id="before", judgeable=True, strum_count=4,
+                           intervals_ms=[500, 500, 900], findings=[{"type": "hesitation"}]),
+                TakeReport(take_id="short", judgeable=False, strum_count=0,
+                           summary="Only 0 strums detected: too few to judge timing."),
+                TakeReport(take_id="after", judgeable=True, strum_count=4,
+                           intervals_ms=[500, 500, 620]),
+            ]
+            with patch("tools.ears.analyze.analyze_take", side_effect=reports), \
+                 patch.object(runner, "_invoke", return_value={}) as invoke:
+                for take_id in ("before", "short", "after"):
+                    wav = root / f"{take_id}.wav"
+                    sidecar = wav.with_suffix(".json")
+                    sidecar.write_text(json.dumps({"take_id": take_id, "started_unix_ms": 0,
+                                                   "ended_unix_ms": 1000}))
+                    result = runner.process_take(wav, sidecar)
+                    if take_id == "short":
+                        self.assertEqual(result["skipped"], "unjudgeable")
+                        self.assertEqual(runner.previous_take_id, "before")
+                        self.assertIsNone(feed.frame["before_after"])
+            self.assertEqual(invoke.call_count, 2)
+            self.assertEqual(feed.frame["before_after"]["worst_gap_ms"], [900.0, 620.0])
+            self.assertEqual(runner.previous_take_id, "after")
+            self.assertNotIn("short", (root / "workspace" / "memories" / "player.md").read_text())
+
     @unittest.skipUnless(find_spec("langchain_core"), "coach/requirements.txt is optional in core CI")
     def test_synthetic_take_pipeline_with_fake_agent_and_no_engine(self):
         from langgraph.types import Command
@@ -139,6 +231,7 @@ class CoachRunnerTests(unittest.TestCase):
             generate(takes)
             feed = CoachFeed("session-test")
             state = RigStateReader()
+            state.observe({"loop": {"state": "idle"}, "bypass": False})
             rig = RigClient(fixture_mode=True, port=1)
             service = CoachTools(root / "workspace", feed, rig, state)
 
@@ -161,7 +254,7 @@ class CoachRunnerTests(unittest.TestCase):
                                  fixture_mode=True, auto_approve_fixtures=True)
             runner.process_take(takes / "coach-before.wav")
             runner.process_take(takes / "coach-after.wav")
-            self.assertEqual(len(rig.sent), 2)
+            self.assertEqual(len(rig.sent), 1)
             self.assertEqual(feed.frame["before_after"]["worst_gap_ms"], [900.0, 620.0])
             self.assertTrue(feed.frame["before_after"]["improved"])
             self.assertEqual(feed.frame["state"], "pleased")
