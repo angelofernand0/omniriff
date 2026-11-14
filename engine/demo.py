@@ -66,12 +66,19 @@ def vision_command(vision_args: list[str], engine_args: list[str]) -> list[str]:
 
     If --vision-args already names --port, it is kept, with a warning if it
     differs from the engine's (then vision would feed some other engine).
+    Without --model it adds the documented models/hand_landmarker.task.
     """
     udp = _udp_port(engine_args)
     cmd = [sys.executable, "-m", "vision", *vision_args]
     given = argparse.ArgumentParser(add_help=False)
     given.add_argument("--port", type=int)
-    explicit = given.parse_known_args(vision_args)[0].port
+    given.add_argument("--model")
+    known = given.parse_known_args(vision_args)[0]
+    explicit = known.port
+    if known.model is None:
+        # vision requires --model; default to the documented path so the
+        # `engine.demo --vision` shorthand works (vision reports a missing file).
+        cmd += ["--model", DEFAULT_MODEL]
     if explicit is None:
         cmd += ["--port", str(udp)]
     elif explicit != udp:
@@ -81,6 +88,7 @@ def vision_command(vision_args: list[str], engine_args: list[str]) -> list[str]:
 
 
 DEFAULT_TAKE_DIR = "runs/takes"
+DEFAULT_MODEL = "models/hand_landmarker.task"  # docs/DEMO.md vision setup
 
 
 def _take_dir(engine_args: list[str]) -> str | None:

@@ -29,16 +29,16 @@ Run only one demo at a time. Download the hand model as described in §2 before 
    Try `--blocksize 64` and `--exclusive`. Keep the lowest setting with 0 xruns. **Write down median ± spread**; these are the only latency numbers we quote.
 
 ## 2. Full rig
-Vision setup, once: download the MediaPipe Hand Landmarker model to `models/hand_landmarker.task` (link in [vision/README.md](../vision/README.md#setup); `models/` is git-ignored). Then calibrate at the table: `python -m vision --model models/hand_landmarker.task --calibrate` (see vision/README's demo-table section). Add `--scene bloom` for Scene Morph or `--setlist vision/setlist-demo.json` for scene switching.
+Vision setup, once: download the MediaPipe Hand Landmarker model to `models/hand_landmarker.task` (link in [vision/README.md](../vision/README.md#setup); `models/` is git-ignored). Then calibrate at the table: `python -m vision --model models/hand_landmarker.task --calibrate` (see vision/README's demo-table section). It saves `vision-calibration.json`, which every later `python -m vision` run loads by default; don't pass a different `--calibration` name, because a missing file silently falls back to defaults. Add `--scene bloom` for Scene Morph or `--setlist vision/setlist-demo.json` for scene switching.
 
 ```bash
 # one command (dashboard + vision + engine); use the COM port engine --check printed
-python -m engine.demo --open --vision --vision-args "--model models/hand_landmarker.task --calibration calibration.json" \
+python -m engine.demo --open --vision --vision-args "--model models/hand_landmarker.task" \
   --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2 --serial-port COM3
 # or separately:
 python -m engine --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2 --serial-port COM3
 python -m dashboard            # → http://127.0.0.1:8080
-python -m vision --model models/hand_landmarker.task --calibration calibration.json   # gesture control + hand view (ws 47802)
+python -m vision --model models/hand_landmarker.task   # gesture control + hand view (ws 47802)
 ```
 Engine keys: `b` bypass, `l` loop, `f 0.3` filter, `r 0.3` reverb, `s` status, `q` quit. Check, in order:
 - [ ] Dashboard shows ENGINE LIVE; press **D** to open the rig drawer and check the meters move when you play and xruns stay 0 (close it again before judges arrive)

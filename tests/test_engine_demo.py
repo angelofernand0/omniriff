@@ -71,6 +71,13 @@ class DemoLauncherTests(unittest.TestCase):
         explicit = vision_command(["--port", "49000"], ["--udp-port", "48720"])
         self.assertEqual(explicit.count("--port"), 1)  # user's choice kept (a warning is printed)
 
+    def test_vision_gets_the_documented_model_unless_one_is_given(self):
+        bare = vision_command([], ["--headless"])
+        self.assertEqual(bare[bare.index("--model") + 1], "models/hand_landmarker.task")
+        given = vision_command(["--model", "m.task", "--relative"], ["--headless"])
+        self.assertEqual(given.count("--model"), 1)
+        self.assertEqual(given[given.index("--model") + 1], "m.task")
+
     def test_launcher_passes_the_port_to_the_vision_child(self):
         import importlib.util
         seen = {}
