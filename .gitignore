@@ -1,0 +1,18 @@
+# Local agents, credentials and devices
+.board/
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+dist/
+build/
+.DS_Store
+.claude/settings.local.json
+.codex/
+recordings/
+*.wav
+*.aiff
+*.mp3
