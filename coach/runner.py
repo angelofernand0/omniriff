@@ -222,12 +222,15 @@ class CoachRunner:
         print(f"Take {take_id}: {ear.summary}; hand: {hand.get('summary', 'unavailable')}")
         before = self.previous_take_id
         prompt = f"New take {take_id}. Diagnose from reports, choose one drill, set up the rig."
+        comparison = None
         if before:
-            result = self.service.compare_takes(before, take_id)
+            comparison = self.service.compare_takes(before, take_id)
             prompt += f" Previous take: {before}. Compare before and after using compare_takes."
-            if result["improved"]:
-                self.feed.publish(state="pleased", mood="proud", target="player")
         result = self._invoke(prompt, take_id)
+        # Tool-side frames during the invoke can replace the early comparison
+        # expression; make the measured improvement the visible final state.
+        if comparison and comparison["improved"]:
+            self.feed.publish(state="pleased", mood="proud", target="player")
         self.previous_take_id = take_id
         return result
 
