@@ -11,7 +11,7 @@ from .budget import BudgetGuard
 from .feed import CoachFeed
 from .memory import prepare_fixture_workspace
 from .rig import RigClient, RigStateReader
-from .runner import CoachRunner
+from .runner import BudgetExhausted, CoachRunner
 from .smoke import load_key
 from .tools import CoachTools
 
@@ -63,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
             feed.publish(state="asleep", mood="sleepy", cue="Coach is out of credit.")
             print("Coach budget guard: no new model run.")
             return 2
-        agent = build_agent(service)
+        agent = build_agent(service, budget=budget)
         runner = CoachRunner(
             agent, service, feed, state, budget, hand_log=args.hand_log,
             fixture_mode=args.fixtures, auto_approve_fixtures=args.auto_approve_fixtures,
@@ -82,6 +82,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Coach feed ws://127.0.0.1:{feed.port}; watching {args.take_dir}")
             runner.run_directory(args.take_dir)
         return 0
+    except BudgetExhausted:
+        print("Coach budget guard: model call refused; instrument remains playable.")
+        return 2
     except KeyboardInterrupt:
         return 0
     finally:
