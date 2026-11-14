@@ -1,12 +1,10 @@
 """Tests verifying CLI flag parity against documentation runbooks and checklists.
 
-Ensures that every command line flag documented for humans to type tonight in:
-- docs/DEMO.md (demo runbook & hardware bring-up sequence)
-- vision/README.md (gesture control, morning hardware checklist, and opt-in --strum-guard)
-- engine/README.md (host runtime, Windows 11 Scarlett Solo quickstart, coach launch)
-- coach/README.md (practice coach execution & fixture verification)
+Dynamically extracts `python -m <module> ... --flag` commands from documentation
+code blocks (docs/DEMO.md, vision/README.md, engine/README.md, coach/README.md, docs/QA.md),
+skips flags nested inside quoted arguments (--vision-args, --coach-args), and asserts
+that every extracted flag exists in the matching module's `--help` output.
 
-actually exists in the matching module's `--help` output (via subprocess).
 Skips cleanly if optional dependencies (e.g., deepagents, mediapipe, sounddevice)
 are missing from the current Python environment.
 """
@@ -21,6 +19,85 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+DOC_FILES = [
+    ROOT / "docs" / "DEMO.md",
+    ROOT / "docs" / "QA.md",
+    ROOT / "vision" / "README.md",
+    ROOT / "engine" / "README.md",
+    ROOT / "coach" / "README.md",
+]
+
+
+def extract_commands_from_file(doc_path: Path) -> list[str]:
+    """Extract command strings from markdown fenced blocks and inline code spans."""
+    text = doc_path.read_text()
+    commands: list[str] = []
+
+    # 1. Fenced code blocks: ```[lang]\n...\n```
+    for m in re.finditer(r"```[^\n]*\n(.*?)```", text, re.DOTALL):
+        block = m.group(1)
+        cur = ""
+        for line in block.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if cur:
+                cur += " " + line
+            else:
+                cur = line
+            if cur.endswith("\\"):
+                cur = cur[:-1].strip()
+            else:
+                commands.append(cur)
+                cur = ""
+        if cur:
+            commands.append(cur)
+
+    # 2. Inline code spans: `...`
+    for m in re.finditer(r"(?<!`)`([^`\n]+)`(?!`)", text):
+        span = m.group(1).strip()
+        commands.append(span)
+
+    return commands
+
+
+def strip_nested_args(s: str) -> str:
+    """Skip flags inside quoted arguments such as --vision-args or --coach-args."""
+    # Remove --vision-args "..." or --coach-args "..."
+    s = re.sub(r"--(?:vision-args|coach-args)\s+(\"[^\"]*\"|\x27[^\x27]*\x27)", "", s)
+    # Remove any remaining quoted strings
+    s = re.sub(r"\"[^\"]*\"", "", s)
+    s = re.sub(r"\x27[^\x27]*\x27", "", s)
+    return s
+
+
+def extract_doc_command_flags(doc_files: list[Path] | None = None) -> dict[str, set[str]]:
+    """Extract all `python -m <module> ... --flag` invocations across docs.
+
+    Returns:
+        Mapping of module name to the set of `--flag` options used in documentation.
+    """
+    if doc_files is None:
+        doc_files = DOC_FILES
+
+    cmd_re = re.compile(
+        r"(?:python3?|\.venv[\\/a-zA-Z0-9_.-]*python(?:\.exe)?)\s+-m\s+([a-zA-Z0-9_.]+)(.*?)(?:$|[#])"
+    )
+    doc_flags: dict[str, set[str]] = {}
+
+    for d in doc_files:
+        if not d.exists():
+            continue
+        for cmd in extract_commands_from_file(d):
+            for m in cmd_re.finditer(cmd):
+                mod, rest = m.groups()
+                cleaned = strip_nested_args(rest)
+                flags = set(re.findall(r"(?<![a-zA-Z0-9_-])--[a-zA-Z0-9-]+", cleaned))
+                if flags:
+                    doc_flags.setdefault(mod, set()).update(flags)
+
+    return doc_flags
 
 
 def run_cli_help(module: str, timeout: float = 15.0) -> tuple[set[str] | None, str | None]:
@@ -53,7 +130,36 @@ def run_cli_help(module: str, timeout: float = 15.0) -> tuple[set[str] | None, s
 
 
 class CliDocParityTests(unittest.TestCase):
-    """Assert all CLI flags humans are instructed to type exist in --help."""
+    """Assert all CLI flags extracted from doc code blocks exist in --help."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.extracted_flags = extract_doc_command_flags(DOC_FILES)
+
+    def test_auto_extracted_doc_code_block_flags_match_cli_help(self):
+        """dynamically assert all doc code-block flags exist in CLI --help."""
+        self.assertGreater(len(self.extracted_flags), 0, "must extract command flags from docs")
+
+        for mod, flags in sorted(self.extracted_flags.items()):
+            if mod in ("pip", "unittest"):
+                continue
+
+            cli_flags, skip_reason = run_cli_help(mod)
+            if cli_flags is None:
+                # e.g. coach without deepagents
+                continue
+
+            # engine.demo forwards unrecognized options to engine
+            if mod == "engine.demo":
+                engine_flags, _ = run_cli_help("engine")
+                if engine_flags:
+                    cli_flags = cli_flags | engine_flags
+
+            missing = flags - cli_flags
+            self.assertFalse(
+                missing,
+                f"Docs code blocks use flags not present in 'python -m {mod} --help': {missing}",
+            )
 
     def test_engine_demo_cli_flags(self):
         """flags for python -m engine.demo in docs/DEMO.md & engine/README.md."""
@@ -61,9 +167,10 @@ class CliDocParityTests(unittest.TestCase):
         if flags is None:
             self.skipTest(f"python -m engine.demo skipped: {skip_reason}")
 
-        # docs/DEMO.md §2: python -m engine.demo --open --vision --vision-args "..."
-        # docs/DEMO.md §3: --coach --hand-log runs/hand.jsonl
-        # engine/README.md §2: --http-port, --coach-args
+        # Core options + all flags extracted from doc code blocks for engine.demo
+        doc_flags = self.extracted_flags.get("engine.demo", set())
+        # engine.demo forwards passthrough flags to engine; verify direct engine.demo flags
+        direct_demo_flags = doc_flags - {"--in", "--out", "--hostapi", "--input-channel", "--serial-port"}
         expected = {
             "--open",
             "--vision",
@@ -72,9 +179,10 @@ class CliDocParityTests(unittest.TestCase):
             "--coach-args",
             "--hand-log",
             "--http-port",
-        }
+        } | direct_demo_flags
+
         missing = expected - flags
-        self.assertFalse(missing, f"python -m engine.demo --help is missing documented flags: {missing}")
+        self.assertFalse(missing, f"python -m engine.demo --help is missing flags: {missing}")
 
     def test_vision_cli_flags(self):
         """flags for python -m vision in docs/DEMO.md, vision/README.md & checklists."""
@@ -82,11 +190,7 @@ class CliDocParityTests(unittest.TestCase):
         if flags is None:
             self.skipTest(f"python -m vision skipped: {skip_reason}")
 
-        # docs/DEMO.md §2: --model, --calibration, --calibrate, --scene, --setlist
-        # vision/README.md: --video, --dry-run, --no-overlay, --control, --relative,
-        #                   --max-hand-jump, --port, --hand-log, --strum-hand,
-        #                   --strum-guard, --metrics-json, --scene-file,
-        #                   --no-hand-view, --hand-view-port, --record-take
+        doc_flags = self.extracted_flags.get("vision", set())
         expected = {
             "--model",
             "--calibration",
@@ -108,9 +212,10 @@ class CliDocParityTests(unittest.TestCase):
             "--max-hand-jump",
             "--record-take",
             "--port",
-        }
+        } | doc_flags
+
         missing = expected - flags
-        self.assertFalse(missing, f"python -m vision --help is missing documented flags: {missing}")
+        self.assertFalse(missing, f"python -m vision --help is missing flags: {missing}")
 
     def test_vision_strum_guard_checklist_parity(self):
         """specifically verify the --strum-guard checklist invocation from PR #120."""
@@ -130,7 +235,7 @@ class CliDocParityTests(unittest.TestCase):
         if flags is None:
             self.skipTest(f"python -m coach skipped: {skip_reason}")
 
-        # Documented flags across runbooks:
+        doc_flags = self.extracted_flags.get("coach", set())
         expected = {
             "--take-dir",
             "--hand-log",
@@ -141,9 +246,10 @@ class CliDocParityTests(unittest.TestCase):
             "--feed-port",
             "--state-port",
             "--control-port",
-        }
+        } | doc_flags
+
         missing = expected - flags
-        self.assertFalse(missing, f"python -m coach --help is missing documented flags: {missing}")
+        self.assertFalse(missing, f"python -m coach --help is missing flags: {missing}")
 
     def test_coach_argparse_static_definitions(self):
         """statically verify coach/__main__.py defines all flags even when deps are absent."""
@@ -157,6 +263,7 @@ class CliDocParityTests(unittest.TestCase):
                     if isinstance(arg, ast.Constant) and isinstance(arg.value, str) and arg.value.startswith("--"):
                         static_flags.add(arg.value)
 
+        doc_flags = self.extracted_flags.get("coach", set())
         expected = {
             "--take-dir",
             "--hand-log",
@@ -167,7 +274,8 @@ class CliDocParityTests(unittest.TestCase):
             "--feed-port",
             "--state-port",
             "--control-port",
-        }
+        } | doc_flags
+
         missing = expected - static_flags
         self.assertFalse(missing, f"coach/__main__.py is missing argument definitions: {missing}")
 
@@ -177,7 +285,7 @@ class CliDocParityTests(unittest.TestCase):
         if flags is None:
             self.skipTest(f"python -m engine skipped: {skip_reason}")
 
-        # docs/DEMO.md §1 & engine/README.md quickstart:
+        doc_flags = self.extracted_flags.get("engine", set())
         expected = {
             "--check",
             "--open-test",
@@ -198,9 +306,10 @@ class CliDocParityTests(unittest.TestCase):
             "--exclusive",
             "--udp-port",
             "--ws-port",
-        }
+        } | doc_flags
+
         missing = expected - flags
-        self.assertFalse(missing, f"python -m engine --help is missing documented flags: {missing}")
+        self.assertFalse(missing, f"python -m engine --help is missing flags: {missing}")
 
     def test_audio_cli_flags(self):
         """flags for python -m audio in docs/DEMO.md §1 & engine/README.md."""
@@ -208,63 +317,17 @@ class CliDocParityTests(unittest.TestCase):
         if flags is None:
             self.skipTest(f"python -m audio skipped: {skip_reason}")
 
+        doc_flags = self.extracted_flags.get("audio", set())
         expected = {
             "--list-devices",
             "--level-check",
             "--in",
             "--hostapi",
             "--input-channel",
-        }
+        } | doc_flags
+
         missing = expected - flags
-        self.assertFalse(missing, f"python -m audio --help is missing documented flags: {missing}")
-
-    def test_doc_runbook_commands_flags_are_valid(self):
-        """scan docs/*.md and ensure any flags in python -m <module> commands are valid."""
-        doc_files = [
-            ROOT / "docs" / "DEMO.md",
-            ROOT / "docs" / "QA.md",
-            ROOT / "vision" / "README.md",
-            ROOT / "engine" / "README.md",
-            ROOT / "coach" / "README.md",
-        ]
-
-        # Cache CLI help flags
-        cli_help = {}
-        for mod in ("engine.demo", "vision", "engine", "coach", "audio"):
-            flags, skip = run_cli_help(mod)
-            cli_help[mod] = flags
-
-        cmd_re = re.compile(
-            r"(?:python3?|\.venv[\\/a-zA-Z0-9_.-]*python(?:\.exe)?)\s+-m\s+([a-zA-Z0-9_.]+)(.*?)(?:[\r\n`#<|]|$)"
-        )
-
-        for doc_path in doc_files:
-            if not doc_path.exists():
-                continue
-            for line_no, line in enumerate(doc_path.read_text().splitlines(), start=1):
-                line = line.strip()
-                for match in cmd_re.finditer(line):
-                    mod, rest = match.groups()
-                    if mod not in cli_help or cli_help[mod] is None:
-                        continue
-
-                    # engine.demo forwards remaining arguments to engine, so allow both
-                    valid_flags = set(cli_help[mod])
-                    if mod == "engine.demo" and cli_help.get("engine") is not None:
-                        valid_flags |= cli_help["engine"]
-
-                    # If rest has quoted args like --vision-args "...", ignore flags inside quotes
-                    clean_rest = re.sub(r'"[^"]*"', "", rest)
-                    clean_rest = re.sub(r"'[^']*'", "", clean_rest)
-
-                    used_flags = re.findall(r"(?<![a-zA-Z0-9_-])--[a-zA-Z0-9-]+", clean_rest)
-                    for flag in used_flags:
-                        self.assertIn(
-                            flag,
-                            valid_flags,
-                            f"{doc_path.relative_to(ROOT)}:{line_no} documents unknown flag '{flag}' "
-                            f"for 'python -m {mod}'",
-                        )
+        self.assertFalse(missing, f"python -m audio --help is missing flags: {missing}")
 
 
 if __name__ == "__main__":

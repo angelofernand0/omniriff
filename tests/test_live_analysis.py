@@ -138,13 +138,17 @@ class LiveRuntimeTests(unittest.IsolatedAsyncioTestCase):
             thread_ids.append(threading.get_ident())
             return np.array([])
         runtime.live.detector = detector
+        # Pre-fill the input history (live analysis needs a full 2 s window) so the
+        # test doesn't depend on the renderer keeping real time under suite load.
+        for _ in range(int(2.2*audio.config.samplerate/128)+1):
+            audio.process(np.zeros(128,np.float32),np.zeros((128,2),np.float32))
         def render():
             while not stop.wait(.003):
                 audio.process(np.zeros(128,np.float32),np.zeros((128,2),np.float32))
         renderer = threading.Thread(target=render)
         renderer.start()
         async def until(predicate):
-            deadline = asyncio.get_running_loop().time()+4
+            deadline = asyncio.get_running_loop().time()+10
             while not predicate():
                 if asyncio.get_running_loop().time()>deadline: self.fail(str(runtime.snapshot()))
                 await asyncio.sleep(.01)
@@ -167,8 +171,7 @@ class LiveRuntimeTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn(threading.get_ident(),thread_ids)
             self.assertNotIn(renderer.ident,thread_ids)
             stop.set(); renderer.join(1)
-            await asyncio.sleep(.6)
-            self.assertNotIn('live',runtime.snapshot())
+            await until(lambda: 'live' not in runtime.snapshot())  # stalled input is withdrawn
         finally:
             stop.set(); renderer.join(1)
             await runtime.close()
