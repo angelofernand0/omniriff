@@ -23,11 +23,22 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 DOC_FILES = [
+    ROOT / "README.md",
     ROOT / "docs" / "DEMO.md",
     ROOT / "docs" / "QA.md",
     ROOT / "vision" / "README.md",
+    ROOT / "vision" / "REHEARSAL.md",
+    ROOT / "vision" / "EVIDENCE.md",
+    ROOT / "vision" / "SESSION-EVIDENCE.md",
+    ROOT / "vision" / "soundcheck" / "README.md",
     ROOT / "engine" / "README.md",
     ROOT / "coach" / "README.md",
+    ROOT / "tools" / "ears" / "README.md",
+    ROOT / "tools" / "sim" / "README.md",
+    ROOT / "tools" / "virtual_guitar" / "README.md",
+    ROOT / "tools" / "tone_match" / "README.md",
+    ROOT / "tools" / "latency" / "README.md",
+    ROOT / "audio" / "README.md",
 ]
 
 PS1_DIR = ROOT / "scripts" / "windows"
@@ -229,6 +240,17 @@ def run_cli_help(module: str, timeout: float = 15.0) -> tuple[set[str] | None, s
             f"STDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}"
         )
     flags = set(re.findall(r"(?<![a-zA-Z0-9_-])--[a-zA-Z0-9-]+", proc.stdout))
+    if module == "tools.sim":
+        for sub in ("run", "send", "coach"):
+            sub_proc = subprocess.run(
+                [sys.executable, "-m", "tools.sim", sub, "--help"],
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=str(ROOT),
+            )
+            if sub_proc.returncode == 0:
+                flags.update(re.findall(r"(?<![a-zA-Z0-9_-])--[a-zA-Z0-9-]+", sub_proc.stdout))
     return flags, None
 
 
@@ -245,7 +267,7 @@ class CliDocParityTests(unittest.TestCase):
         self.assertGreater(len(self.extracted_flags), 0, "must extract command flags from docs")
 
         for mod, flags in sorted(self.extracted_flags.items()):
-            if mod in ("pip", "unittest"):
+            if mod in ("pip", "unittest", "venv", "http.server"):
                 continue
 
             cli_flags, skip_reason = run_cli_help(mod)
