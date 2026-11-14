@@ -1,0 +1,80 @@
+/* Play room skin: makes tools/virtual_guitar/web/ match the dashboard it embeds.
+   Loaded after the play room's own style.css and after brand.css. Styles only: it changes
+   no behaviour, and removing the two <link> lines from the play room page restores the old look.
+   Rules: BRAND_SPEC.md. */
+
+:root { color-scheme: dark; --green: var(--accent); }
+html, body { height: auto; }
+body { font: var(--t2)/1.5 var(--font-mono); background: var(--bg); color: var(--text); }
+
+header { height: 64px; padding: 0 var(--s5); background: var(--bg-bar); border-bottom: var(--stroke) solid var(--line); }
+header > div { display: flex; align-items: center; gap: var(--s4); }
+.tag { margin: 0; padding: 0 0 0 var(--s4); border: 0; border-left: var(--stroke) solid var(--line-2); border-radius: 0; font: var(--p1)/1 var(--font-pixel); letter-spacing: 0; color: var(--faint); }
+#health { font: var(--p1)/1 var(--font-pixel); color: var(--muted); }
+
+main { padding: var(--s5); }
+.desk { background: var(--panel); border: var(--stroke) solid var(--line); border-radius: 0; padding: var(--s5); }
+.eyebrow { font: var(--p1)/1 var(--font-pixel); letter-spacing: 0; color: var(--muted); }
+h1 { margin: var(--s3) 0 var(--s2); font: var(--p3)/1.2 var(--font-pixel); letter-spacing: 0; }
+p { margin: var(--s2) 0; font-size: var(--t1); line-height: 1.6; color: var(--muted); }
+
+/* every button is a keycap, same as the dashboard's .key */
+button {
+  min-height: 44px; padding: 0 var(--s3); border-radius: 0;
+  font: var(--p1)/1 var(--font-pixel); color: var(--text);
+  background: var(--panel-2); border: var(--stroke) solid var(--line-2); box-shadow: 0 4px 0 var(--shadow);
+  transition: transform var(--tick) steps(2), box-shadow var(--tick) steps(2), border-color var(--tick) steps(1);
+}
+button:hover:not(:disabled) { background: var(--panel-2); border-color: var(--muted); }
+button:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 var(--shadow); }
+button:disabled, input:disabled { opacity: 1; }
+button:disabled { color: var(--faint); box-shadow: 0 2px 0 var(--shadow); }
+.primary { min-width: 176px; font-weight: 400; background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.primary:hover:not(:disabled) { background: var(--accent); border-color: var(--text); }
+.primary:disabled { background: var(--panel-2); border-color: var(--line-2); }
+button.active { border-color: var(--accent); color: var(--accent); }
+
+.transport { gap: var(--s5); margin: var(--s5) 0; padding-bottom: var(--s5); border-bottom: var(--stroke) solid var(--line); }
+.controls { gap: var(--s5) var(--s6); }
+.row { flex-wrap: wrap; gap: var(--s3) var(--s2); margin-top: var(--s3); padding-bottom: var(--s1); }
+.sliders { gap: var(--s5); }
+.volume { width: 272px; }
+#position { font-size: var(--t1); font-variant-numeric: tabular-nums; }
+
+/* faders: block cap, pink fill is not available without script, so the track stays plain */
+label { font: var(--p1)/1 var(--font-pixel); color: var(--muted); }
+label output { color: var(--text); }
+input[type=range] { -webkit-appearance: none; appearance: none; height: 24px; margin: var(--s2) 0 0; background: transparent; accent-color: var(--accent); }
+input[type=range]::-webkit-slider-runnable-track { height: 8px; background: var(--off); }
+input[type=range]::-moz-range-track { height: 8px; background: var(--off); }
+input[type=range]::-moz-range-progress { height: 8px; background: var(--accent); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 24px; margin-top: -8px; background: var(--accent); border: var(--stroke) solid var(--bg); box-shadow: 0 0 0 var(--stroke) var(--accent); }
+input[type=range]::-moz-range-thumb { width: 8px; height: 20px; border-radius: 0; background: var(--accent); border: var(--stroke) solid var(--bg); }
+input[type=range]:disabled::-webkit-slider-thumb { background: var(--dim); box-shadow: 0 0 0 var(--stroke) var(--dim); }
+
+.hint { margin-top: var(--s5); font-size: var(--t1); }
+.hint strong { color: var(--text); font-weight: 600; }
+#error { color: var(--warn); }
+
+#cameraPanel { margin-top: var(--s5); padding-top: var(--s4); border-top: var(--stroke) solid var(--line); }
+.camera-row { gap: var(--s4); margin: var(--s3) 0; }
+#cameraStatus { font: var(--p1)/1 var(--font-pixel); color: var(--muted); }
+#webcam { border: var(--stroke) solid var(--line-2); border-radius: 0; }
+#cameraPanel p { margin-top: var(--s3); font-size: var(--t1); }
+
+.dashboard-label { margin: var(--s5) 0 var(--s3); font: var(--p1)/1 var(--font-pixel); letter-spacing: 0; color: var(--muted); }
+a { color: var(--accent); font: inherit; }
+iframe { border: var(--stroke) solid var(--line); border-radius: 0; background: var(--bg); }
+footer { padding: var(--s4) 0; font-size: var(--t1); line-height: 1.8; color: var(--muted); }
+
+@media (max-width: 800px) {
+  header { padding: 0 var(--s4); }
+  main { padding: var(--s4); }
+  .desk { padding: var(--s4); }
+  .tag { font-size: var(--p1); }
+  h1 { font-size: var(--p2); }
+  .primary { min-width: 0; }
+  header { height: auto; min-height: 64px; flex-wrap: wrap; gap: var(--s2); padding-top: var(--s3); padding-bottom: var(--s3); }
+  .tag { display: none; }
+  .volume { width: auto; }
+}

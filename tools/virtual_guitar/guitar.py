@@ -7,7 +7,6 @@ guitar-shaped enough for effect tuning while remaining reproducible in CI.
 """
 from __future__ import annotations
 
-import math
 
 import numpy as np
 from scipy.signal import butter, iirpeak, lfilter, sosfilt

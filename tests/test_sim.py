@@ -125,6 +125,22 @@ class DashboardServeTests(unittest.TestCase):
         finally:
             server.shutdown(); server.server_close()
 
+    def test_simulator_server_labels_the_page_and_plain_server_does_not(self):
+        from dashboard.__main__ import make_server
+        for sim, expected in (('input', '/?ws=x&sim=input'), (None, '/?ws=x')):
+            server = make_server(0, sim=sim)
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            try:
+                base = f'http://127.0.0.1:{server.server_address[1]}'
+                page = urllib.request.urlopen(base + '/?ws=x', timeout=2)
+                self.assertEqual(page.url, base + expected)   # redirected only when simulated
+                self.assertIn('id="simChip"', page.read().decode())
+                # an explicit flag is kept, and assets are never redirected
+                self.assertEqual(urllib.request.urlopen(base + '/?sim=guitar', timeout=2).url, base + '/?sim=guitar')
+                self.assertEqual(urllib.request.urlopen(base + '/app.js', timeout=2).url, base + '/app.js')
+            finally:
+                server.shutdown(); server.server_close()
+
     def test_cached_sources_cannot_look_online_when_connection_is_down(self):
         script = (ROOT / 'dashboard/app.js').read_text()
         self.assertIn("const online = conn === 'live' && seenAge < ONLINE_MS;", script)

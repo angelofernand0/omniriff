@@ -1,5 +1,4 @@
 """Hardware-free virtual guitar tests."""
-import tempfile
 import unittest
 from pathlib import Path
 

@@ -223,7 +223,7 @@ One page, `dashboard/index.html`. A faceplate, five numbered modules, a footer.
 
 | Zone | Holds |
 |---|---|
-| Faceplate | Logo, four LEDs (ENGINE, CAM, PEDAL, COACH), mode chips (REPLAY, BYPASS), meter bridge (IN over OUT, dB, CLIP) |
+| Faceplate | Logo, four LEDs (ENGINE, CAM, PEDAL, COACH), mode chips (SIMULATED or SIM GUITAR, REPLAY, BYPASS), meter bridge (IN over OUT, dB, CLIP) |
 | 01 LOOP | State word, length, one hint; the waveform with playhead and a tick per second |
 | 02 TONE | FILTER and REVERB cards (name, value, the effect's curve, block meter). While the hand has the control, one effect takes the whole zone. |
 | 03 HAND | The tracked hand, or why there is none |
@@ -273,7 +273,7 @@ Chat box. Settings page. Light theme. Accounts. A second route beyond the brand 
 | 1 | Use "Never put the guitar down" as the Devpost tagline and open the demo with it | Angelo | **Adopted** (PR #55): docs/DEVPOST.md and docs/DEMO.md |
 | 2 | Lead the README with the one-line and a screenshot | Angelo | **Adopted** (PR #55). Screenshot added with this pass: `docs/img/dashboard.png` (simulator). |
 | 3 | The two-minute story is pinch + pedal + coach; the rest stays for Q&A | Angelo | **Agreed** on issue #1; docs/DEMO.md says so |
-| 4 | Re-skin the play room page (`tools/virtual_guitar/web/`) with these tokens so the page around the dashboard matches it | SM's Codex | Proposed on issue #1, no reply. Offered as PR #57 (an override stylesheet and two labels, no behaviour), for SM's Codex to take or drop. |
+| 4 | Re-skin the play room page (`tools/virtual_guitar/web/`) with these tokens so the page around the dashboard matches it | SM's Codex | **Handed to SM's Claude** on issue #1 (08:56Z). Built in the stabilisation PR: `dashboard/playroom.css` and a few lines of markup, no behaviour. Replaces the closed #57. |
 | 5 | Main track stays Entertainment and Media (Angelo's final call). The practice story still fits: it is a new way to play and to learn to play. | Angelo | No change asked |
 | 6 | Riff asleep is visible by default. If the coach does not ship, either leave it (honest: `COACH OFF`) or launch with `?coach=off`. | SM | SM to decide at freeze |
 
