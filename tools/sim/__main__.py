@@ -1,0 +1,116 @@
+"""OmniRiff simulator.
+
+  python -m tools.sim run [--demo]       real audio.Engine + engine.Runtime, synthetic guitar input,
+                                         dashboard served on http://127.0.0.1:8080
+  python -m tools.sim send loop|bypass   one action event over UDP 47800
+  python -m tools.sim send filter 0.4    one parameter event (confidence 1.0 unless --confidence)
+
+Everything here is simulated input; nothing measures hardware or latency.
+"""
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import threading
+import time
+
+
+def _run(a) -> int:
+    import numpy as np
+    from audio import Engine, EngineConfig
+    from engine.runtime import Runtime
+    from dashboard.__main__ import make_server
+    from .synth import SyntheticGuitar
+    from .demo import run_demo
+
+    audio = Engine(EngineConfig(samplerate=a.samplerate))
+    guitar = SyntheticGuitar(a.samplerate, bpm=a.bpm, level=0.0 if a.silent else 0.28)
+    stop = threading.Event()
+
+    def work():
+        out = np.zeros((a.blocksize, 2), dtype=np.float32)
+        period = a.blocksize / a.samplerate
+        nxt = time.monotonic()
+        while not stop.is_set():
+            audio.process(guitar.block(a.blocksize), out)
+            nxt += period
+            delay = nxt - time.monotonic()
+            if delay > 0:
+                stop.wait(delay)
+            elif delay < -0.25:
+                nxt = time.monotonic()  # fell far behind; don't spin to catch up
+
+    runtime = Runtime(audio, udp_port=a.udp_port, ws_port=a.ws_port)
+    http = None
+    if a.http_port:
+        http = make_server(a.http_port)
+        threading.Thread(target=http.serve_forever, daemon=True, name='omniriff-http').start()
+
+    async def main():
+        threading.Thread(target=work, daemon=True, name='omniriff-sim-audio').start()
+        await runtime.start()
+        await asyncio.sleep(0.2)
+        print(f'[sim] engine state ws://127.0.0.1:{runtime.ws_port}  control udp 127.0.0.1:{runtime.udp_port}')
+        if http:
+            print(f'[sim] dashboard http://127.0.0.1:{http.server_address[1]}/')
+        print('[sim] SIMULATED input (synthetic guitar)' + (' + scripted demo' if a.demo else '') + '. Ctrl-C to stop.')
+        demo = asyncio.create_task(run_demo(runtime.udp_port)) if a.demo else None
+        start = time.monotonic()
+        try:
+            while not (a.duration and time.monotonic() - start >= a.duration):
+                await asyncio.sleep(0.1)
+        finally:
+            if demo:
+                demo.cancel()
+            stop.set()
+            await runtime.close()
+            if http:
+                http.shutdown()
+
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        stop.set()
+    return 0
+
+
+def _send(a) -> int:
+    from .events import Sender
+    s = Sender(a.source, port=a.udp_port)
+    try:
+        print(json.dumps(s.send(a.control, a.value, a.confidence)))
+    finally:
+        s.close()
+    return 0
+
+
+def main(argv=None) -> int:
+    p = argparse.ArgumentParser(prog='python -m tools.sim', description='OmniRiff simulator (simulated input only)')
+    sub = p.add_subparsers(dest='cmd', required=True)
+    r = sub.add_parser('run', help='engine + synthetic guitar + dashboard server')
+    r.add_argument('--demo', action='store_true', help='scripted pedal presses and pinch sweeps')
+    r.add_argument('--silent', action='store_true', help='feed silence instead of the synthetic guitar')
+    r.add_argument('--bpm', type=float, default=92)
+    r.add_argument('--udp-port', type=int, default=47800)
+    r.add_argument('--ws-port', type=int, default=47801)
+    r.add_argument('--http-port', type=int, default=8080, help='0 disables the dashboard server')
+    r.add_argument('--samplerate', type=int, default=48000)
+    r.add_argument('--blocksize', type=int, default=256)
+    r.add_argument('--duration', type=float)
+    s = sub.add_parser('send', help='send one control event over UDP')
+    s.add_argument('control', choices=['loop', 'bypass', 'filter', 'reverb'])
+    s.add_argument('value', type=float, nargs='?')
+    s.add_argument('--confidence', type=float)
+    s.add_argument('--source', default='manual', choices=['manual', 'vision', 'sensecap'])
+    s.add_argument('--udp-port', type=int, default=47800)
+    a = p.parse_args(argv)
+    if a.cmd == 'send':
+        if (a.control in ('filter', 'reverb')) != (a.value is not None):
+            p.error('filter/reverb need a value in [0, 1]; loop/bypass take none')
+        return _send(a)
+    return _run(a)
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
