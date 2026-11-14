@@ -487,6 +487,41 @@
           }
         }
       }
+    },
+    "replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "active",
+        "status",
+        "position",
+        "total"
+      ],
+      "properties": {
+        "label": {
+          "const": "REPLAY"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "playing",
+            "completed",
+            "error",
+            "stopped"
+          ]
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",

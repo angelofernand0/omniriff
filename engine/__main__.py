@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import threading
 import time
 from .runtime import Runtime
@@ -10,6 +11,7 @@ from .runtime import Runtime
 
 def main(argv=None):
     p = argparse.ArgumentParser(description='OmniRiff audio/control runtime')
+    p.add_argument('--replay', metavar='CONTROLS.JSONL', help='explicit labeled one-shot control replay; disables UDP and serial input')
     p.add_argument('--headless', action='store_true', help='process silence without any audio hardware')
     p.add_argument('--duration', type=float, help='stop after this many seconds')
     p.add_argument('--serial-port', help='e.g. COM3; omitted = disabled')
@@ -32,6 +34,13 @@ def main(argv=None):
     if min(a.samplerate, a.blocksize, a.input_channel, a.out_channels, a.stale_ms) <= 0:
         p.error('rates, sizes, channels and stale window must be positive')
     if a.duration is not None and a.duration <= 0: p.error('duration must be positive')
+    replay = None
+    if a.replay:
+        if a.serial_port: p.error('--replay cannot be combined with --serial-port')
+        from .replay import Replay
+        try: replay = Replay.load(a.replay)
+        except (OSError, ValueError) as exc: p.error(str(exc))
+        logging.basicConfig(level=logging.WARNING, format='%(levelname)s %(message)s')
     from audio import Engine, EngineConfig
     audio = Engine(EngineConfig(samplerate=a.samplerate, input_gain_db=a.gain_db))
     stop = threading.Event()
@@ -60,7 +69,7 @@ def main(argv=None):
     if not a.no_keyboard:
         from audio.__main__ import _keyboard
         threading.Thread(target=_keyboard, args=(audio, stop), daemon=True).start()
-    runtime = Runtime(audio, udp_port=a.udp_port, ws_port=a.ws_port, serial_port=a.serial_port, hz=a.state_hz, stale_ms=a.stale_ms)
+    runtime = Runtime(audio, udp_port=None if replay else a.udp_port, ws_port=a.ws_port, serial_port=a.serial_port, hz=a.state_hz, stale_ms=a.stale_ms, replay=replay)
     async def run():
         worker.start()
         await runtime.start()

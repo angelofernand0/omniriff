@@ -67,3 +67,17 @@ ASIO is an optional comparison, not required for the first demo. Current pip-ins
 This processes silence and starts the control servers. It cannot establish driver functionality, audibility, camera recognition, pedal wiring or live latency.
 
 References: [sounddevice installation and ASIO](https://python-sounddevice.readthedocs.io/en/latest/installation.html), [pySerial port enumeration](https://pyserial.readthedocs.io/en/latest/tools.html#serial-tools-list-ports). All Windows/device-specific bring-up remains pending until tested at the laptop.
+
+## Explicit control replay / backup
+
+Replay is a labeled **control script**, not recorded guitar audio, a camera run or a pedal run. Keep playing the real guitar through the audio engine while the script drives selected controls. Existing live wire envelopes are unchanged; replay mode adds the optional `replay` state object approved by Angelo. Normal live frames have no such object.
+
+```powershell
+.\.venv\Scripts\python.exe -m engine --replay engine/demo-controls.jsonl --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2
+```
+
+`engine/demo-controls.jsonl` is a synthetic filter/reverb/loop demonstration, not a captured performance: loop records at 1 s, plays at 3 s and clears at 6 s. Play a short riff during that recording window. On any development machine, test it without sound hardware using `python -m engine --replay engine/demo-controls.jsonl --headless --no-keyboard --duration 8`. Windows/Focusrite replay still needs a live test.
+
+A script contains one existing full v1 envelope per JSONL line. Its nondecreasing Unix `timestamp_ms` values establish offsets from the first event; playback starts at offset zero now. Scripts from vision dry-run output are suitable if they contain only those event lines. The whole file is validated before opening any device. Blank lines are ignored; invalid events, nonfinite values, backwards times, repeated/decreasing per-source sequences (trim capture resets/retries), >4096-byte lines, >10000 events or >one-hour duration are rejected. Historical timestamps/sequence/source are replaced with scheduled current timestamps, a fresh increasing sequence and source=manual **only inside replay**. Original parameter/action content still passes the same confidence/schema/audio gate. Late scheduled events are dropped by the normal stale gate rather than delivered in a burst.
+
+The terminal announces `REPLAY CONTROL MODE`. WS state includes `replay:{label:"REPLAY",active,status,position,total}`. The label remains after completion/error/stop so the session cannot look like a live sensor run afterward. A completed script does not loop or stop audio; stop with `q` / Ctrl+C. Keyboard bypass remains available; localhost dashboard manual controls remain available too. UDP input is disabled and `--serial-port` is rejected in replay mode, preventing camera/pedal duplicates from mixing into the scripted run. Restart without `--replay` to return to live sensor controls. No source/file metadata is written to an audio callback or sent to an external service.

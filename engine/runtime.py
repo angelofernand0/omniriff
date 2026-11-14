@@ -60,11 +60,14 @@ class SerialDecoder:
 
 
 class Runtime:
-    def __init__(self, audio, *, udp_port=47800, ws_port=47801, serial_port=None, hz=20, stale_ms=250):
+    def __init__(self, audio, *, udp_port=47800, ws_port=47801, serial_port=None, hz=20, stale_ms=250, replay=None):
         if not 0 < hz <= 60: raise ValueError('state rate must be in (0, 60]')
         self.audio = audio
+        self.replay = replay
         self.router = Router(audio, stale_ms=stale_ms)
-        self.udp_port, self.ws_port = udp_port, ws_port
+        if replay is not None and serial_port:
+            raise ValueError('replay cannot be combined with serial input')
+        self.udp_port, self.ws_port = None if replay is not None else udp_port, ws_port
         self.serial_port, self.hz = serial_port, hz
         self.adapters = {key: dict(status='disabled', errors=0, last_error=None) for key in ('udp', 'serial', 'websocket')}
         self.tasks = {}
@@ -78,10 +81,13 @@ class Runtime:
         item['last_error'] = f'{type(exc).__name__}: {exc}'[:240]
 
     def snapshot(self):
-        return dict(self.audio.snapshot(), version=1, timestamp_ms=self.router.clock(),
+        state = dict(self.audio.snapshot(), version=1, timestamp_ms=self.router.clock(),
                     controls=dict(self.router.counts),
                     sources={k: dict(v) for k, v in self.router.sources.items()},
                     adapters={k: dict(v) for k, v in self.adapters.items()})
+        if self.replay is not None:
+            state['replay'] = dict(self.replay.state)
+        return state
 
     async def supervise(self, name, factory):
         try:
@@ -100,6 +106,8 @@ class Runtime:
             self.adapters[name]['status'] = 'stopped'
 
     async def start(self):
+        if self.replay is not None:
+            self.tasks['replay'] = asyncio.create_task(self.replay.run(self.router), name='omniriff-replay')
         for name, enabled, factory in [('udp', self.udp_port is not None, self.run_udp),
                                        ('websocket', self.ws_port is not None, self.run_ws),
                                        ('serial', bool(self.serial_port), self.run_serial)]:

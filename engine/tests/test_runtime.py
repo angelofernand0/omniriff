@@ -92,6 +92,21 @@ class GateTests(unittest.TestCase):
         self.assertTrue(self.audio.snapshot()['bypass'])
         self.assertEqual(self.router.counts['accepted'], 1)
 
+    def test_replay_loader_rejects_invalid_scripts_before_startup(self):
+        import tempfile
+        from engine.replay import Replay
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'controls.jsonl'
+            for content in ['', 'not JSON', json.dumps(event(value=2)),
+                            json.dumps(event())+'\n'+json.dumps(event(1, timestamp_ms=9999)),
+                            json.dumps(event())+'\n'+json.dumps(event(timestamp_ms=10010))]:
+                path.write_text(content)
+                with self.subTest(content=content):
+                    with self.assertRaises(ValueError): Replay.load(path)
+            path.write_text(json.dumps(event())+'\n'+json.dumps(event(1,timestamp_ms=10010)))
+            replay = Replay.load(path)
+            self.assertEqual([row[0] for row in replay.entries], [0,10])
+
     def test_serial_partial_lines_duplicate_reset_and_reconnect(self):
         decoder = SerialDecoder(self.router)
         decoder.connect()
@@ -201,6 +216,65 @@ class NetworkTests(unittest.IsolatedAsyncioTestCase):
                 task.cancel()
                 await asyncio.gather(task, return_exceptions=True)
         self.assertTrue(all(port.closed for port in ports))
+
+    async def test_replay_labels_state_rebases_controls_and_completes(self):
+        import tempfile
+        from engine.replay import Replay
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'controls.jsonl'
+            path.write_text(json.dumps(event(timestamp_ms=1000,value=.25))+'\n'+
+                            json.dumps(event(1,timestamp_ms=1010,value=.75)))
+            replay = Replay.load(path)
+            runtime = Runtime(self.audio, udp_port=0, ws_port=0, replay=replay)
+            validator = Draft202012Validator(json.loads((ROOT/'protocol/state.schema.json').read_text()))
+            await runtime.start()
+            try:
+                from websockets.asyncio.client import connect
+                for _ in range(100):
+                    if runtime.server: break
+                    await asyncio.sleep(.01)
+                async with connect(f'ws://127.0.0.1:{runtime.ws_port}') as ws:
+                    state = json.loads(await asyncio.wait_for(ws.recv(),1))
+                    validator.validate(state)
+                    self.assertEqual(state['replay']['label'], 'REPLAY')
+                await asyncio.wait_for(runtime.tasks['replay'],1)
+                process(self.audio)
+                state = runtime.snapshot(); validator.validate(state)
+                self.assertEqual(state['replay']['status'],'completed')
+                self.assertFalse(state['replay']['active'])
+                self.assertEqual(state['replay']['position'],2)
+                self.assertEqual(state['controls']['accepted'],2)
+                self.assertEqual(state['controls']['stale'],0)
+                self.assertEqual(state['filter']['target'],.75)
+                self.assertEqual(state['adapters']['udp']['status'],'disabled')
+                self.assertIn('manual',state['sources'])
+            finally: await runtime.close()
+
+    async def test_replay_stop_keeps_label_and_audio_available(self):
+        from engine.replay import Replay
+        replay = Replay([(0,event()), (60000,event(1))])
+        runtime = Runtime(self.audio, udp_port=None, ws_port=None, replay=replay)
+        with self.assertLogs('omniriff.replay',level='WARNING') as logs:
+            await runtime.start()
+            await asyncio.sleep(.01)
+            await runtime.close()
+        self.assertIn('REPLAY CONTROL MODE', '\n'.join(logs.output))
+        self.assertEqual(runtime.snapshot()['replay']['status'],'stopped')
+        self.assertEqual(runtime.snapshot()['replay']['label'],'REPLAY')
+        self.audio.toggle_bypass(); process(self.audio)
+        self.assertTrue(self.audio.snapshot()['bypass'])
+
+    async def test_replay_late_action_is_dropped_not_retimestamped(self):
+        from engine.replay import Replay
+        router = Router(self.audio, clock=lambda:10000)
+        replay = Replay([(0,dict(version=1,source='manual',seq=0,timestamp_ms=0,type='action',control='bypass'))])
+        from unittest.mock import patch
+        async def delayed_sleep(_): router.clock=lambda:11000
+        with patch('engine.replay.asyncio.sleep', delayed_sleep):
+            await replay.run(router)
+        process(self.audio)
+        self.assertEqual(router.counts['stale'],1)
+        self.assertFalse(self.audio.snapshot()['bypass'])
 
     async def test_missing_serial_does_not_stop_other_adapters(self):
         from websockets.asyncio.client import connect
