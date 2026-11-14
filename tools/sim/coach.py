@@ -34,6 +34,8 @@ PASS_CUE = "Your longest gap went from 430 to 120 milliseconds. That's the chang
 DECLINE_CUE = "No problem, I'll leave your sound as it is."
 IDLE_CUE = 'Play me something. Tap the pedal to record.'
 AGAIN_CUE = 'Again? Tap the pedal to record.'
+PAUSE_S = 0.9   # a beat of silence after Riff finishes a line, before the next thing happens
+WORDS_PER_S = 2.6
 TODOS = ['Check timing (ears)', 'Check strumming hand (eyes)', 'Pick one drill', 'Set up the rig']
 
 
@@ -137,17 +139,41 @@ class ScriptedSession:
         self.phase = 'first'      # first take, or 'drill' take after approval
         self.awaiting = None
         self.takes = 0
+        self.quiet_at = 0.0       # loop time when the current line (plus a pause) is done
+        self.cue_at = 0.0
 
     async def wait(self, seconds: float) -> None:
         await asyncio.sleep(seconds * self.pace)
 
     def say(self, **changes) -> None:
+        prev = self.feed.frame.get('cue')
         f = self.feed.update(**changes)
-        if changes.get('cue') and self.speak:
-            try:
-                self.speak(f['cue'])
-            except Exception:
-                pass  # voice never breaks the session
+        cue = changes.get('cue')
+        if cue and cue != prev:
+            # hold the line until it has been said: estimated now, measured once the audio exists
+            now = asyncio.get_event_loop().time()
+            self.cue_at = now
+            self.quiet_at = now + max(1.2, len(cue.split()) / WORDS_PER_S) + PAUSE_S
+            if self.speak:
+                try:
+                    self.speak(f['cue'])
+                except Exception:
+                    pass  # voice never breaks the session
+
+    def heard(self, text: str, seconds: float) -> None:
+        """The voice reports the real length of a line once it's rendered."""
+        if self.feed.frame.get('cue') == text:
+            self.quiet_at = self.cue_at + seconds + PAUSE_S
+
+    async def until_quiet(self) -> None:
+        """Wait until Riff has finished the current line and paused. Never cuts a line off."""
+        while True:
+            rest = self.quiet_at - asyncio.get_event_loop().time()
+            if rest <= 0:
+                return
+            await asyncio.sleep(rest * self.pace if self.pace else 0)
+            if not self.pace:
+                return
 
     def take_id(self) -> str:
         return f'take-scripted-{self.takes}'
@@ -185,6 +211,7 @@ class ScriptedSession:
         else:
             self.awaiting = None
             self.phase = 'first'
+            await self.until_quiet()
             self.say(state='idle', mood='neutral', target='player', cue=DECLINE_CUE, awaiting_approval=None,
                      drill_card=None, activity=_act(self.feed, 'coach', 'rig_control bypass', 'failed'))
 
@@ -205,7 +232,7 @@ class ScriptedSession:
                     journal_path=f'/journal/scripted/{self.take_id()}.md')
         self.say(state='speaking', mood='concerned', target='player', cue=TAKE_CUE, drill_card=card, todos=_todos(3),
                  activity=_act(f, 'coach', f'open skill {SKILL}', 'done') + [dict(who='coach', what='write_drill_card', status='done')])
-        await self.wait(5.0)
+        await self.until_quiet()
         self.awaiting = f'a{self.takes}'
         actions = [] if self.bypass else [dict(control='bypass')]
         self.say(state='pointing', mood='encouraging', target='bypass', cue=APPROVE_CUE,
@@ -225,11 +252,14 @@ class ScriptedSession:
         if not self.bypass and self.sender is not None:
             self.sender.send('bypass')
             self.we_bypassed = True
-        self.say(state='listening', mood='concentrating', target='loop', cue=DRILL_CUE, awaiting_approval=None,
+        self.say(state='listening', mood='concentrating', target='loop', awaiting_approval=None,
                  todos=_todos(4), activity=_act(self.feed, 'coach', 'rig_control bypass', 'done'))
+        await self.until_quiet()
+        self.say(cue=DRILL_CUE)
 
     async def compare(self) -> None:
         f = self.feed
+        await self.until_quiet()
         self.say(state='thinking', mood='curious', target='loop', cue=None,
                  todos=_todos(4, [dict(text='Compare with last take', status='in_progress')]),
                  activity=_act(f, 'coach', 'compare_takes', 'running'))
@@ -244,7 +274,8 @@ class ScriptedSession:
                                    improved=True),
                  activity=_act(f, 'coach', 'compare_takes', 'done') + [dict(who='coach', what='edit /memories/player.md', status='done')])
         self.phase = 'first'
-        await self.wait(8.0)
+        await self.until_quiet()
+        await self.wait(5.0)
         if self.loop != 'recording':
             self.say(state='idle', mood='neutral', target='player', cue=AGAIN_CUE)
 
@@ -254,14 +285,15 @@ async def run_scripted_coach(port: int = 47803, engine_ws: str = 'ws://127.0.0.1
     """Serve the scripted session until cancelled. `states` overrides the engine feed (tests).
     `voice` (coach.voice.Voice) speaks each new cue as coach.audio; no voice means the browser's."""
     feed = CoachFeed()
+    sender = Sender('coach', port=udp_port) if udp_port else None
+    session = ScriptedSession(feed, sender, pace=pace, speak=speak)
     if voice is not None and speak is None:
         async def _speak(text: str) -> None:
             msg = await voice.render(text)
             if msg and feed.frame.get('cue') == text:   # don't play a cue that's already been replaced
+                session.heard(text, len(msg['audio_b64']) * 3 / 4 * 8 / 128_000)
                 feed._broadcast(msg)
-        speak = lambda text: asyncio.ensure_future(_speak(text))  # noqa: E731
-    sender = Sender('coach', port=udp_port) if udp_port else None
-    session = ScriptedSession(feed, sender, pace=pace, speak=speak)
+        session.speak = lambda text: asyncio.ensure_future(_speak(text))
     server = asyncio.create_task(feed.serve(port, ready=ready))
 
     async def follow():

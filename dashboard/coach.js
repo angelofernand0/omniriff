@@ -30,14 +30,14 @@
     input: '.meters', hand: '#handPanel', coach: null, player: null,
   };
 
-  let ws = null, retry = 0, frame = null, live = false;
+  let ws = null, retry = 0, frame = null, live = false, joined = false;
   let muted = false;
   try { muted = localStorage.getItem('omniriff.voiceMuted') === '1'; } catch (e) { /* storage blocked */ }
 
   // ---------- socket ----------
   function connect() {
     try { ws = new WebSocket(URL_); } catch (e) { later(); return; }
-    ws.onopen = () => { retry = 0; };
+    ws.onopen = () => { retry = 0; joined = true; };
     ws.onmessage = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (m && m.version === 1 && m.type === 'coach.frame') apply(m);
@@ -85,7 +85,8 @@
     }
     if (els.tag) els.tag.textContent = f.scripted ? 'SCRIPTED · NOT AI' : 'SCRIPTED PREVIEW';
     render(f);
-    if (f.cue && f.cue !== prevCue) cueChanged(f.cue);
+    if (joined) { joined = false; spoken = f.cue || ''; }   // joined mid-line: don't start talking halfway
+    else if (f.cue && f.cue !== prevCue) cueChanged(f.cue);
   }
 
   function render(f) {
@@ -142,20 +143,35 @@
       } catch (e) { actx = null; }
     }
     if (actx && actx.state === 'suspended') actx.resume();
+    if (dock) delete dock.dataset.voice;
+    const m = locked; locked = null;
+    if (m && frame && frame.cue === m.text && !muted) enqueue(m);
   }
   window.addEventListener('pointerdown', unlock);
   window.addEventListener('keydown', unlock);
 
+  // Pacing: Riff never cuts itself off. A new line waits for the current one to end (the newest
+  // waiting line wins). The coach paces its lines too; this is the safety net.
+  // Voice source: the coach's ElevenLabs audio. The browser voice is used only when the coach has
+  // no voice at all (no coach.audio seen within 2.5 s of a line), never as a warm-up.
+  let hasCoachVoice = false, queued = null, locked = null;
+  const busy = () => (audioEl && !audioEl.paused && !audioEl.ended) || ('speechSynthesis' in window && speechSynthesis.speaking);
+
   function cueChanged(text) {
-    stopVoice();
     clearTimeout(fallbackTimer);
     if (muted) return;
     const ready = pendingAudio.get(text);
-    if (ready) { pendingAudio.delete(text); playAudio(ready); return; }
-    fallbackTimer = setTimeout(() => { if (frame && frame.cue === text && spoken !== text) speakBrowser(text); }, 1500);
+    if (ready) { pendingAudio.delete(text); enqueue(ready); return; }
+    if (!hasCoachVoice) {
+      fallbackTimer = setTimeout(() => {
+        if (!hasCoachVoice && frame && frame.cue === text && spoken !== text) enqueue({ text, browser: true });
+      }, 2500);
+    }
   }
 
   function onAudio(m) {
+    hasCoachVoice = true;
+    clearTimeout(fallbackTimer);
     if (muted) return;
     if (!frame || frame.cue !== m.text) {          // early: keep it for when the cue lands
       pendingAudio.set(m.text, m);
@@ -163,23 +179,37 @@
       return;
     }
     if (spoken === m.text) return;
-    clearTimeout(fallbackTimer);
-    playAudio(m);
+    enqueue(m);
+  }
+
+  function enqueue(item) {
+    if (busy()) { queued = item; return; }
+    start(item);
+  }
+  function start(item) { if (item.browser) speakBrowser(item.text); else playAudio(item); }
+  function finished() {
+    talking(false);
+    const q = queued; queued = null;
+    if (q && frame && frame.cue === q.text) setTimeout(() => { if (!busy()) start(q); else queued = q; }, 250);
   }
 
   function playAudio(m) {
-    stopVoice();
     spoken = m.text;
     try {
       const bytes = Uint8Array.from(atob(m.audio_b64), (c) => c.charCodeAt(0));
       const url = URL.createObjectURL(new Blob([bytes], { type: m.mime }));
-      audioEl = new Audio(url);
+      const a = new Audio(url);
+      audioEl = a;
       if (actx && analyser) {
-        try { actx.createMediaElementSource(audioEl).connect(analyser); } catch (e) { /* plays unanalysed */ }
+        try { actx.createMediaElementSource(a).connect(analyser); } catch (e) { /* plays unanalysed */ }
       }
-      audioEl.onended = () => { URL.revokeObjectURL(url); talking(false); };
-      audioEl.play().then(() => talking(true)).catch(() => { spoken = ''; speakBrowser(m.text); });
-    } catch (e) { speakBrowser(m.text); }
+      a.onended = () => { URL.revokeObjectURL(url); if (audioEl === a) audioEl = null; finished(); };
+      a.play().then(() => talking(true)).catch(() => {
+        // the browser wants a click first: keep the line, say so, play it on the first click
+        audioEl = null; spoken = ''; locked = m;
+        if (dock) dock.dataset.voice = 'locked';
+      });
+    } catch (e) { audioEl = null; finished(); }
   }
 
   function speakBrowser(text) {
@@ -188,13 +218,13 @@
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 1.02; u.pitch = 1.15;
     u.onstart = () => talking(true, true);
-    u.onend = () => talking(false);
+    u.onend = finished;
     u.onboundary = () => window.dispatchEvent(new CustomEvent('omniriff:voice', { detail: { level: 0.8 } }));
-    speechSynthesis.cancel();
     speechSynthesis.speak(u);
   }
 
   function stopVoice() {
+    queued = null;
     if (audioEl) { try { audioEl.pause(); } catch (e) { /* gone */ } audioEl = null; }
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     talking(false);

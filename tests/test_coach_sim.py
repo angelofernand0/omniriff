@@ -89,6 +89,22 @@ class ScriptedCoachTests(unittest.TestCase):
         # bypass on after approval, back off after the drill; coach source, schema-valid envelopes
         self.assertEqual([(e['source'], e['control']) for e in sent], [('coach', 'bypass'), ('coach', 'bypass')])
 
+    def test_holds_a_line_until_it_is_said(self):
+        # Riff never cuts itself off: the next step waits for the measured length of the line + a pause
+        from tools.sim.coach import CoachFeed, ScriptedSession, PAUSE_S
+
+        async def go():
+            s = ScriptedSession(CoachFeed(), None, pace=1.0)
+            s.say(cue='Keep it swinging.')
+            s.heard('Keep it swinging.', 0.2)                  # the voice says it's 0.2 s long
+            t0 = asyncio.get_running_loop().time()
+            await s.until_quiet()
+            return asyncio.get_running_loop().time() - t0
+
+        waited = asyncio.run(go())
+        self.assertGreaterEqual(waited, 0.2 + PAUSE_S - 0.05)
+        self.assertLess(waited, 0.2 + PAUSE_S + 0.3)
+
     def test_pedal_approves(self):
         self.check(*self.run_session('pedal'))
 

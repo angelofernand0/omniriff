@@ -60,3 +60,4 @@
 .coach-drill p.path { display: none; }
 @media (min-height: 1200px) { .coach-drill p.path { display: block; } }   /* the journal path, when there is room */
 .side:has(#coachDetail:not([hidden])) .hand-mod { overflow: hidden; }   /* clip, never overlap the coach */
+#coachDock[data-voice="locked"] .coach-text b::after { content: " · CLICK FOR VOICE"; color: var(--warn); }
