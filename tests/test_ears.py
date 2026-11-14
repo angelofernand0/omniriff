@@ -85,6 +85,20 @@ class TakeReportTests(unittest.TestCase):
             self.assertEqual(data["strum_count"], 10)
             self.assertIn("strums", data["summary"])
 
+    def test_silent_or_sparse_take_is_not_judgeable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            silent = Path(tmp) / "silent.wav"
+            write_wav(silent, np.zeros(3 * SR, np.float32), SR)
+            r = json.loads(analyze_take(silent).to_json())
+            self.assertFalse(r["judgeable"])
+            self.assertEqual((r["strum_count"], r["findings"], r["min_strums"]), (0, [], 4))
+            sparse = Path(tmp) / "sparse.wav"
+            write_wav(sparse, strums([0.3, 0.9, 1.5]), SR)
+            self.assertFalse(json.loads(analyze_take(sparse).to_json())["judgeable"])
+            full = Path(tmp) / "full.wav"
+            write_wav(full, strums([0.3 + 0.3 * i for i in range(8)]), SR)
+            self.assertTrue(json.loads(analyze_take(full).to_json())["judgeable"])
+
     def test_cli_refuses_to_overwrite(self):
         from tools.ears.__main__ import main
         with tempfile.TemporaryDirectory() as tmp:

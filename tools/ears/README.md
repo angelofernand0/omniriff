@@ -15,6 +15,7 @@ python -m tools.ears takes/take-….wav --output report.json
 | `intervals_ms`, `median_interval_ms`, `strum_rate_per_min` | spacing between strums |
 | `tempo_stability` | 1 − coefficient of variation of the steady intervals, 0..1 |
 | `findings[]` | `{type: hesitation\|late\|early, at_ms, gap_ms, expected_ms, extra_ms, severity: minor\|moderate\|severe, message}`, compared with the local median interval; severity bands match Eyes (<250, 250–400, >400 ms) |
+| `judgeable`, `min_strums` | `judgeable` is true only with ≥ `min_strums` (4) detected strums. A silent or aborted take is **not judgeable**: never compare it or credit it as progress |
 | `summary` | one plain sentence |
 
 **Method:** 3 kHz high-pass (the pick attack), 5 ms log-energy frames, a ≥9 dB rise within 25 dB of the take's loud level that also beats the loudest frame 20–60 ms earlier (so steady overtone beating isn't a strum), attacks merged within 70 ms (one strum = one onset). See the docstring in `analyze.py`.

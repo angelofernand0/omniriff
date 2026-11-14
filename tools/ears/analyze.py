@@ -47,6 +47,7 @@ START_GUARD_MS = 20.0      # ignore the take's own 5 ms seam fade-in (a loop can
 RECENT_MAX_MS = 60.0       # onset must also exceed the loudest frame 20–60 ms earlier (rejects steady beating)
 HESITATION_RATIO, LATE_RATIO, EARLY_RATIO = 1.6, 1.2, 0.8
 MIN_EXTRA_MS = 120.0       # hesitation must also be this much longer than expected
+MIN_STRUMS = 4             # fewer strums than this: timing can't be judged (e.g. a silent or aborted take)
 
 
 @dataclass
@@ -58,6 +59,8 @@ class TakeReport:
     samplerate: int = 0
     duration_s: float = 0.0
     strum_count: int = 0
+    judgeable: bool = False            # False: too few strums to judge timing; never compare or credit progress
+    min_strums: int = MIN_STRUMS
     onsets_ms: list = field(default_factory=list)
     intervals_ms: list = field(default_factory=list)
     median_interval_ms: float | None = None
@@ -158,7 +161,7 @@ def analyze_take(wav_path, sidecar_path=None) -> TakeReport:
         meta = json.loads(side.read_text())
     onsets, intervals, median, stability, findings = analyze_timing(detect_onsets(data.mean(axis=1), sr))
     hes = [f for f in findings if f["type"] == "hesitation"]
-    if len(onsets) < 4:
+    if len(onsets) < MIN_STRUMS:
         summary = f"Only {len(onsets)} strums detected: too few to judge timing."
     else:
         rate = 60000.0 / median
@@ -168,6 +171,7 @@ def analyze_take(wav_path, sidecar_path=None) -> TakeReport:
     return TakeReport(
         take_id=meta.get("take_id", wav_path.stem), started_unix_ms=meta.get("started_unix_ms"),
         samplerate=sr, duration_s=round(len(data) / sr, 3), strum_count=len(onsets),
+        judgeable=len(onsets) >= MIN_STRUMS,
         onsets_ms=onsets, intervals_ms=intervals,
         median_interval_ms=round(median, 1) if median else None,
         strum_rate_per_min=round(60000.0 / median, 1) if median else None,
