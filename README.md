@@ -23,7 +23,9 @@ Every input can fail without stopping the music. Unsafe, stale or low-confidence
 ```bash
 python -m pip install -r engine/requirements.txt -r vision/requirements.txt
 python -m tools.sim run --demo                  # no hardware: simulated rig + dashboard at http://127.0.0.1:8080
-python -m engine --check                        # on the demo laptop: preflight
+python -m engine.demo --headless                # no hardware: the real engine processing silence
+python -m pip install -r coach/requirements.txt # optional: the practice coach (needs ANTHROPIC_API_KEY in .env)
+python -m engine --check                        # on the demo laptop: preflight (FAILs for missing devices are expected off-rig)
 python -m engine.demo --open --vision --vision-args "--model models/hand_landmarker.task" \
   --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2 --serial-port COM3
 ```

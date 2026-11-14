@@ -6,21 +6,21 @@ This is the single sequence for bring-up (Saturday 8 PM onwards) and for every j
 Windows 11 laptop + charger, power strip. Scarlett Solo (3rd gen) + USB cable. Guitar + instrument cable (+ spare). **Something judges can hear**: a powered speaker on the Solo line outs, or a headphone splitter. Webcam, positioned and lit. Arduino + Grove shield + buttons on USB. A second screen for the dashboard (optional).
 
 ## 1. Audio path (≈5 min)
-Once per laptop: follow the [Windows quickstart](../engine/README.md#windows-11-quickstart--scarlett-solo-3rd-gen) with **Python 3.12** (what CI tests; MediaPipe may not ship wheels for newer Pythons), then `python -m pip install -r engine/requirements.txt -r vision/requirements.txt`.
+Once per laptop: follow the [Windows quickstart](../engine/README.md#windows-11-quickstart--scarlett-solo-3rd-gen) with **Python 3.12** (what CI tests; MediaPipe may not ship wheels for newer Pythons), then `python -m pip install -r engine/requirements.txt -r vision/requirements.txt -r coach/requirements.txt` (the coach needs `ANTHROPIC_API_KEY` in a gitignored `.env`; see coach/README.md).
 
-Windows helpers: [setup.ps1](../scripts/windows/setup.ps1) creates/checks the Python 3.12 venv, installs engine + vision requirements and prints preflight results. [start-demo.ps1](../scripts/windows/start-demo.ps1) launches the local dashboard and rig. Both use `.venv\Scripts\python.exe` directly and leave PowerShell execution policy unchanged. **Untested on Windows; PowerShell syntax/execution has not been verified here (`pwsh` unavailable).** Run from the clone in PowerShell:
+Windows helpers: [setup.ps1](../scripts/windows/setup.ps1) creates/checks the Python 3.12 venv, installs engine + vision requirements (add `-Coach` for the coach's) and prints preflight results. [start-demo.ps1](../scripts/windows/start-demo.ps1) launches the local dashboard and rig. Both use `.venv\Scripts\python.exe` directly and leave PowerShell execution policy unchanged. **Untested on Windows; PowerShell syntax/execution has not been verified here (`pwsh` unavailable).** Run from the clone in PowerShell:
 
 Windows blocks `.ps1` files by default ("running scripts is disabled"), so start them with a **one-run bypass** that changes no system setting:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\setup.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -SerialPort COM3  # use the port --check printed; omit if no pedal
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\setup.ps1 -Coach
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -SerialPort COM3 -Coach  # use the port --check printed; omit -SerialPort if no pedal, -Coach if the coach isn't set up
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -Headless         # alternative: silence processing, no Focusrite output
 ```
 
 Run only one demo at a time. Download the hand model as described in §2 before the camera check; if it is missing, the launcher warns and starts without vision. `-Headless` skips the audio interface but still starts vision if the model is present and still opens any explicitly supplied serial port. Setup returns the preflight exit code: a device/port FAIL can mean dependencies installed successfully but the rig is not ready. Complete the live checks below before claiming hardware operation.
 
-0. `python -m engine --check`. Fix every FAIL first (it also prints the Arduino's `--serial-port`).
+0. `python -m engine --check`. On the rig, fix every FAIL first (it also prints the Arduino's `--serial-port`). Off the rig, a missing Focusrite/serial FAIL is expected.
 1. Solo: guitar in **input 2**, **INST on**, **Direct Monitor off**, speaker or headphone volume low.
 2. `python -m audio --list-devices`. Find the Focusrite entries (WASAPI first).
 3. `python -m audio --level-check --in Focusrite --hostapi WASAPI --input-channel 2`. Strum normally, then your hardest. Adjust the Solo gain until it says **good** with 0 clipped samples.
