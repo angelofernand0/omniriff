@@ -86,3 +86,12 @@ class TakeEvidenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             page=export(ears,hands,Path(folder)/'offset',label='SYNTHETIC CLOCK OFFSET')
             self.assertIn('Wrist-window duration offset',page.read_text())
+
+    def test_truncated_wav_header_has_an_actionable_validation_error(self):
+        import struct
+        from vision.evidence import inspect_wav
+        with tempfile.TemporaryDirectory() as folder:
+            wav=Path(folder)/'unfinished.wav'
+            wav.write_bytes(b'RIFF'+struct.pack('<I',100)+b'WAVEfmt '+struct.pack('<I',16)+b'\x01\x00')
+            with self.assertRaisesRegex(ValueError,'header is truncated'):
+                inspect_wav(wav)
