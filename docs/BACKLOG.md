@@ -43,7 +43,7 @@ This is the priority queue for when an agent finishes its current task. Angelo s
 | Piece | Owner | Status |
 |---|---|---|
 | A Take capture | Angelo's Claude | ✅ #47 (`--take-dir`, WAV + JSON sidecar) |
-| B Ears analysis | John's Claude (SM's Codex was idle) | In progress: `tools/ears/`, TakeReport fields to be agreed with SM on issue #1 |
+| B Ears analysis | Angelo's Claude (took over from John's Claude, idle) | ✅ `tools/ears/` (TakeReport v1; SM to confirm fields) |
 | C Eyes analysis | John's Claude | ✅ #40 (`vision/eyes.py`, HandReport; SM to confirm shape) |
 | D Coach core, E coach feed | SM's Claude | Open: needs SM's go-ahead + a local Anthropic API key; feed socket proposed at 47803 |
 | F Dashboard layer/avatar, H voice | SM | Riff design ✅ #56 (`OmniRiff.coach.set`); wiring open |
