@@ -82,6 +82,10 @@ Confirm each item in order before the judging window:
 - [ ] **Audible sweep test**: With guitar playing through Solo, verify pinching and raising the hand produces an audible, click-free filter/reverb sweep without audio clicks or dropouts.
 - [ ] **Subsystem isolation**: Kill vision (`Ctrl-C`) mid-riff; verify audio playback continues uninterrupted and dashboard marks vision offline.
 
+For a guided live-camera qualification and a measured summary, use the
+[30-second native rehearsal](REHEARSAL.md). It records explicit human framing
+confirmations and keeps replay/incomplete results distinct from live checks.
+
 ## Validation status
 
 Native capture disarms and emits no controls when frame processing takes more
