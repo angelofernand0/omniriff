@@ -27,7 +27,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 API = 'https://api.elevenlabs.io/v1/text-to-speech/{voice}?output_format=mp3_44100_128'
-JESSICA = 'cgSgspJ2msm6clMCkdW9'   # SM's pick among the free plan's default voices (2026-11-14)
+RIFF_VOICE = 'rHWSYoq8UlV0YIBKMryp'  # SM's pick from the voice library, Starter plan (2026-11-14)
+JESSICA = 'cgSgspJ2msm6clMCkdW9'     # free-plan default voice, kept as a fallback (OMNIRIFF_VOICE_ID)
+# Expressive but steady: lower stability lets the delivery move like a person's; a little style
+# adds warmth without hamming it up (BRAND_SPEC.md section 7, Riff's voice).
+SETTINGS = {'stability': 0.4, 'similarity_boost': 0.8, 'style': 0.25, 'use_speaker_boost': True}
 MODEL = 'eleven_flash_v2_5'         # ~0.27 s per cue, measured
 CACHE = Path.home() / '.cache' / 'omniriff' / 'voice'
 TIMEOUT_S = 4.0
@@ -66,7 +70,7 @@ def _http_fetch(url: str, headers: dict, body: bytes, timeout: float) -> bytes:
 
 
 class Voice:
-    def __init__(self, api_key: str | None, voice_id: str = JESSICA, model: str = MODEL,
+    def __init__(self, api_key: str | None, voice_id: str = RIFF_VOICE, model: str = MODEL,
                  cache_dir: Path = CACHE, fetch=_http_fetch, timeout: float = TIMEOUT_S):
         self.api_key, self.voice_id, self.model = api_key, voice_id, model
         self.cache_dir, self.fetch, self.timeout = Path(cache_dir), fetch, timeout
@@ -74,10 +78,10 @@ class Voice:
 
     @classmethod
     def from_env(cls, **kw) -> 'Voice':
-        return cls(env_value('ELEVENLABS_API_KEY'), voice_id=env_value('OMNIRIFF_VOICE_ID') or JESSICA, **kw)
+        return cls(env_value('ELEVENLABS_API_KEY'), voice_id=env_value('OMNIRIFF_VOICE_ID') or RIFF_VOICE, **kw)
 
     def _cache_path(self, text: str) -> Path:
-        h = hashlib.sha256(f'{self.voice_id}|{self.model}|{text}'.encode()).hexdigest()[:32]
+        h = hashlib.sha256(f'{self.voice_id}|{self.model}|{json.dumps(SETTINGS, sort_keys=True)}|{text}'.encode()).hexdigest()[:32]
         return self.cache_dir / f'{h}.mp3'
 
     def synthesize(self, text: str) -> bytes | None:
@@ -96,7 +100,7 @@ class Voice:
         try:
             mp3 = self.fetch(API.format(voice=self.voice_id),
                              {'xi-api-key': self.api_key, 'content-type': 'application/json', 'accept': 'audio/mpeg'},
-                             json.dumps({'text': text, 'model_id': self.model}).encode(), self.timeout)
+                             json.dumps({'text': text, 'model_id': self.model, 'voice_settings': SETTINGS}).encode(), self.timeout)
         except Exception as e:  # network, 4xx quota/permission, timeout: all fall back to the browser voice
             self.last_error = type(e).__name__
             return None

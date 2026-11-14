@@ -176,7 +176,7 @@ Logo files: `dashboard/brand/` (`logo.svg`, `mark.svg`, `wordmark.svg`, `logo-on
 
 **Form**
 - A disc with eight soft ridges, like a knurled knob seen from above. Pink body, darker ridge marks.
-- Two large white eyes with dark pupils and a glint. **No mouth.** What Riff says is printed beside it in a square box, because the machine does the printing.
+- Real pixel art (`riff.js` rasterises it every frame, logo-mark style): two tall ink eyes with one glint, no whites. **No mouth.** Expressions are lid shapes (see the mood sheet on `/brand.html`). What Riff says is printed beside it in a square box, because the machine does the printing.
 - 72 px on the dashboard. The logo mark is Riff on a 16-cell grid.
 
 **States.** Each one means something the coach is doing. No idle wandering, no decoration.
@@ -197,6 +197,15 @@ Logo files: `dashboard/brand/` (`logo.svg`, `mark.svg`, `wordmark.svg`, `logo-on
 - The body turns like a knob; the eyes stay level.
 - When it leaves its dock, the dock shows an empty dashed socket and repeats the cue as text, so the screen works with the sound off.
 - Clicking Riff while asleep makes it peek and settle. That is the only thing it does unprompted.
+
+**Riff's voice** (what it *says*, spoken by ElevenLabs and printed as the cue). The machine's label rules in §4 apply to labels, not to Riff. Riff is a laid-back session player who happens to be a great teacher: warm, unhurried, a little playful, never hyped. A friend next to you with a guitar, not an app.
+- Two sentences at most, about 25 words: what happened, then one thing to try.
+- About one line in three opens with a small reaction: "Ooh, close." "Okay." "Nice."
+- Musician words: the change, swing, lock in, easy, no rush. A light coastal ease, never "dude" or "bro".
+- Numbers said like a person ("about half a second"); the screen shows the exact ms.
+- Praise only with evidence, and small. Mistakes are normal. Hand control back: "Tap the pedal when you're ready."
+- Never exclamation marks, "Great job", apologies, lectures, or more than one fix.
+- Voice: ElevenLabs `rHWSYoq8UlV0YIBKMryp` (SM's pick), `eleven_flash_v2_5`, stability 0.4, style 0.25. The live coach loads the same rules from `coach/workspace/AGENTS.md`.
 
 **Honesty rules**
 - Riff is asleep unless a coach process is driving it.
