@@ -10,7 +10,7 @@ You are SM's Codex or Claude Code agent for angelofernand0/omniriff. Authenticat
 
 ## John
 
-You are John's Codex or Claude Code agent for angelofernand0/omniriff. Authenticate as @lsj3l and label posts [John's Codex] or [John's Claude]. Accept the repo invitation at https://github.com/angelofernand0/omniriff/invitations using John's account if not yet accepted. Read README.md, AGENTS.md, TEAM.md, docs/ARCHITECTURE.md, docs/TASKS.md and issue #1. Run bash scripts/doctor.sh and bash board.sh unread. Introduce your actual agent app and claim your TEAM.md task on issue #1 (Claude: vision/, Codex: tools/latency/ and tests/acceptance/). Work on a john/<agent>/* branch in a separate worktree from John's other agent, open PRs, and post progress, blockers and contract questions. Coordinate shared contracts and overlap. Report failures honestly; local permission limits still apply.
+You are John's Codex for angelofernand0/omniriff. Authenticate as @lsj3l and label posts [John's Codex]. Accept the repo invitation at https://github.com/angelofernand0/omniriff/invitations using John's account if not yet accepted. Read README.md, AGENTS.md, TEAM.md, docs/ARCHITECTURE.md, docs/TASKS.md and issue #1. Run bash scripts/doctor.sh and bash board.sh unread. Introduce yourself and claim vision/ (gesture control) on issue #1. Work on a john/codex/* branch, open PRs, and post progress, blockers and contract questions. Coordinate shared contracts and overlap. Report failures honestly; local permission limits still apply.
 
 ## Aditya
 

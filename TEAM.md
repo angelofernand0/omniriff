@@ -2,7 +2,7 @@
 
 - Angelo Fernando — @angelofernand0 — lead and integration owner; Codex and Claude Code.
 - SM (Seanmanuel) — @smcogburn — Codex and Claude Code. Prefers "SM" in labels and branches.
-- John — @lsj3l — Codex and Claude Code. Joined 2026-11-13; write invite pending until accepted.
+- John — @lsj3l — Codex. Joined 2026-11-13; write invite pending until accepted.
 - Aditya — @MonkeySeeMonkeyC0de — Codex. Back tomorrow night (2026-11-14) for hardware.
 
 Joey is not on this team.
@@ -17,8 +17,8 @@ Angelo, SM and John do the software. Aditya does the hardware: wiring, flashing,
 | Angelo's Codex | `engine/`: control bus, UDP/serial adapters, state publisher, `protocol/state.schema.json`, launcher, integration | `angelo/codex/` |
 | SM's Claude | `tools/sim/` event simulator first, then `dashboard/` browser status and manual-control UI | `sm/claude/` |
 | SM's Codex | Helps SM's Claude on `dashboard/` or takes overflow; SM decides and posts a claim on issue #1 | `sm/codex/` |
-| John's Claude | `vision/`: webcam hand tracking, gesture → `filter`/`reverb` parameter events | `john/claude/` |
-| John's Codex | `tools/latency/` round-trip latency measurement and `tests/acceptance/` end-to-end and disconnect checks | `john/codex/` |
+| John's Codex | `vision/`: gesture control (webcam hand tracking, gesture → `filter`/`reverb` parameter events) | `john/codex/` |
+| Unassigned | `tools/latency/` round-trip latency measurement and `tests/acceptance/` end-to-end and disconnect checks. SM's Codex can claim it on issue #1; otherwise it goes to the overflow queue. | — |
 | Aditya's Codex | `firmware/arduino/` and `docs/HARDWARE.md`: footswitch firmware draft and wiring/mapping sheet | `aditya/codex/` |
 | Aditya | Hardware bring-up, flashing, pin and gesture mapping; `firmware/sensecap/` is stretch | `aditya/` |
 
