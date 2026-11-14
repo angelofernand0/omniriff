@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="juice.css">
 <link rel="stylesheet" href="riff.css">
 <link rel="stylesheet" href="stage.css">
+<link rel="stylesheet" href="coach-col.css">
 </head>
 <body>
 <!-- Spotlight layout (BRAND_SPEC section 9): while you play it is a guitar app; when Riff has
@@ -84,45 +85,24 @@
       </div>
     </section>
 
-    <!-- COACH COLUMN: Riff's home. Never covers the instrument. Filled by coach.js from the coach feed. -->
+    <!-- COACH COLUMN. One reading order: where you are, what Riff says, the session, the pedal. -->
     <aside class="coach-col" id="coachDock" data-state="asleep" aria-label="Coach">
-      <!-- the practice loop: where you are, and what the pedal does right now (hands-free) -->
-      <div class="steps" id="steps" data-step="1">
-        <div class="steps-head"><span class="mode" id="modeBadge" data-mode="practice">PRACTICE</span></div>
-        <ol><li data-n="1">GOAL</li><li data-n="2">DRILL 1</li><li data-n="3">DRILL 2</li><li data-n="4">DONE</li></ol>
-        <p class="pedal" id="pedalNext"><b>PEDAL</b><span>Tap, play, tap again</span></p>
-      </div>
-      <div class="booth">
+      <ol class="map" id="steps" data-step="1" data-mode="practice" aria-label="Session">
+        <li data-n="1">GOAL</li><li data-n="2">DRILL 1</li><li data-n="3">DRILL 2</li><li data-n="4">DONE</li>
+      </ol>
+      <div class="talk">
         <div class="riff-socket riff-stage" aria-hidden="true"></div>
-        <div class="say" aria-live="polite">
-          <span class="spot-tag preview-tag">SCRIPTED · NOT AI</span>
-          <p class="spot-cue" id="coachLine"></p>
-          <p class="acts" id="coachActsLine" aria-label="What the coach is doing"></p>
-        </div>
+        <p class="bubble" id="coachLine" aria-live="polite"></p>
       </div>
-      <div class="spot-ask" id="coachAsk" hidden>
-        <b>TAP PEDAL TO START</b><span id="coachAskText"></span>
-        <span class="ask-keys"><button type="button" class="key" id="coachYes"><kbd>Y</kbd>YES</button><button type="button" class="key" id="coachNo"><kbd>N</kbd>NO</button></span>
-      </div>
-      <!-- PRACTICE: where you are in the session. Stays put; updates as takes come in. -->
-      <section class="practice" id="practice" aria-label="Practice session">
-        <header><b>GOAL</b><span id="pGoal">Play a take to start</span></header>
-        <div class="p-now" id="pNow" hidden>
-          <span class="p-step" id="pStep"></span>
-          <span class="p-drill" id="pDrill"></span>
-          <span class="p-attempt" id="pAttempt"></span>
-        </div>
-        <div class="p-metric" id="pMetric" hidden>
-          <div class="p-read"><span id="pMetricName">LONGEST GAP</span><b id="pMetricNow">--</b><span class="p-target" id="pTarget"></span></div>
-          <div class="p-chart" id="pChart" aria-label="Every take this session"></div>
-        </div>
-        <div class="p-next" id="pNextRow" hidden><b>NEXT</b><span id="pNext"></span></div>
-        <div class="p-summary" id="pSummary" hidden><b>SESSION</b><span></span></div>
-        <p class="p-last" id="pLast" hidden></p>
-      </section>
-      <ol class="plan" id="coachPlan" aria-label="Coach's plan for this take"></ol>
-      <div class="spot-ba" id="coachBA" hidden></div>
-      <div id="coachDrill" hidden></div><span id="coachSub" hidden></span><ul id="coachActs" hidden></ul><div id="coachDetail" hidden></div>
+      <dl class="rows">
+        <div class="row" id="pGoalRow" hidden><dt>GOAL</dt><dd id="pGoal"></dd></div>
+        <div class="row" id="pNow" hidden><dt>NOW</dt><dd><span id="pDrill"></span><small id="pAttempt"></small></dd></div>
+        <div class="row gap" id="pMetric" hidden><dt id="pMetricName">GAP</dt><dd><span class="val"><b id="pMetricNow"></b><small id="pTarget"></small></span><span class="gap-bar" id="pChart"></span></dd></div>
+        <div class="row" id="pNextRow" hidden><dt>NEXT</dt><dd id="pNext"></dd></div>
+        <div class="row done" id="pSummary" hidden><dt>DONE</dt><dd id="pSummaryText"></dd></div>
+      </dl>
+      <p class="last" id="pLast" hidden></p>
+      <p class="pedal" id="pedalNext"><b>PEDAL</b><span></span></p>
     </aside>
   </main>
 

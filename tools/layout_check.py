@@ -24,9 +24,9 @@ PROBE = r"""
       out.push('OVERFLOW ' + name(e) + ' ' + JSON.stringify(e.textContent.trim().slice(0, 40)));
   }
   // 2. text boxes that leave their panel
-  for (const e of document.querySelectorAll('.pct, .spot-cue, .p-read b, .p-drill, .spot-ask, .practice, .booth, .plan, .spot-ba, .loop-word, .fx-power b')) {
+  for (const e of document.querySelectorAll('.pct, .bubble, .row, .row dd, .map, .pedal, .talk, .loop-word, .fx-power b')) {
     if (!vis(e)) continue;
-    const p = e.closest('.card, .coach-col, .loop-state, .fx-power, .practice') ;
+    const p = e.parentElement && e.parentElement.closest('.card, .coach-col, .loop-state, .fx-power');
     if (!p || p === e) continue;
     const a = e.getBoundingClientRect(), b = p.getBoundingClientRect();
     if (a.left < b.left - 1 || a.right > b.right + 1 || a.top < b.top - 1 || a.bottom > b.bottom + 1)
@@ -39,7 +39,7 @@ PROBE = r"""
     if (a.bottom > b.top + 1 && b.bottom > a.top + 1 && a.right > b.left && b.right > a.left)
       out.push('OVERLAP ' + name(col[i]) + ' / ' + name(col[j]));
   }
-  const cue = document.querySelector('.spot-cue');
+  const cue = document.querySelector('.bubble');
   if (cue && vis(cue) && cue.scrollHeight > cue.getBoundingClientRect().height + 2) out.push('CLIPPED cue');
   if (document.documentElement.scrollHeight > innerHeight + 1) out.push('PAGE SCROLLS');
   return out;

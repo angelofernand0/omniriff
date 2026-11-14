@@ -1,0 +1,78 @@
+/* Coach column (SM review, 2026-11-14). Loaded last.
+   One reading order, top to bottom: where you are (map) → what Riff is saying (bubble from Riff)
+   → the session (GOAL / NOW / GAP / NEXT) → what the pedal does. One type rule: pixel type only
+   for small labels, mono for everything you read. One spacing rule: 16px rhythm, rows divided by
+   hairlines, no box inside a box. Honesty labels live in the top status pill, not here. */
+
+.coach-col {
+  display: flex; flex-direction: column; gap: var(--s4); padding: var(--s5);
+  background: var(--panel); border: var(--stroke) solid var(--line-2); box-shadow: none;
+  overflow: hidden; container-type: inline-size; min-height: 0;
+}
+.coach-col[data-state] { border-color: var(--line-2); }
+
+/* ---- where you are ---- */
+.map { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s1); flex: none; }
+.map li { font: 400 12px/1 var(--font-pixel); color: var(--faint); text-align: center; padding: 0 0 var(--s2); border-bottom: 4px solid var(--off); white-space: nowrap; overflow: hidden; }
+.map[data-step="2"] li[data-n="1"],
+.map[data-step="3"] li[data-n="1"], .map[data-step="3"] li[data-n="2"],
+.map[data-step="4"] li[data-n="1"], .map[data-step="4"] li[data-n="2"], .map[data-step="4"] li[data-n="3"] { color: var(--muted); border-color: var(--accent-low); }
+.map[data-step="1"] li[data-n="1"], .map[data-step="2"] li[data-n="2"],
+.map[data-step="3"] li[data-n="3"], .map[data-step="4"] li[data-n="4"] { color: var(--text); border-color: var(--accent); }
+.map[data-mode="play"] li { color: var(--dim) !important; border-color: var(--off) !important; }
+
+/* ---- Riff and what it says: the bubble points at Riff ---- */
+.talk { display: flex; flex-direction: column; gap: var(--s3); flex: none; }
+.talk .riff-socket { width: 96px; height: 96px; flex: none; }
+.bubble {
+  position: relative; margin: 0; padding: var(--s3) var(--s4);
+  background: var(--bg); border: var(--stroke) solid var(--accent);
+  font: 600 22px/1.35 var(--font-mono); color: var(--text); text-wrap: pretty;
+}
+.bubble::before {                                   /* the tail, up to Riff */
+  content: ''; position: absolute; left: 40px; top: -9px; width: 14px; height: 14px;
+  background: var(--bg); border-left: var(--stroke) solid var(--accent); border-top: var(--stroke) solid var(--accent);
+  transform: rotate(45deg);
+}
+.bubble[data-quiet="true"] { font-weight: 400; color: var(--muted); border-color: var(--line-2); }
+.bubble[data-quiet="true"]::before { border-color: var(--line-2); }
+.bubble:empty::after { content: 'Play me what you\2019re working on.'; font-weight: 400; color: var(--muted); }
+.coach-col[data-state="asleep"] .bubble { border-color: var(--line-2); }
+.coach-col[data-state="asleep"] .bubble::before { border-color: var(--line-2); }
+.coach-col[data-state="asleep"] .bubble:empty::after { content: 'Coach off. The rig plays without it.'; }
+
+/* ---- the session ---- */
+.rows { margin: 0; display: flex; flex-direction: column; flex: none; }
+.row { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: baseline; gap: var(--s3); padding: var(--s3) 0; border-top: 1px solid var(--line); }
+.row[hidden] { display: none; }
+.row dt { font: 400 12px/1.5 var(--font-pixel); color: var(--muted); }
+.row dd { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s3); font: 600 18px/1.35 var(--font-mono); color: var(--text); min-width: 0; }
+.row small { font: 400 14px/1.35 var(--font-mono); color: var(--muted); }
+.gap dd { flex-direction: column; align-items: stretch; gap: var(--s2); }
+.gap .val { display: flex; align-items: baseline; gap: var(--s3); }
+.gap b { font-weight: 600; color: var(--warn); }
+.gap[data-pass="true"] b { color: var(--ok); }
+/* one bar: your number against the target line */
+.gap-bar { position: relative; display: block; height: 8px; background: var(--off); }
+.gap-bar::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--now, 0%); background: var(--warn); }
+.gap[data-pass="true"] .gap-bar::before { background: var(--ok); }
+.gap-bar::after { content: ''; position: absolute; left: var(--goal, 0%); top: -4px; bottom: -4px; width: 2px; background: var(--text); }
+.done dd { color: var(--ok); font-weight: 600; }
+.last { margin: 0; font: 400 14px/1.4 var(--font-mono); color: var(--muted); flex: none; }
+
+/* ---- what the pedal does now: pinned to the bottom ---- */
+.coach-col .pedal { margin: auto 0 0; padding-top: var(--s3); border-top: var(--stroke) solid var(--line-2); display: flex; align-items: baseline; gap: var(--s3); flex: none; }
+.coach-col .pedal b { font: 400 12px/1.5 var(--font-pixel); color: var(--accent); }
+.coach-col .pedal span { font: 600 18px/1.3 var(--font-mono); color: var(--text); }
+.coach-col[data-voice="locked"] .pedal span::after { content: '  · click for Riff\2019s voice'; color: var(--warn); font-weight: 400; }
+
+/* ---- laptop windows and 720p ---- */
+@media (max-height: 820px) {
+  .coach-col { padding: var(--s4); gap: var(--s3); }
+  .talk { gap: var(--s2); }
+  .talk .riff-socket { width: 72px; height: 72px; }
+  .bubble { font-size: 18px; padding: var(--s2) var(--s3); }
+  .bubble::before { left: 28px; }
+  .row { padding: var(--s2) 0; }
+  .row dd, .coach-col .pedal span { font-size: 16px; }
+}

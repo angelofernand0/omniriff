@@ -368,6 +368,14 @@ async def run_scripted_coach(port: int = 47803, engine_ws: str = 'ws://127.0.0.1
                 session.heard(text, len(msg['audio_b64']) * 3 / 4 * 8 / 128_000)
                 feed._broadcast(msg)
         session.speak = lambda text: asyncio.ensure_future(_speak(text))
+
+        async def _prewarm() -> None:                # render every scripted line once, so no line waits on the network
+            for name in ('IDLE_CUE', 'TAKE_CUE', 'APPROVE_CUE', 'DRILL_CUE', 'PASS_CUE', 'WRAP_CUE', 'PLAY_CUE', 'ROUND_CUE', 'DECLINE_CUE'):
+                try:
+                    await asyncio.to_thread(voice.synthesize, globals()[name])
+                except Exception:
+                    pass
+        asyncio.ensure_future(_prewarm())
     server = asyncio.create_task(feed.serve(port, ready=ready))
 
     async def follow():
