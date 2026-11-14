@@ -41,7 +41,8 @@ h2, h3 { font-size: inherit; }
 
 /* ---------- 01 LOOP ---------- */
 .loop-row { flex: 1; display: flex; gap: var(--s4); min-height: 0; }
-.loop-state { flex: 0 0 232px; padding: var(--s4) 20px; display: flex; flex-direction: column; justify-content: center; gap: var(--s2); }
+/* fixed width: READY is the widest word, and the waveform must not jump when the state changes */
+.loop-state { flex: 0 0 264px; padding: var(--s4) 20px; display: flex; flex-direction: column; justify-content: center; gap: var(--s2); }
 .loop-word { display: flex; align-items: center; gap: var(--s3); font: var(--p4)/1 var(--font-pixel); color: var(--muted); }
 .loop-dot { width: 24px; height: 24px; background: currentColor; flex: none; }
 .loop-len { font-size: var(--t3); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -55,6 +56,8 @@ h2, h3 { font-size: inherit; }
 .wave-empty { position: absolute; inset: 0; display: none; }
 .app[data-loop="idle"] .wave-empty { display: flex; }
 .app[data-boot="true"] .wave-empty { display: none; }
+/* a stamp is on the waveform: it speaks first, the empty state waits */
+.wave:has(.juice-stamp) .wave-empty { visibility: hidden; }
 .wave-note { position: absolute; left: var(--s3); top: var(--s2); font-size: var(--t1); color: var(--muted); }
 
 /* ---------- 02 TONE ---------- */

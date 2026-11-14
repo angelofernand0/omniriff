@@ -198,7 +198,10 @@
       }
 
       // sources
-      status('st-vision', 'visionVal', vision, visionSeenAge, engaged ? 'PINCH' : 'ON', null, conn);
+      // the camera is on if vision sent a control lately OR hand frames are arriving right now
+      const handFresh = !!hand.frame && now - hand.at < HAND_STALE_MS;
+      const camAge = handFresh ? Math.min(visionSeenAge, ENGAGED_MS) : visionSeenAge;
+      status('st-vision', 'visionVal', vision, camAge, engaged ? 'PINCH' : 'ON', null, conn);
       const ard = s.sources && s.sources.arduino;
       const ardAge = ard && ard.last_seen_ms != null ? s.timestamp_ms - ard.last_seen_ms : Infinity;
       const serial = s.adapters && s.adapters.serial ? s.adapters.serial.status : 'disabled';
