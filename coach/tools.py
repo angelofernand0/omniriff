@@ -1,6 +1,7 @@
 """Evidence-backed tools exposed to the coach and its Ears/Eyes subagents."""
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from pathlib import Path
@@ -51,12 +52,14 @@ class CoachTools:
         """Read measured strum times and hesitations for a recorded take."""
         report = self._report(take_id, "take.json")
         self.feed.publish(state="thinking", mood="concentrating", target="loop")
+        self.feed.publish_activity("ears", "get_take_report", "done" if report.get("available", True) else "failed")
         return report
 
     def get_hand_report(self, take_id: str) -> dict:
         """Read measured strumming-hand stalls; unavailable means no hand claim."""
         report = self._report(take_id, "hand.json")
         self.feed.publish(state="thinking", mood="concentrating", target="hand")
+        self.feed.publish_activity("eyes", "get_hand_report", "done" if report.get("available", True) else "failed")
         return report
 
     def compare_takes(self, before_id: str, after_id: str) -> dict:
@@ -75,6 +78,7 @@ class CoachTools:
             "improved": ag < bg and ah <= bh,
         }
         self.feed.publish(before_after=result, mood="proud" if result["improved"] else "concentrating")
+        self.feed.publish_activity("coach", "compare_takes", "done")
         return result
 
     def write_drill_card(self, skill: str, passage: str, reps: int, pass_rule: str, rig: dict) -> str:
@@ -109,6 +113,7 @@ class CoachTools:
         # Validate the full snapshot before persisting, so the dashboard can render it.
         self.feed.publish(drill_card=card, mood="encouraging", target="player")
         path.write_text(json.dumps(card, indent=2) + "\n")
+        self.feed.publish_activity("coach", "write_drill_card", "done")
         return journal_path
 
     def say(self, text: str) -> str:
@@ -119,12 +124,24 @@ class CoachTools:
         if len(re.findall(r"[.!?](?:\s|$)", text)) > 2:
             raise ValueError("cue must be at most two sentences")
         self.feed.publish(state="speaking", mood="concerned", target="player", cue=text)
+        self.feed.publish_activity("coach", "say", "done")
+        try:
+            from .voice import Voice  # supplied by R4; browser speech is the fallback until then
+        except ImportError:
+            return text
+        try:
+            audio = asyncio.run(Voice.from_env().render(text))
+            if audio is not None:
+                self.feed.broadcast_audio(audio)
+        except Exception:
+            pass  # voice is optional: the dashboard retains its browser fallback
         return text
 
     def rig_control(self, control: str, value: float | None = None) -> str:
         """After the human approves this tool call, send one schema-valid rig event."""
         message = self.rig.send(control, value)
         self.feed.publish(state="pointing", mood="encouraging", target=control)
+        self.feed.publish_activity("coach", f"rig_control {control}", "done")
         return f"{'Fixture logged' if self.rig.fixture_mode else 'Sent'} {message['type']} {control}"
 
 

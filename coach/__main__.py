@@ -27,6 +27,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fixtures", action="store_true", help="replay explicitly synthetic coach takes without engine")
     parser.add_argument("--auto-approve-fixtures", action="store_true",
                         help="log fixture rig actions without waiting; never valid for a live rig")
+    parser.add_argument("--fixture-limit", type=int, choices=(1, 2, 3), default=3,
+                        help="number of synthetic takes to replay (default: all three)")
     parser.add_argument("--feed-port", type=int, default=47803)
     parser.add_argument("--state-port", type=int, default=47801)
     parser.add_argument("--control-port", type=int, default=47800)
@@ -62,8 +64,9 @@ def main(argv: list[str] | None = None) -> int:
             from .fixtures.generate import generate
             fixture_dir = ROOT / "coach" / "fixtures" / "generated"
             generate(fixture_dir)
+            feed.publish(scripted=True)
             print("SYNTHETIC FIXTURES: no live guitar, webcam, engine or rig control.")
-            for name in ("before", "after", "clean"):
+            for name in ("before", "after", "clean")[:args.fixture_limit]:
                 wav = fixture_dir / f"coach-{name}.wav"
                 runner.process_take(wav)
             print(f"Fixture rig actions logged (not sent): {len(rig.sent)}")

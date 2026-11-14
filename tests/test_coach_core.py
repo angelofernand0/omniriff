@@ -95,6 +95,45 @@ class CoachToolTests(unittest.TestCase):
 
 class CoachRunnerTests(unittest.TestCase):
     @unittest.skipUnless(find_spec("langchain_core"), "coach/requirements.txt is optional in core CI")
+    def test_synthetic_take_pipeline_with_fake_agent_and_no_engine(self):
+        from langgraph.types import Command
+        from coach.fixtures.generate import generate
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            takes = root / "fixtures"
+            generate(takes)
+            feed = CoachFeed("session-test")
+            state = RigStateReader()
+            rig = RigClient(fixture_mode=True, port=1)
+            service = CoachTools(root / "workspace", feed, rig, state)
+
+            class FakeAgent:
+                def invoke(self, payload, config):
+                    if isinstance(payload, Command):
+                        assert payload.resume == {"decisions": [{"type": "approve"}]}
+                        service.rig_control("bypass")
+                        return {"messages": []}
+                    take_id = service.current_take_id
+                    assert service.get_take_report(take_id)["take_id"] == take_id
+                    assert len(service.get_hand_report(take_id)["stalls"]) == (3 if take_id == "coach-before" else 0)
+                    service.write_drill_card("keep-the-hand-moving", "change near 2.7 s", 4,
+                                             "smaller measured gap", {"bypass": True})
+                    return {"__interrupt__": [SimpleNamespace(value={"action_requests": [
+                        {"name": "rig_control", "args": {"control": "bypass"}}
+                    ]})], "todos": [{"content": "Set up a drill", "status": "in_progress"}]}
+
+            runner = CoachRunner(FakeAgent(), service, feed, state, BudgetGuard(root / "usage.jsonl"),
+                                 fixture_mode=True, auto_approve_fixtures=True)
+            runner.process_take(takes / "coach-before.wav")
+            runner.process_take(takes / "coach-after.wav")
+            self.assertEqual(len(rig.sent), 2)
+            self.assertEqual(feed.frame["before_after"]["worst_gap_ms"], [900.0, 620.0])
+            self.assertTrue(feed.frame["before_after"]["improved"])
+            self.assertTrue(VALIDATOR.is_valid(feed.frame))
+            self.assertEqual(len((root / "usage.jsonl").read_text().splitlines()), 2)
+
+    @unittest.skipUnless(find_spec("langchain_core"), "coach/requirements.txt is optional in core CI")
     def test_fake_agent_interrupt_resumes_only_after_fixture_approval(self):
         from langgraph.types import Command
 

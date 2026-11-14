@@ -138,20 +138,25 @@ class CoachRunner:
             awaiting_approval={"id": approval_id, "summary": summary,
                                "actions": actions, "expires_unix_ms": expires},
         )
+        self.feed.publish_activity("coach", "rig_control approval", "waiting")
         print(f"Approval needed: {actions}. Tap pedal or approve in dashboard.")
         if self.auto_approve_fixtures:
             self.feed.publish(awaiting_approval=None)
+            self.feed.publish_activity("coach", "rig_control approval", "done")
             return True
         while time.monotonic() < deadline:
             decision = self.feed.poll_decision(approval_id)
             if decision:
                 self.feed.publish(awaiting_approval=None)
+                self.feed.publish_activity("coach", "rig_control approval", "done" if decision == "approve" else "failed")
                 return decision == "approve"
             if self.state.recording_counter() > recording_before:
                 self.feed.publish(awaiting_approval=None)
+                self.feed.publish_activity("coach", "rig_control approval", "done")
                 return True
             time.sleep(0.1)
         self.feed.publish(awaiting_approval=None)
+        self.feed.publish_activity("coach", "rig_control approval", "failed")
         return False
 
     def _invoke(self, message: str, take_id: str) -> dict:
@@ -172,6 +177,7 @@ class CoachRunner:
                 todos = _todo_frame(result)
                 if todos:
                     self.feed.publish(todos=todos)
+                    self.feed.publish_activity("coach", "write_todos", "done")
                 actions = _pending_actions(result)
                 if not actions:
                     return result
@@ -198,12 +204,15 @@ class CoachRunner:
         take_id = _safe_take_id(sidecar["take_id"])
         self.feed.publish(take_id=take_id, state="listening", mood="concentrating",
                           target="loop", cue=None, todos=[], drill_card=None,
-                          before_after=None, awaiting_approval=None)
+                          before_after=None, awaiting_approval=None, activity=[])
+        self.feed.publish_activity("ears", "analyze_take", "running")
         ear = analyze_take(wav, sidecar_path)
+        self.feed.publish_activity("ears", "analyze_take", "done")
         log_path = self.hand_log
         if self.fixture_mode:
             log_path = wav.with_name(f"{take_id}.hands.jsonl")
         hand = hand_report(log_path, sidecar, fixture_mode=self.fixture_mode)
+        self.feed.publish_activity("eyes", "report_for_window", "done" if hand.get("available", True) else "failed")
         folder = self.service.workspace / "takes" / take_id
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "take.json").write_text(ear.to_json() + "\n")

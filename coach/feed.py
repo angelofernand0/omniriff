@@ -39,6 +39,7 @@ def initial_frame(session_id: str) -> dict:
         "session_id": session_id, "take_id": None, "state": "idle",
         "mood": "neutral", "target": None, "cue": None, "todos": [],
         "drill_card": None, "before_after": None, "awaiting_approval": None,
+        "activity": [], "scripted": False,
     }
     VALIDATOR.validate(frame)
     return frame
@@ -67,8 +68,8 @@ class CoachFeed:
             frame = {**self.frame, **changes, "timestamp_ms": int(time.time() * 1000)}
             VALIDATOR.validate(frame)
             self.frame = frame
-        if self._loop is not None:
-            asyncio.run_coroutine_threadsafe(self._broadcast(frame), self._loop)
+            if self._loop is not None:
+                asyncio.run_coroutine_threadsafe(self._broadcast(frame), self._loop)
         return frame
 
     def accept_decision(self, message: dict) -> bool:
@@ -82,6 +83,25 @@ class CoachFeed:
             return True
         except queue.Full:
             return False
+
+    def publish_activity(self, who: str, what: str, status: str) -> dict:
+        """Append a real harness step to the dashboard's bounded activity strip."""
+        with self._lock:
+            activity = [*self.frame["activity"], {"who": who, "what": what, "status": status}][-8:]
+            frame = {**self.frame, "activity": activity, "timestamp_ms": int(time.time() * 1000)}
+            VALIDATOR.validate(frame)
+            self.frame = frame
+            if self._loop is not None:
+                asyncio.run_coroutine_threadsafe(self._broadcast(frame), self._loop)
+        return frame
+
+    def broadcast_audio(self, message: dict) -> bool:
+        """Send validated server-rendered cue audio; never changes frame state."""
+        if not isinstance(message, dict) or message.get("type") != "coach.audio" or not VALIDATOR.is_valid(message):
+            return False
+        if self._loop is not None:
+            asyncio.run_coroutine_threadsafe(self._broadcast(message), self._loop)
+        return True
 
     def poll_decision(self, approval_id: str) -> str | None:
         """Discard stale/unrelated decisions and return approve/reject for this id."""

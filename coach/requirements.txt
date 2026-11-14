@@ -3,3 +3,4 @@ langchain-anthropic==1.7.10
 python-dotenv==1.2.4
 websockets>=14,<18
 jsonschema>=4.23,<5
+certifi>=2024.0
