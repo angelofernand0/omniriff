@@ -7,6 +7,17 @@ Windows 11 laptop + charger, power strip. Scarlett Solo (3rd gen) + USB cable. G
 
 ## 1. Audio path (≈5 min)
 Once per laptop: follow the [Windows quickstart](../engine/README.md#windows-11-quickstart--scarlett-solo-3rd-gen) with **Python 3.12** (what CI tests; MediaPipe may not ship wheels for newer Pythons), then `python -m pip install -r engine/requirements.txt -r vision/requirements.txt`.
+
+Windows helpers: [setup.ps1](../scripts/windows/setup.ps1) creates/checks the Python 3.12 venv, installs engine + vision requirements and prints preflight results. [start-demo.ps1](../scripts/windows/start-demo.ps1) launches the local dashboard and rig. Both use `.venv\Scripts\python.exe` directly and leave PowerShell execution policy unchanged. **Untested on Windows; PowerShell syntax/execution has not been verified here (`pwsh` unavailable).** Run from the clone in PowerShell:
+
+```powershell
+.\scripts\windows\setup.ps1
+.\scripts\windows\start-demo.ps1 -SerialPort COM3  # replace COM3 with the detected port; omit if no pedal
+.\scripts\windows\start-demo.ps1 -Headless         # alternative: silence processing, no Focusrite output
+```
+
+Run only one demo at a time. Download the hand model as described in §2 before the camera check; if it is missing, the launcher warns and starts without vision. `-Headless` skips the audio interface but still starts vision if the model is present and still opens any explicitly supplied serial port. Setup returns the preflight exit code: a device/port FAIL can mean dependencies installed successfully but the rig is not ready. Complete the live checks below before claiming hardware operation.
+
 0. `python -m engine --check`. Fix every FAIL first (it also prints the Arduino's `--serial-port`).
 1. Solo: guitar in **input 2**, **INST on**, **Direct Monitor off**, speaker or headphone volume low.
 2. `python -m audio --list-devices`. Find the Focusrite entries (WASAPI first).
