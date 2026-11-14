@@ -14,7 +14,9 @@ The audio callback does only preallocated numpy work: no I/O, no logging, no loc
 The music keeps playing. Every input is a separate adapter that can die without touching audio (there are tests for adapter failure and USB disconnect). Bypass is always available from the keyboard. The dashboard shows the failed input as offline instead of pretending it's still live.
 
 **Can strumming accidentally move the filter?**
-Gesture control only acts while you pinch (a clutch with hysteresis). It rejects low-confidence frames, tracks one specific hand, fails closed on big jumps, and StrumGuard mutes control inside the guitar zone. On the engine side, stale, duplicate, malformed or low-confidence events are dropped before they reach audio.
+Gesture control only acts while you pinch (a clutch with hysteresis), and it only arms after it has seen an open hand, so picking up the pick doesn't engage it (tested: 0 false events over 60 frames of strumming with a pick held). It rejects low-confidence frames, tracks one specific hand and fails closed on big jumps. On the engine side, stale, duplicate, malformed or low-confidence events are dropped before they reach audio.
+
+Honest limit: if you show an open hand and *then* grab the pick and strum, the clutch is engaged and strumming moves the filter (a test reproduces it: 15 unintended moves in one second). StrumGuard, which mutes control inside the guitar zone, removes all of them in the tests. [Say whether StrumGuard is on in the demo path; today it's only in the experimental `python -m vision.spatial` mode.] On stage: release the pinch before you start strumming.
 
 **What effects are there?**
 A smoothed low-pass sweep, a Freeverb-style reverb, a 30-second looper, a click-free bypass, an optional noise gate and a peak limiter so loud stacks don't distort.
@@ -46,6 +48,8 @@ No. It proposes a change, and nothing happens until you tap the pedal or press Y
 
 **How do you know the diagnosis is right?**
 Every claim comes from a measured number: Ears' gaps from the audio, Eyes' stalls from the hand. The coach shows before/after numbers from your own takes. [Report how it did on the planted-mistake take and on real takes.] No number, no claim.
+
+What's tested so far, all on our synthetic guitar (the same model Ears was tuned on, so it says nothing yet about real takes): every strum and every planted pause found at 80, 120 and 160 strums a minute, within 15 ms. Two takes recorded through the real engine come out with the second pause smaller, as a before/after should. It still holds with mains hum, a -40 dBFS noise floor, clipping, DC offset, a dark pickup, and input as quiet as -30 dBFS. Known limits: a noise floor as loud as -30 dBFS halves strum recall, and an intended rest looks like a hesitation.
 
 ## Impact
 
