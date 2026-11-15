@@ -66,7 +66,7 @@
 .coach-col .pedal { align-items: center; flex-wrap: wrap; row-gap: var(--s2); }
 .pedal .acts { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: var(--s2) var(--s3); min-width: 0; }
 .pedal .act { display: contents; }
-.pedal .cap { grid-column: 1; box-sizing: border-box; height: 32px; display: grid; place-items: center; font: 400 14px/1 var(--font-pixel); color: var(--accent-ink); background: var(--accent); box-shadow: inset 0 -4px 0 var(--accent-low); padding-bottom: 3px; }
+.pedal .cap { grid-column: 1; box-sizing: border-box; white-space: nowrap; height: 32px; display: grid; place-items: center; font: 400 14px/1 var(--font-pixel); color: var(--accent-ink); background: var(--accent); box-shadow: inset 0 -4px 0 var(--accent-low); padding-bottom: 3px; }
 .pedal .cap[hidden], .pedal kbd[hidden] { display: none; }
 .pedal .does { grid-column: 2; font: 600 17px/1.3 var(--font-mono); color: var(--text); }
 .pedal kbd { grid-column: 3; box-sizing: border-box; height: 24px; display: grid; place-items: center; font: 400 11px/1 var(--font-pixel); color: var(--faint); border: var(--stroke) solid var(--line-2); padding: 0 6px; }

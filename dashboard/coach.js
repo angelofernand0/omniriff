@@ -442,6 +442,8 @@
     else if (step === 4) acts = [['WAIT', 'Riff is wrapping up']];
     else if (step === 1) acts = [['TAP', 'play what you\u2019re working on']];
     else acts = [['TAP', loop === 'playing' ? 'clear, then record a fresh take' : 'record a fresh drill take']];
+    // a plugged-in pedal talks with a double tap (browser/adapters/pedal-taps.ts)
+    if (awake && loop !== 'recording' && !(f && f.state === 'thinking') && window.OmniRiff.pedal && window.OmniRiff.pedal.connected()) acts.push(['TAP\u00d72', 'talk to Riff', 'V']);
     if (ui.pedal) {
       const key = JSON.stringify(acts);
       if (ui.pedal.dataset.acts !== key) {
@@ -462,6 +464,9 @@
       ui.talkBtn.hidden = !awake || loop === 'recording' || (f && f.state === 'thinking');
       const ask = !play && step === 1 && !(ses && ses.goal);
       ui.talkBtn.dataset.ask = String(ask);   // Riff is asking what you're working on: the button leads
+      const key = $('talkKey'), pedalOn = !!(window.OmniRiff.pedal && window.OmniRiff.pedal.connected());
+      if (key) key.textContent = pedalOn ? 'TAP\u00d72' : 'HOLD V';
+      ui.talkBtn.title = pedalOn ? 'Double-tap the pedal (or hold V) to talk to Riff' : 'Hold to talk to Riff (V)';
     }
     if (ui.line) ui.line.dataset.empty = play ? (awake ? 'Free play. I\u2019ll stay quiet.' : 'Riff is asleep. You can still play.')
       : step === 1 ? 'Play me what you\u2019re working on.' : '';
@@ -579,7 +584,20 @@
   // Chrome's speech recognition turns it into text (it needs the internet); without it, or if the
   // mic is refused, the YOU line becomes a text box. The text goes to the coach as coach.say.
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const talk = { mode: 'idle', rec: null, heard: '', hide: 0, stop: 0 };
+  // Hands-free (the pedal: double tap) has no key to let go of, so it sends after a pause in
+  // your speech, or when you tap again. The words come from the voice mic (the laptop's own mic
+  // by default, never the guitar input); see browser/audio/voice-mic.ts.
+  const talk = { mode: 'idle', rec: null, heard: '', hide: 0, stop: 0, handsFree: false, quiet: 0, track: null, id: 0 };
+  const HANDS_FREE_PAUSE_MS = 1600, HANDS_FREE_FIRST_WORD_MS = 7000, HANDS_FREE_MAX_MS = 20000;
+  function releaseTrack() { if (talk.track) { try { talk.track.stop(); } catch (e) { /* gone */ } talk.track = null; } }
+  function armQuiet(ms) {
+    clearTimeout(talk.quiet);
+    if (talk.handsFree) talk.quiet = setTimeout(stopTalk, ms);
+  }
+  function canTalk() {
+    return !!ui.you && !!frame && frame.state !== 'asleep' && !(app && app.dataset.loop === 'recording')
+      && talk.mode !== 'listening' && talk.mode !== 'typing';
+  }
   function hideYou() { if (talk.mode === 'idle' && ui.you) { ui.you.hidden = true; ui.you.dataset.mode = 'idle'; } }
   function riffListens(on) {
     if (on) window.OmniRiff.coach.set({ state: 'listening', target: null, mood: 'curious', you: true });
@@ -595,16 +613,29 @@
     ui.youInput.hidden = m !== 'typing';
     if (dock) dock.dataset.talk = m;
   }
-  function startTalk() {
+  function startTalk(handsFree) {
     if (talk.mode === 'listening' || talk.mode === 'typing' || !ui.you) return;
     if (!frame || frame.state === 'asleep') return;
     if (app && app.dataset.loop === 'recording') return;           // never while you play
-    clearTimeout(talk.hide); clearTimeout(talk.stop);
+    clearTimeout(talk.hide); clearTimeout(talk.stop); clearTimeout(talk.quiet);
+    talk.handsFree = !!handsFree;
+    const id = ++talk.id;
     stopVoice(); held = null;
     talk.heard = '';
     riffListens(true);
     if (!SR) { openTyping(); return; }
-    youMode('listening', '');
+    youMode('listening', talk.handsFree ? 'Listening\u2026 pause or tap the pedal to send.' : '');
+    if (talk.handsFree) armQuiet(HANDS_FREE_FIRST_WORD_MS);
+    const mic = window.OmniRiff.voiceMic;
+    if (mic && mic.track) {
+      mic.track().then((track) => {
+        if (id !== talk.id || talk.mode !== 'listening') { if (track) track.stop(); return; }
+        talk.track = track; listen(id);
+      }, () => { if (id === talk.id && talk.mode === 'listening') listen(id); });
+    } else listen(id);
+  }
+  function listen(id) {
+    if (id !== talk.id) return;
     try {
       const rec = new SR();
       talk.rec = rec;
@@ -613,22 +644,28 @@
         talk.heard = [...e.results].map((r) => r[0].transcript).join(' ').replace(/\s+/g, ' ').trim();
         ui.youText.textContent = talk.heard;
         if (window.OmniRiff.coach.nod) window.OmniRiff.coach.nod();   // Riff nods as your words come in
+        if (talk.heard) armQuiet(HANDS_FREE_PAUSE_MS);
       };
       rec.onerror = (e) => {
         if (['not-allowed', 'service-not-allowed', 'network', 'audio-capture', 'language-not-supported'].includes(e.error)) {
-          talk.rec = null; openTyping(e.error === 'network' ? 'No internet for speech. Type it:' : 'Mic unavailable. Type it:');
+          talk.rec = null; clearTimeout(talk.quiet); releaseTrack(); openTyping(e.error === 'network' ? 'No internet for speech. Type it:' : 'Mic unavailable. Type it:');
         }
       };
       rec.onend = () => {
         if (talk.rec !== rec) return;
-        if (talk.mode === 'listening') { try { rec.start(); } catch (err) { /* ended for good */ } }   // still holding
+        if (talk.mode === 'listening') { try { startRec(rec); } catch (err) { /* ended for good */ } }   // still holding
         else if (talk.mode === 'stopping') finishTalk();
       };
-      rec.start();
-    } catch (e) { openTyping(); }
+      startRec(rec);
+    } catch (e) { releaseTrack(); openTyping(); }
+  }
+  // Chrome 135+ takes the mic track; older browsers ignore the argument and use the default mic.
+  function startRec(rec) {
+    if (talk.track && talk.track.readyState === 'live') rec.start(talk.track); else rec.start();
   }
   function stopTalk() {
     if (talk.mode !== 'listening') return;
+    clearTimeout(talk.quiet);
     talk.mode = 'stopping';
     if (talk.rec) { try { talk.rec.stop(); } catch (e) { /* gone */ } talk.stop = setTimeout(finishTalk, 1200); }
     else finishTalk();
@@ -637,9 +674,10 @@
     if (talk.mode !== 'stopping') return;
     clearTimeout(talk.stop);
     talk.rec = null;
+    releaseTrack();
     const text = talk.heard.trim();
     if (text) sendSay(text, 'voice');
-    else { youMode('idle', 'Didn\u2019t catch that. Hold V and try again.'); riffListens(false); talk.hide = setTimeout(hideYou, 3000); }
+    else { youMode('idle', talk.handsFree ? 'Didn\u2019t catch that. Double-tap the pedal and try again.' : 'Didn\u2019t catch that. Hold V and try again.'); riffListens(false); talk.hide = setTimeout(hideYou, 3000); }
   }
   function openTyping(why) {
     youMode('typing', why || '');
@@ -661,7 +699,7 @@
     else if (e.key === 'Escape') { talk.mode = 'idle'; ui.youInput.blur(); hideYou(); riffListens(false); }
   });
   if (ui.talkBtn) {
-    ui.talkBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); ui.talkBtn.setPointerCapture(e.pointerId); startTalk(); });
+    ui.talkBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); ui.talkBtn.setPointerCapture(e.pointerId); startTalk(false); });
     ui.talkBtn.addEventListener('pointerup', stopTalk);
     ui.talkBtn.addEventListener('pointercancel', stopTalk);
   }
@@ -671,7 +709,7 @@
   window.addEventListener('keydown', (e) => {
     if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     const k = e.key.toLowerCase();
-    if (k === 'v' && !e.repeat && !e.metaKey && !e.ctrlKey) { e.preventDefault(); startTalk(); return; }
+    if (k === 'v' && !e.repeat && !e.metaKey && !e.ctrlKey) { e.preventDefault(); startTalk(false); return; }
     if (k === 'y' && send('coach.approve')) e.preventDefault();
     else if (k === 'n' && send('coach.reject')) e.preventDefault();
     else if (k === 'm') {
@@ -684,7 +722,9 @@
   if (dock) dock.dataset.muted = String(muted);
 
   window.OmniRiff.coachFeed = { get: () => frame, speaking: () => !!busy(), line: () => spoken,
-    say: (text) => sendSay(text, 'typed'), talk: () => talk.mode };
+    say: (text) => sendSay(text, 'typed'), talk: () => talk.mode,
+    // the pedal (browser/adapters/pedal-taps.ts): double tap listens, a tap while listening sends
+    canTalk, listen: () => startTalk(true), sendNow: stopTalk };
   renderMap();
   connect();
 })();

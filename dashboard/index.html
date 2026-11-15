@@ -111,7 +111,7 @@
         <div class="riff-socket riff-stage" aria-hidden="true"></div>
         <p class="bubble" id="coachLine" aria-live="polite"></p>
       </div>
-      <!-- what you told Riff (hold V or TALK, between takes). Typed when speech recognition can't run -->
+      <!-- what you told Riff (hold V or TALK, or double-tap the pedal; between takes). Typed when speech recognition can't run -->
       <div class="you" id="youLine" data-mode="idle" hidden>
         <b>YOU</b><span id="youText" aria-live="polite"></span>
         <input id="youInput" type="text" maxlength="240" autocomplete="off" placeholder="Type it, Enter to send" hidden>
@@ -122,7 +122,7 @@
            your number against its target, or Riff's live steps. coach.js builds it from the feed. -->
       <ol class="list" id="sessionList" aria-label="Your session" hidden></ol>
       <div class="coach-foot">
-        <button type="button" class="talk-btn" id="talkBtn" hidden title="Hold to talk to Riff (V)"><i aria-hidden="true"></i><b>HOLD V</b><span>talk to Riff</span></button>
+        <button type="button" class="talk-btn" id="talkBtn" hidden title="Hold to talk to Riff (V), or double-tap the pedal"><i aria-hidden="true"></i><b id="talkKey">HOLD V</b><span>talk to Riff</span></button>
         <div class="pedal" id="pedalNext"><b>PEDAL</b><span class="acts"></span></div>
       </div>
     </aside>
@@ -152,7 +152,7 @@
     </div>
     <span class="loop-meta" id="loopMeta"></span>
     <p class="diag" id="diag">No engine yet</p>
-    <p class="keys"><kbd>F</kbd>FULLSCREEN <kbd>L</kbd>LOOP <kbd>B</kbd>FX <kbd>Y</kbd>/<kbd>N</kbd>ANSWER RIFF <kbd>M</kbd>MUTE RIFF <kbd>V</kbd>HOLD TO TALK <kbd>D</kbd>RIG</p>
+    <p class="keys"><kbd>F</kbd>FULLSCREEN <kbd>L</kbd>LOOP <kbd>B</kbd>FX <kbd>Y</kbd>/<kbd>N</kbd>ANSWER RIFF <kbd>M</kbd>MUTE RIFF <kbd>V</kbd>HOLD TO TALK (PEDAL: TAP×2) <kbd>D</kbd>RIG</p>
   </aside>
 </div>
 <script src="brand.js"></script>

@@ -4,6 +4,7 @@ import { BrowserLiveAdapter } from './adapters/browser-live';
 import { PythonBridgeAdapter } from './adapters/python-bridge';
 import { absentHand, type AdapterConnection } from './adapters/connection';
 import { WebSerialPedalAdapter } from './adapters/web-serial';
+import { PedalTaps, coachTalk } from './adapters/pedal-taps';
 import type { StateFrame, HandFrame } from './protocol/types';
 
 export type OperatingMode = 'simulator' | 'live' | 'python';
@@ -18,6 +19,8 @@ export class SourceManager {
   public readonly live: BrowserLiveAdapter;
   public readonly python: PythonBridgeAdapter;
   public readonly pedal: WebSerialPedalAdapter;
+  /** Pedal taps: single = loop, double = talk to Riff. */
+  public readonly pedalTaps = new PedalTaps(() => { this.sendControl('loop'); }, coachTalk);
   public activeMode: OperatingMode | null = null;
   private activeAdapter: Adapter | null = null;
   private ready = false;
@@ -37,7 +40,7 @@ export class SourceManager {
     this.live.pedal = this.pedal;
     this.simulator.pedal = this.pedal;
     this.pedal.onAction(action => {
-      if (action === 'loop') this.sendControl('loop');
+      if (action === 'loop') this.pedalTaps.tap();
       else if (action === 'bypass') this.sendControl('bypass');
       else if (action === 'practice') {
         if (typeof window !== 'undefined') {
