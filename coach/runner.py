@@ -284,8 +284,23 @@ class CoachRunner:
             callback = UsageMetadataCallbackHandler()
         if gate is not None:
             gate.bind(callback)
+        callbacks = [callback]
+        try:
+            from langchain_core.callbacks import BaseCallbackHandler
+
+            class _ToolLog(BaseCallbackHandler):
+                """One terminal line per tool call, so a stuck coach is diagnosable."""
+                def on_tool_start(self, serialized, input_str, **kw):
+                    LOG.info("coach tool -> %s %s", (serialized or {}).get("name") or kw.get("name"), str(input_str)[:160])
+
+                def on_tool_end(self, output, **kw):
+                    LOG.info("coach tool <- %s", str(getattr(output, "content", output))[:160])
+
+            callbacks.append(_ToolLog())
+        except ImportError:
+            pass
         config = {"configurable": {"thread_id": self.session_id},
-                  "recursion_limit": 40, "callbacks": [callback]}
+                  "recursion_limit": 40, "callbacks": callbacks}
         start = time.monotonic()
         try:
             result = self.agent.invoke({"messages": [("user", message)]}, config=config)
@@ -298,6 +313,11 @@ class CoachRunner:
                     self.feed.publish_activity("coach", "write_todos", "done")
                 actions = _pending_actions(result)
                 if not actions:
+                    try:
+                        last = result["messages"][-1]
+                        LOG.info("coach final message: %s", str(getattr(last, "content", last))[:400])
+                    except Exception:
+                        pass
                     return result
                 approved = self._await_approval(actions)
                 decisions = ([{"type": "approve"}] * len(actions) if approved else
@@ -310,7 +330,9 @@ class CoachRunner:
                 if gate is not None and gate.refused:
                     raise BudgetExhausted("coach budget guard refused a resumed model call")
             raise RuntimeError("too many consecutive approval requests")
-        except BudgetExhausted:
+        except BudgetExhausted as exc:
+            LOG.warning("coach budget guard stopped this run (%s): estimated spend $%.2f of $%.2f cap in %s",
+                        exc, self.budget.spent_usd(), self.budget.limit_usd, self.budget.path)
             self.feed.publish(state="asleep", mood="sleepy", target=None,
                               cue="Coach is out of credit; keep playing without me.")
             raise
