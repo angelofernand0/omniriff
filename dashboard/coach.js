@@ -30,13 +30,25 @@
   try { muted = localStorage.getItem('omniriff.voiceMuted') === '1'; } catch (e) { /* storage blocked */ }
 
   // ---------- socket ----------
+  const REPLAY_URL = params.get('replay');   // ?replay=<file.jsonl>: play a recorded coach session (replay.js), no socket
+  function dispatch(m) {
+    if (m && m.version === 1 && m.type === 'coach.frame') onFrame(m);
+    else if (m && m.version === 1 && m.type === 'coach.audio') onAudio(m);
+  }
+  function startReplay() {
+    const s = document.createElement('script');
+    s.src = new URL('replay.js', document.currentScript ? document.currentScript.src : location.href).href;
+    s.onload = () => { joined = true; window.OmniReplay.play(REPLAY_URL, dispatch, { loop: params.get('replayloop') !== 'off' }); };
+    s.onerror = () => console.warn('replay.js could not be loaded');
+    document.body.append(s);
+  }
   function connect() {
+    if (REPLAY_URL) { startReplay(); return; }
     try { ws = new WebSocket(URL_); } catch (e) { later(); return; }
     ws.onopen = () => { retry = 0; joined = true; };
     ws.onmessage = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
-      if (m && m.version === 1 && m.type === 'coach.frame') onFrame(m);
-      else if (m && m.version === 1 && m.type === 'coach.audio') onAudio(m);
+      dispatch(m);
     };
     ws.onclose = () => { offline(); later(); };
     ws.onerror = () => { try { ws.close(); } catch (e) { /* closed */ } };
