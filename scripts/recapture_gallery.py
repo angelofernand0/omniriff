@@ -53,10 +53,10 @@ async def capture_screenshot(ws, output_path):
         data = json.loads(raw)
         if data.get('id') == msg_id:
             png_bytes = base64.b64decode(data['result']['data'])
-            # Ensure it is RGB PNG at 1280x720
+            # Ensure it is RGB PNG at 1920x1080
             im = Image.open(io.BytesIO(png_bytes)).convert('RGB')
-            if im.size != (1280, 720):
-                im = im.resize((1280, 720), Image.Resampling.LANCZOS)
+            if im.size != (1920, 1080):
+                im = im.resize((1920, 1080), Image.Resampling.LANCZOS)
             im.save(output_path, 'PNG')
             print(f'Saved verified RGB PNG {im.size} ({os.path.getsize(output_path)} bytes): {output_path}')
             return png_bytes
@@ -75,12 +75,12 @@ async def capture_gallery():
         '--http-port', str(HTTP_PORT),
     ], cwd=str(ROOT))
 
-    print('Starting Chrome headless...')
+    print('Starting Chrome headless at 1920x1080...')
     chrome_proc = subprocess.Popen([
         CHROME_BIN,
         '--headless',
         f'--remote-debugging-port={CDP_PORT}',
-        '--window-size=1280,720',
+        '--window-size=1920,1080',
         '--disable-gpu',
         '--hide-scrollbars',
         'about:blank'
@@ -99,8 +99,8 @@ async def capture_gallery():
                 'id': 2,
                 'method': 'Emulation.setDeviceMetricsOverride',
                 'params': {
-                    'width': 1280,
-                    'height': 720,
+                    'width': 1920,
+                    'height': 1080,
                     'deviceScaleFactor': 1,
                     'mobile': False,
                 }
@@ -114,27 +114,27 @@ async def capture_gallery():
             await ws.send(json.dumps({'id': 3, 'method': 'Page.navigate', 'params': {'url': url1}}))
             await asyncio.sleep(3.0)
 
-            print('Monitoring coach state for Drill 2 / before-after (Pass cue)...')
+            print('Monitoring coach state for mid-session drill card / full line...')
             t0 = time.time()
             captured_01 = False
             while time.time() - t0 < 90.0:
                 pill = await evaluate(ws, 'document.querySelector("#statusPill") ? document.querySelector("#statusPill").textContent : ""')
                 coach_line = await evaluate(ws, 'document.querySelector("#coachLine") ? document.querySelector("#coachLine").textContent : ""')
-                app_coach = await evaluate(ws, 'document.querySelector("#app") ? document.querySelector("#app").dataset.coach : ""')
-                has_before_after = await evaluate(ws, 'Boolean(document.querySelector(".before-after") || document.body.innerText.includes("120 ms") || document.body.innerText.includes("430 ms"))')
-                loop_word = await evaluate(ws, 'document.querySelector("#loopWord") ? document.querySelector("#loopWord").textContent : ""')
+                has_drill_card = await evaluate(ws, 'Boolean(document.querySelector(".drill-card") || document.body.innerText.includes("Keep the hand moving"))')
+                has_gap_mark = await evaluate(ws, 'Boolean(document.querySelector("#waveMark") && !document.querySelector("#waveMark").hidden)')
+                todos_len = await evaluate(ws, 'document.querySelectorAll("#sessionList li").length')
 
-                print(f'[{time.time()-t0:.1f}s] pill="{pill}" coach="{app_coach}" loop="{loop_word}" b/a={has_before_after} line="{coach_line[:35]}..."')
+                print(f'[{time.time()-t0:.1f}s] pill="{pill}" drill_card={has_drill_card} gap={has_gap_mark} todos={todos_len} line="{coach_line[:40]}..."')
 
-                # We specifically want the Drill 2 moment where the before/after card is shown or pass cue
-                if 'SIMULATED · SCRIPTED COACH' in pill and has_before_after and ('tenth' in coach_line.lower() or 'pattern' in coach_line.lower() or 'nice' in coach_line.lower() or 'drill' in coach_line.lower()):
-                    print('Found Drill 2 with before-after card and pass cue!')
+                # We want mid-session with full line, drill card or gap bar visible, and todos
+                if ('SIMULATED' in pill) and has_drill_card and len(coach_line) > 20 and not coach_line.startswith('…'):
+                    print('Found mid-session Drill 1 with full coach line and drill card!')
                     await asyncio.sleep(1.0)
                     await capture_screenshot(ws, MEDIA / 'gallery-01-coach.png')
                     captured_01 = True
                     break
 
-                await asyncio.sleep(1.2)
+                await asyncio.sleep(1.0)
 
             if not captured_01:
                 print('Capturing latest coach state...')
@@ -142,16 +142,17 @@ async def capture_gallery():
 
             # -------------------------------------------------------------
             # CAPTURE 2: Gesture Control View (gallery-02-hand.png)
+            # Run with coach connected so coach dock is populated (not empty)
             # -------------------------------------------------------------
-            url2 = f'http://127.0.0.1:{HTTP_PORT}/?ws=ws://127.0.0.1:{WS_PORT}&hand=ws://127.0.0.1:{HAND_PORT}&coach=off&sim=input'
-            print(f'Navigating to Gallery 2 URL:\n  {url2}')
+            url2 = f'http://127.0.0.1:{HTTP_PORT}/?ws=ws://127.0.0.1:{WS_PORT}&hand=ws://127.0.0.1:{HAND_PORT}&coachws=ws://127.0.0.1:{COACH_PORT}&sim=input'
+            print(f'Navigating to Gallery 2 URL (with coach populated):\n  {url2}')
             await ws.send(json.dumps({'id': 4, 'method': 'Page.navigate', 'params': {'url': url2}}))
             await asyncio.sleep(2.0)
 
-            print('Monitoring demo for hand filter sweep...')
+            print('Monitoring demo for hand filter sweep with populated coach...')
             t0 = time.time()
             captured_02 = False
-            while time.time() - t0 < 45.0:
+            while time.time() - t0 < 50.0:
                 pill = await evaluate(ws, 'document.querySelector("#statusPill") ? document.querySelector("#statusPill").textContent : ""')
                 eng_name = await evaluate(ws, 'document.querySelector("#engName") ? document.querySelector("#engName").textContent : ""')
                 eng_pct = await evaluate(ws, 'document.querySelector("#engPct") ? document.querySelector("#engPct").textContent : ""')
@@ -161,8 +162,8 @@ async def capture_gallery():
                 print(f'[{time.time()-t0:.1f}s] pill="{pill}" hand="{hand_state}" eng="{eng_name} {eng_pct}" filter="{filter_pct}"')
 
                 # We want filter sweep: engName == 'FILTER' and hand engaged!
-                if pill == 'SIMULATED' and eng_name == 'FILTER' and eng_pct != '0%':
-                    print('Captured active filter sweep!')
+                if 'SIMULATED' in pill and eng_name == 'FILTER' and eng_pct != '0%':
+                    print('Captured active filter sweep with coach column active!')
                     await asyncio.sleep(0.4)
                     await capture_screenshot(ws, MEDIA / 'gallery-02-hand.png')
                     captured_02 = True
