@@ -331,7 +331,7 @@
     const engaged = mode === 'engaged';
     if (engaged && typeof f.value === 'number') {  // value rail on the right edge
       const rh = Math.round(f.value * (h - 8));
-      hctx.fillStyle = color('--accent-deep'); hctx.fillRect(w - 10, 4, 6, h - 8);
+      hctx.fillStyle = color('--off'); hctx.fillRect(w - 10, 4, 6, h - 8);
       hctx.fillStyle = color('--accent'); hctx.fillRect(w - 10, h - 4 - rh, 6, rh);
     }
     if (!f || !f.present || f.landmarks.length !== 21) return;

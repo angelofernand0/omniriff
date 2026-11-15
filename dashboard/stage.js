@@ -65,10 +65,4 @@
 
   // ---------- FX power: the same control as BYPASS ----------
   fx.addEventListener('click', () => $('btnBypass').click());
-
-  // ---------- hand inset: only while the camera sees a hand ----------
-  const hp = $('handPanel'), inset = document.querySelector('.hand-inset');
-  const hand = () => { inset.dataset.show = String(!['off', 'none'].includes(hp.dataset.hand)); };
-  new MutationObserver(hand).observe(hp, { attributes: true, attributeFilter: ['data-hand'] });
-  hand();
 })();

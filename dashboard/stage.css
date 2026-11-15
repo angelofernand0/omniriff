@@ -34,7 +34,7 @@
 .loop-len { font-size: var(--p3); font-family: var(--font-pixel); font-weight: 400; }
 
 /* tone: two big readouts and the power button */
-.tone-row { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 232px; gap: var(--s6); min-height: 0; }
+.tone-row { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 232px; min-height: 0; }
 .card .tag { display: none; }
 .card h3 { font-size: var(--p2); color: var(--muted); }
 .card.target h3, .card.live h3 { color: var(--accent); }
@@ -59,11 +59,6 @@
 .app[data-bypass="true"] .bypass-stamp { display: none; }   /* the button says it now */
 .app[data-bypass="true"] .cards, .app[data-bypass="true"] .engaged { opacity: 0.3; }
 
-/* hand: in the tone row while the camera sees a hand, gone otherwise */
-.tone-row { grid-template-columns: minmax(0, 1fr) auto 232px; }
-.hand-inset { width: 260px; display: none; flex-direction: column; gap: var(--s2); min-height: 0; }
-.hand-inset[data-show="true"] { display: flex; animation: popin var(--bar) var(--step); }
-.hand-inset .hand { flex: 1; min-height: 120px; }
 
 /* ---------- coach column: Riff's home ---------- */
 .coach-col { display: flex; flex-direction: column; gap: var(--s4); min-height: 0; padding: var(--s4); background: var(--panel); border: var(--stroke) solid var(--line-2); box-shadow: 4px 4px 0 var(--shadow); transition: border-color var(--beat) steps(2); }
@@ -152,8 +147,6 @@
   .deck { gap: var(--s3) var(--s4); padding: var(--s3) var(--s5) var(--s4); grid-template-columns: minmax(0, 1fr) clamp(340px, 32vw, 460px); }
   .loop-word { font-size: var(--p4); }
   .loop-state { flex-basis: 232px; }
-  .tone-row { grid-template-columns: minmax(0, 1fr) auto 160px; gap: var(--s3); }
-  .hand-inset { width: 180px; }
   .fx-glyph { font-size: 48px; }
   .booth { grid-template-columns: 112px minmax(0, 1fr); min-height: 120px; }
   .booth .riff-socket { width: 112px; height: 112px; }
@@ -170,10 +163,6 @@
 }
 }
 
-/* fixed columns so the power button keeps its place whether or not the hand inset shows */
-.fx-zone { grid-column: 1; }
-.hand-inset { grid-column: 2; }
-.fx-power { grid-column: 3; }
 /* the pinch readout replaces the cards completely, FX on or off */
 .app[data-fx="engaged"] .cards { opacity: 0 !important; }
 
@@ -255,3 +244,34 @@
 /* at DONE the session summary is the result; the before/after line steps aside */
 .coach-col:has(#pSummary:not([hidden])) #coachBA { display: none !important; }
 @media (max-height: 820px) { #coachBA { display: none !important; } }   /* short screens: the line, the number and the chart already say it */
+
+/* ======== SM review 5: one gutter, one stroke, no glow (measured at 1288x734) ========
+   Every gap between two boxes is --gutter. Every panel is a 2px --line-2 stroke on --panel; "active" is
+   the same stroke in pink, nothing else (no rings, no drop shadows, no outlines that spill into the
+   gutter). The FX button is the one chunky control: a 4px stroke with its key-travel drawn inside. */
+.app { --gutter: 16px; --edge: 24px; }
+@media (max-height: 700px) { .app { --gutter: 12px; --edge: 16px; } }
+
+.deck { gap: var(--gutter); padding: var(--gutter) var(--edge) var(--edge); }
+.loop-row, .cards, .tone-row { gap: var(--gutter); }
+.label { height: 16px; }
+.panel, .card, .engaged, .coach-col { border: var(--stroke) solid var(--line-2); box-shadow: none; }
+.card.target, .card.live, .app[data-loop="playing"] .loop-state.juice-beat, .loop-state.juice-beat { border-color: var(--accent); box-shadow: none; }
+.app[data-fx="engaged"] .engaged { border: var(--stroke) solid var(--accent); box-shadow: none; }
+.spot-target { outline: var(--stroke) solid var(--accent); outline-offset: calc(var(--stroke) * -1); }
+
+/* tone row: the effects fill the width; one fixed slot on the right holds the FX button, or the hand while you adjust */
+.fx-zone { grid-column: 1; }
+.fx-power, .hand-inset { grid-column: 2; grid-row: 1; }
+.fx-power { box-shadow: inset 0 -6px 0 var(--shadow); }
+.fx-power:active, .fx-power.pressed { transform: none; box-shadow: inset 0 -2px 0 var(--shadow); }
+.fx-led, .fx-power[data-on="true"] .fx-led { box-shadow: none; }
+.hand-inset { display: none; width: auto; min-height: 0; }
+.app[data-fx="engaged"] .hand-inset { display: flex; animation: none; }
+.app[data-fx="engaged"] .fx-power { display: none; }
+.hand-inset .hand { flex: 1; min-height: 0; }
+.hand-head { position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 32px; padding: 0 var(--s3); box-sizing: border-box; background: var(--panel); border-bottom: var(--stroke) solid var(--line-2); }
+.hand-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hand canvas { top: 32px; height: calc(100% - 32px); }
+.hand-empty { top: 32px; }
+@media (max-height: 820px) { .tone-row { grid-template-columns: minmax(0, 1fr) 160px; } .hand-head .label-r { display: none; } }

@@ -37,7 +37,6 @@
 
 /* effect graphs: the curve is the picture of the sound */
 .juice-viz { display: block; width: 100%; flex: 1 1 40px; min-height: 40px; }
-.engaged > .juice-bg { position: absolute; inset: 24px; width: calc(100% - 48px); height: calc(100% - 48px); pointer-events: none; }
 .engaged-text, .tower { position: relative; z-index: 1; }
 
 /* offline screen */
