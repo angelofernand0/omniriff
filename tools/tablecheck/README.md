@@ -29,7 +29,7 @@ Normal local runs finish under five seconds, including when all feeds are silent
 | Engine | Schema-valid state on WS 47801, timestamp within 1 second (up to 1 second future-clock tolerance); reports cumulative xruns/clipped samples, latest input peak, loop and adapter statuses. Nonzero xruns or starting/retrying/error/stopped adapters are RED; UDP/WebSocket must be running; a disabled serial adapter is allowed. |
 | Dashboard | HTTP 8080 serves OmniRiff HTML; follows at most one redirect within the same loopback endpoint (including the simulator's source-label redirect). |
 | Hand | WS 47802 sends a schema-valid frame within the deadline, timestamp within 500 ms. A fresh `present:false` is GREEN and says “no hand seen”; a connected but silent socket is RED. |
-| Coach | WS 47803 supplies a schema-valid `coach.frame`. Reports SCRIPTED vs LIVE feed and the cached snapshot's age/state. An explicit “out of credit” cue is RED. Cached idle frames may be old; no model is called and no API balance is queried. |
+| Coach | WS 47803 supplies a schema-valid `coach.frame`. Reports REPLAY (scripted `replay-` session), SCRIPTED, or LIVE feed and the cached snapshot's age/state. A replay prefix without `scripted:true`, or an explicit “out of credit” cue, is RED. Cached idle frames may be old; no model is called and no API balance is queried. |
 | Takes | `runs/takes` exists and allows a unique empty temporary file to be created/closed/deleted. No existing take is opened or changed, and no directory is created. |
 | Model | `models/hand_landmarker.task` is a nonempty readable regular file. The model is not loaded. |
 
