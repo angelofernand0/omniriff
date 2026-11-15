@@ -71,6 +71,10 @@ h1, h2, h3, p { margin: 0; font-weight: 400; }
 .logo [data-logo] { height: 32px; width: 136px; }
 .logo.x3 [data-logo] { height: 48px; width: 204px; }
 .logo.x6 [data-logo] { height: 96px; width: 408px; }
+/* animated lockup (the dashboard header): the same 136x32 box as the still lockup, so layout is unchanged.
+   The art has headroom for the hop and room on the right for the shove, so it overhangs the box and ignores the pointer. */
+.logo-anim { position: relative; display: inline-block; flex: none; width: 136px; height: 32px; line-height: 0; }
+.logo-anim img { position: absolute; left: -8px; top: -10px; width: 162px; height: 46px; max-width: none; image-rendering: pixelated; pointer-events: none; }
 [data-logo="mark"] { width: 32px; height: 32px; }
 
 /* module label: silk-screened on the faceplate */

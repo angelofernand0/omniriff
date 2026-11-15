@@ -168,6 +168,8 @@ The machine moves in steps. Only Riff moves smoothly (section 7). `prefers-reduc
 
 Logo files: `dashboard/brand/` (`logo.svg`, `mark.svg`, `wordmark.svg`, `logo-on-light.svg`, `favicon.svg`, `app-icon.svg`). Regenerate with `node dashboard/brand.js --export`. Clear space is one mark-width on every side.
 
+**Animated logo** (`logo-animated.gif` and `.svg`, plus `-light` versions): Riff looks left and right, crouches, hops and lands; the landing shoves the letters right, they spread apart, then snap back together. A small second hop sends a weaker echo. 4.2 s loop. Use the GIF for README, Devpost and social, the SVG on the site (14 KB, scales crisply, honours `prefers-reduced-motion` by holding the still logo). It is generated from `logo.svg` by `python tools/brand/animate_logo.py`, so edit the script, not the files. Letters move in whole cells and never overlap; no particles. The dashboard header uses `logo-animated-bar.svg` (`--bar`): the same loop with a 2-cell hop, because the bar sits 8 px from the window top and a taller hop clips. It fills the same 136x32 box as the still lockup (`.logo-anim` in `brand.css`), so layout does not move. Use the still logo anywhere else the page is not about the brand.
+
 ## 7. Riff, the coach
 
 **Built as a design only.** `dashboard/riff.js` draws and animates the character. It has no AI, opens no socket and sends nothing. COACH piece F drives it later through `OmniRiff.coach.set({ state, target, cue })`.
@@ -241,6 +243,33 @@ One page, `dashboard/index.html`. A faceplate, five numbered modules, a footer.
 | Footer | Diagnostics, keyboard legend (`F` `L` `B`) |
 
 Fits 1920x1080, 1280x720 and the play room's iframe without scrolling; stacks to one column under 1080 px wide. `dashboard/brand.html` is the brand sheet.
+
+### Layout rules (measured, SM review 5)
+
+1. **One gutter.** Every gap between two boxes is `--gutter`: 16 px, 12 px when the window is under 700 px tall. A label sits 8 px above its own box. Edges are `--edge` (24 px, 16 px short). Boxes in a row share a top and a bottom edge.
+2. **One stroke.** Every panel is a 2 px `--line-2` stroke on `--panel`. Active is the same stroke in pink. No glow rings, no drop shadows, no outline that spills into the gutter. The FX button is the one chunky control (4 px stroke, its key travel drawn inside the box).
+3. **One slot.** The right end of the tone row is one fixed slot. It holds the FX button, or the hand view while you adjust an effect. The effect panel never shrinks to make room.
+4. **Header columns match the deck.** The meters are flush with the loop panel's right edge; the status pill and RIG button sit over the coach column. Nothing moves when the status pill changes.
+5. **Sub-labels sit under their number, on the left** (`Low-pass 9662 Hz`, `Wet mix`), the same in every card.
+6. **The record box is exactly as wide as READY plus equal padding**; its dot, length and hint share one left edge.
+7. **The waveform is the tape, and it comes off one big wheel half hidden under the record box** (`tape.js`). The wheel is centred on the record box's right edge, so only its right half shows, poking out across the gap into the waveform panel; the bars start at its rim. It is its own layer between the two boxes. Every motion is caused by the real loop: READY is an empty core; REC brings new audio in at the right edge past a red record head, scrolls it left as the waveform and winds it onto the wheel, which turns one way and grows with the recorded seconds (full at 12 s), red like the bars; closing the loop turns it pink with one clunk; PLAY unwinds it the other way in step with the playhead, a whole number of turns per loop so it lands on the same spot every wrap, with a clunk on the downbeat; CLEAR rewinds it fast to an empty core. 80 ms steps, no motion with reduced motion. It is dim when idle and only moves on loop events. Nothing here animates to look busy.
+
+### The session checklist (coach column)
+
+One list, one row shape for everything Riff plans: **mark · LABEL · what**, with an optional result line under *what*. Marks: green check = done, pink square = you are here, hollow = ahead, dot = context (last time, next time).
+
+| Row | Label | What it says | Result line |
+|---|---|---|---|
+| Last session | LAST TIME | one line from memory (before the first drill) | |
+| Goal | GOAL | what you told Riff, or `Tell Riff what you're working on` | |
+| Reading a take | RIFF | `Reading your take`, while the agent works | |
+| Each drill, any number | DRILL n | the drill's title | `take 1 of 3` (now) |
+| Wrap-up | DONE | `2 drills · 3 takes` | `430 → 110 ms` |
+| After the session | NEXT TIME | what to work on next | |
+
+- **Rows ahead sit back**, darker, until you reach them. The row you are on opens: your number against its target with where you started, and **Riff's checks**, the agent's live steps in plain words (Ears, Eyes, Riff), a dot per step in its own plan, newest last.
+- **The bubble is only what Riff says.** While Riff works it shows `…`; what it is doing is in the checklist, once. No step appears in both.
+- **Built only from the feed** (`session.plan`, `metric`, `last_time`, `next_time`, `activity`, `todos`). It scales with the plan (up to 5 drills) and the agent's activity; a long list scrolls to keep your row in view. Green means done, only.
 
 ## 10. Scope
 

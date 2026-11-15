@@ -105,6 +105,7 @@
     }
     if (ls === 'recording') loop.samples.push(waveLevel(s.input_peak_dbfs));
     loop.seconds = s.loop ? s.loop.seconds : 0;
+    loop.max = (s.loop && s.loop.max_seconds) || 30;
 
     // fx movement => "injection" pulse
     for (const k of ['filter', 'reverb']) {
@@ -247,6 +248,8 @@
   // ---------- waveform ----------
   const canvas = $('wave');
   const ctx = canvas.getContext('2d');
+  const waveEl = canvas.parentElement;
+  let waveLeft = -1;
   function drawWave(now) {
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -256,7 +259,10 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     const pad = 12, bw = 6, gap = 2;
-    const cols = Math.max(1, Math.floor((w - pad * 2) / (bw + gap)));
+    // the waveform is the tape: it leaves the rim of the wheel (tape.js), which is half under the record box
+    const x0 = window.OmniTape ? OmniTape.layout().x0 : pad;
+    if (x0 !== waveLeft) { waveLeft = x0; waveEl.style.setProperty('--wave-left', x0 + 'px'); }
+    const cols = Math.max(1, Math.floor((w - pad - x0) / (bw + gap)));
     const mid = h / 2, maxH = h / 2 - pad;
     const accent = color('--accent'), dim = color('--off'), rec = color('--rec'), unplayed = color('--dim');
     const smp = loop.samples;
@@ -281,16 +287,17 @@
       if (loop.state === 'recording') fillc = rec;
       else if (loop.state === 'playing') fillc = c / cols <= pos ? accent : unplayed;
       ctx.fillStyle = fillc;
-      ctx.fillRect(pad + c * (bw + gap), Math.round(mid - bh), bw, bh * 2);
+      ctx.fillRect(x0 + c * (bw + gap), Math.round(mid - bh), bw, bh * 2);
     }
     // ruler: one tick per second of loop, so the length reads without the number
     if (loop.state === 'playing' && loop.seconds > 0) {
       ctx.fillStyle = color('--line-2');
-      const span = w - pad * 2;
-      for (let t = 0; t <= loop.seconds + 1e-6; t += 1) ctx.fillRect(Math.round(pad + (t / loop.seconds) * span), h - 8, 2, 8);
+      const span = w - pad - x0;
+      for (let t = 0; t <= loop.seconds + 1e-6; t += 1) ctx.fillRect(Math.round(x0 + (t / loop.seconds) * span), h - 8, 2, 8);
       ctx.fillStyle = color('--text');
-      ctx.fillRect(Math.round(pad + pos * span), 0, 4, h);
+      ctx.fillRect(Math.round(x0 + pos * span), 0, 4, h);
     }
+    if (window.OmniTape) OmniTape.paint({ now, state: loop.state, seconds: loop.seconds, max: loop.max, playStart: loop.playStart });
   }
 
   // ---------- hand view ----------
@@ -331,7 +338,7 @@
     const engaged = mode === 'engaged';
     if (engaged && typeof f.value === 'number') {  // value rail on the right edge
       const rh = Math.round(f.value * (h - 8));
-      hctx.fillStyle = color('--accent-deep'); hctx.fillRect(w - 10, 4, 6, h - 8);
+      hctx.fillStyle = color('--off'); hctx.fillRect(w - 10, 4, 6, h - 8);
       hctx.fillStyle = color('--accent'); hctx.fillRect(w - 10, h - 4 - rh, 6, rh);
     }
     if (!f || !f.present || f.landmarks.length !== 21) return;

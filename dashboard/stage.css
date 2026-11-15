@@ -19,7 +19,7 @@
 .gear kbd { font: inherit; }
 
 /* ---------- deck: loop on top, tone below; the side rail is gone ---------- */
-.deck { grid-template-columns: minmax(0, 1fr) clamp(400px, 31vw, 600px); grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--s5) var(--s6); padding: var(--s4) var(--s6) var(--s6); }
+.deck { grid-template-columns: minmax(0, 1fr) var(--col); grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--s5) var(--s6); padding: var(--s4) var(--s6) var(--s6); }
 .loop, .tone { grid-column: 1; }
 .coach-col { grid-column: 2; grid-row: 1 / span 2; }
 .loop { grid-row: 1; position: relative; }
@@ -28,13 +28,15 @@
 
 
 /* loop: bigger state word, the waveform carries the rest */
-.loop-state { flex: 0 0 296px; }
-.loop-word { font-size: var(--p5); }
-.loop-dot { width: 36px; height: 36px; }
-.loop-len { font-size: var(--p3); font-family: var(--font-pixel); font-weight: 400; }
+/* the record box is exactly as wide as READY (its widest word) plus equal padding left and right; dot, length and hint share one left edge */
+.loop-state { flex: none; align-items: flex-start; padding: var(--s5); width: calc(var(--ready-w) + 2 * var(--s5)); box-sizing: border-box; --ready-w: 214px; }
+.loop-word { font-size: 48px; }
+.loop-dot { width: 24px; height: 24px; }
+.loop-len { font-size: var(--p3); font-family: var(--font-pixel); font-weight: 400; margin-left: -0.125em; }   /* the pixel font has side bearing: pull the ink onto the dot's axis */
+.loop-state .hint { margin-left: -1px; }
 
 /* tone: two big readouts and the power button */
-.tone-row { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 232px; gap: var(--s6); min-height: 0; }
+.tone-row { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 296px; min-height: 0; }
 .card .tag { display: none; }
 .card h3 { font-size: var(--p2); color: var(--muted); }
 .card.target h3, .card.live h3 { color: var(--accent); }
@@ -59,11 +61,6 @@
 .app[data-bypass="true"] .bypass-stamp { display: none; }   /* the button says it now */
 .app[data-bypass="true"] .cards, .app[data-bypass="true"] .engaged { opacity: 0.3; }
 
-/* hand: in the tone row while the camera sees a hand, gone otherwise */
-.tone-row { grid-template-columns: minmax(0, 1fr) auto 232px; }
-.hand-inset { width: 260px; display: none; flex-direction: column; gap: var(--s2); min-height: 0; }
-.hand-inset[data-show="true"] { display: flex; animation: popin var(--bar) var(--step); }
-.hand-inset .hand { flex: 1; min-height: 120px; }
 
 /* ---------- coach column: Riff's home ---------- */
 .coach-col { display: flex; flex-direction: column; gap: var(--s4); min-height: 0; padding: var(--s4); background: var(--panel); border: var(--stroke) solid var(--line-2); box-shadow: 4px 4px 0 var(--shadow); transition: border-color var(--beat) steps(2); }
@@ -76,7 +73,7 @@
 /* what Riff says: big, in the same place every time, readable from the floor */
 .spot-cue { margin: 0; font: 600 30px/1.25 var(--font-mono); color: var(--text); text-wrap: pretty; }
 .spot-cue:empty::before { content: 'Riff is listening.'; color: var(--faint); font-weight: 400; }
-.coach-col[data-state="asleep"] .spot-cue:empty::before { content: 'Coach off. The rig plays without it.'; }
+.coach-col[data-state="asleep"] .spot-cue:empty::before { content: 'Riff is asleep. You can still play.'; }
 .acts { margin: 0; font: 600 var(--t1)/1.4 var(--font-mono); color: var(--muted); }
 .acts:empty { display: none; }
 
@@ -149,11 +146,9 @@
 /* ---------- smaller screens (720p projector, the play room) ---------- */
 @media (max-height: 820px) {
   .bar { padding: var(--s2) var(--s5); }
-  .deck { gap: var(--s3) var(--s4); padding: var(--s3) var(--s5) var(--s4); grid-template-columns: minmax(0, 1fr) clamp(340px, 32vw, 460px); }
-  .loop-word { font-size: var(--p4); }
-  .loop-state { flex-basis: 232px; }
-  .tone-row { grid-template-columns: minmax(0, 1fr) auto 160px; gap: var(--s3); }
-  .hand-inset { width: 180px; }
+  .deck { gap: var(--s3) var(--s4); padding: var(--s3) var(--s5) var(--s4); grid-template-columns: minmax(0, 1fr) var(--col); }
+  .loop-word { font-size: 40px; }
+  .loop-state { --ready-w: 184px; }
   .fx-glyph { font-size: 48px; }
   .booth { grid-template-columns: 112px minmax(0, 1fr); min-height: 120px; }
   .booth .riff-socket { width: 112px; height: 112px; }
@@ -170,25 +165,20 @@
 }
 }
 
-/* fixed columns so the power button keeps its place whether or not the hand inset shows */
-.fx-zone { grid-column: 1; }
-.hand-inset { grid-column: 2; }
-.fx-power { grid-column: 3; }
 /* the pinch readout replaces the cards completely, FX on or off */
 .app[data-fx="engaged"] .cards { opacity: 0 !important; }
 
 /* ---------- sizing that can't overflow (measured review, SM 2026-11-14) ----------
    Every big readout sizes itself to its own box (container query units), so a 3-digit value or a
    narrow window can never push text out of its panel. */
-.card, .loop-state, .fx-power, .engaged-text, .practice, .p-now, .coach-col { container-type: inline-size; }
+.card, .engaged-text, .practice, .p-now, .coach-col { container-type: inline-size; }
+.fx-power { container-type: size; }   /* the toggle and its labels size to the button, both ways */
 .pct { font-size: clamp(32px, 26cqi, 112px); line-height: 1.05; white-space: nowrap; }
 .card h3 { font-size: clamp(14px, 7cqi, 24px); }
 .readout { flex-wrap: wrap; row-gap: var(--s1); }
 .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .engaged-name { font-size: clamp(16px, 9cqi, 48px); }
 .engaged-pct { font-size: clamp(40px, 34cqi, 144px); line-height: 1.05; white-space: nowrap; }
-.loop-word { font-size: clamp(24px, 17cqi, 72px); line-height: 1.1; }
-.loop-dot { width: 0.5em; height: 0.5em; }
 .fx-power b { font-size: clamp(16px, 14cqi, 32px); line-height: 1.1; }
 .fx-glyph { font-size: clamp(32px, 30cqi, 72px); line-height: 1.1; }
 .fx-word { font-size: clamp(14px, 11cqi, 24px); line-height: 1.1; }
@@ -255,3 +245,64 @@
 /* at DONE the session summary is the result; the before/after line steps aside */
 .coach-col:has(#pSummary:not([hidden])) #coachBA { display: none !important; }
 @media (max-height: 820px) { #coachBA { display: none !important; } }   /* short screens: the line, the number and the chart already say it */
+
+/* ======== SM review 5: one gutter, one stroke, no glow (measured at 1288x734) ========
+   Every gap between two boxes is --gutter. Every panel is a 2px --line-2 stroke on --panel; "active" is
+   the same stroke in pink, nothing else (no rings, no drop shadows, no outlines that spill into the
+   gutter). The FX button is the one chunky control: a 4px stroke with its key-travel drawn inside. */
+.app { --gutter: 16px; --edge: 24px; }
+@media (max-height: 700px) { .app { --gutter: 12px; --edge: 16px; } }
+
+.deck { gap: var(--gutter); padding: var(--gutter) var(--edge) var(--edge); }
+.loop-row, .cards, .tone-row { gap: var(--gutter); }
+.label { height: 16px; }
+.panel, .card, .engaged, .coach-col { border: var(--stroke) solid var(--line-2); box-shadow: none; }
+.card.target, .card.live, .app[data-loop="playing"] .loop-state.juice-beat, .loop-state.juice-beat { border-color: var(--accent); box-shadow: none; }
+.app[data-fx="engaged"] .engaged { border: var(--stroke) solid var(--accent); box-shadow: none; }
+.spot-target { outline: var(--stroke) solid var(--accent); outline-offset: calc(var(--stroke) * -1); }
+
+/* tone row: the effects fill the width; one fixed slot on the right holds the FX button, or the hand while you adjust */
+.fx-zone { grid-column: 1; }
+.fx-power, .hand-inset { grid-column: 2; grid-row: 1; }
+.fx-power { box-shadow: inset 0 -6px 0 var(--shadow); }
+.fx-power:active, .fx-power.pressed { transform: none; box-shadow: inset 0 -2px 0 var(--shadow); }
+.fx-led, .fx-power[data-on="true"] .fx-led { box-shadow: none; }
+.hand-inset { display: none; width: auto; min-height: 0; }
+.app[data-fx="engaged"] .hand-inset { display: flex; animation: none; }
+.app[data-fx="engaged"] .fx-power { display: none; }
+.hand-inset .hand { flex: 1; min-height: 0; }
+.hand-head { position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 32px; padding: 0 var(--s3); box-sizing: border-box; background: var(--panel); border-bottom: var(--stroke) solid var(--line-2); }
+.hand-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hand canvas { top: 32px; height: calc(100% - 32px); }
+.hand-empty { top: 32px; }
+@media (max-height: 820px) { .tone-row { grid-template-columns: minmax(0, 1fr) 264px; } }
+
+/* tone cards: the sub-label always sits under the number, on the left edge */
+.readout { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; gap: var(--s2); }
+.sub { text-align: left; }
+
+/* header: the same two columns as the deck. Meters are flush with the loop panel's right edge; the status pill and
+   RIG button sit over the coach column and fill it, so nothing moves when the pill changes or goes away. */
+.app { --col: clamp(400px, 31vw, 600px); }
+@media (max-height: 820px) { .app { --col: clamp(340px, 32vw, 460px); } }
+@media (min-width: 1200px) {
+  .bar { display: grid; grid-template-columns: auto minmax(0, 1fr) var(--col); column-gap: var(--gutter); padding: var(--s4) var(--edge); }
+  @media (max-height: 820px) { .bar { padding-block: var(--s2); } }
+  .bar .spacer { display: none; }
+  .bar .top-meters { justify-self: end; }
+  .bar-end { display: flex; gap: var(--gutter); min-width: 0; }
+  .bar-end .pill { flex: 1; min-width: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
+}
+@media (max-width: 1199px) { .bar-end { display: contents; } }
+
+/* the waveform panel is the tape deck: the wheel (tape.js) sits at the left, the bars start at its edge */
+.wave-note { left: calc(var(--wave-left, 12px)); }
+.wave-empty { left: var(--wave-left, 0); }
+.step[data-s="ctx"] .what { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* the wheel (tape.js) is centred on the record box's right edge: the record box sits above it (hiding its left half),
+   the waveform panel below it, so it pokes out across the gap into the panel */
+.loop-row { position: relative; }
+.loop-state { position: relative; z-index: 2; }
+.wave { z-index: 0; }
+.wheel { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; image-rendering: pixelated; }

@@ -56,10 +56,15 @@ class CoachFeed:
     """Holds the latest coach.frame, serves it to every client, and queues decisions from them."""
 
     def __init__(self, session_id: str = 'scripted'):
+        # starts in free play: Riff is drowsy and silent until the player holds the pedal (Y here) or talks to it
         self.frame = dict(version=1, type='coach.frame', timestamp_ms=now_ms(), session_id=session_id,
-                          take_id=None, state='idle', mood='neutral', target='player', cue=IDLE_CUE,
-                          todos=[], drill_card=None, before_after=None, awaiting_approval=None,
-                          activity=[], scripted=True)
+                          take_id=None, state='idle', mood='sleepy', target='player', cue=None,
+                          todos=[], drill_card=None, before_after=None,
+                          awaiting_approval=dict(id='again', summary='Start a practice round', actions=[dict(control='loop')],
+                                                 expires_unix_ms=now_ms() + 24 * 3600_000),
+                          activity=[], scripted=True,
+                          session=dict(mode='play', goal=None, plan=[], drill=None, attempt=None, metric=None,
+                                       next=None, last_time=None, summary=None, next_time=None))
         self.clients: set = set()
         self.decisions: asyncio.Queue = asyncio.Queue()
         SCHEMA.validate(self.frame)
@@ -153,15 +158,15 @@ class ScriptedSession:
         self.loop = 'idle'
         self.bypass = False
         self.we_bypassed = False
-        self.phase = 'first'      # first take, or 'drill' take after approval
-        self.awaiting = None
+        self.phase = 'play'       # play (free play) until a round starts; then first take, or 'drill' take after approval
+        self.awaiting = 'again'   # free play: Y (a long pedal press on the real rig) starts a round
         self.takes = 0
         self.quiet_at = 0.0       # loop time when the current line (plus a pause) is done
         self.history: list[float] = []   # scripted 'longest gap' per take, oldest first
         self.drill_step = 1
-        self.mode = 'practice'
+        self.mode = 'play'
         self.tries = 0            # tries on the current drill (3 max)
-        self.awaiting_kind = None  # 'drill' (the pedal is yes) or 'again' (Y only: PLAY mode keeps the pedal for looping)
+        self.awaiting_kind = 'again'  # 'drill' (the pedal is yes) or 'again' (Y only: PLAY mode keeps the pedal for looping)
         self.last_time = None
         self.summary = None
         self.cue_at = 0.0
@@ -214,8 +219,11 @@ class ScriptedSession:
         self.loop_seconds = float((st.get('loop') or {}).get('seconds') or self.loop_seconds)
         new = (st.get('loop') or {}).get('state', 'idle')
         old, self.loop = self.loop, new
-        if old == 'offline':
-            self.say(state='idle', mood='neutral', target='player', cue=IDLE_CUE)
+        if old == 'offline':                        # the engine is back: free play stays quiet, a round in progress greets
+            if self.mode == 'play':
+                self.say(state='idle', mood='sleepy', target='player', cue=None)
+            else:
+                self.say(state='idle', mood='neutral', target='player', cue=IDLE_CUE)
         if new == old:
             return
         if self.mode == 'play':                    # free play: the pedal is the looper; Riff stays quiet
@@ -405,7 +413,7 @@ class ScriptedSession:
 
 
 async def run_scripted_coach(port: int = 47803, engine_ws: str = 'ws://127.0.0.1:47801', udp_port: int | None = 47800,
-                             pace: float = 1.0, speak=None, states=None, ready=None, voice=None) -> None:
+                             pace: float = 1.0, speak=None, states=None, ready=None, voice=None, start_round: bool = False) -> None:
     """Serve the scripted session until cancelled. `states` overrides the engine feed (tests).
     `voice` (coach.voice.Voice) speaks each new cue as coach.audio; no voice means the browser's."""
     feed = CoachFeed()
@@ -436,7 +444,13 @@ async def run_scripted_coach(port: int = 47803, engine_ws: str = 'ws://127.0.0.1
         while True:
             await session.on_decision(await feed.decisions.get())
 
+    async def begin():                               # --coach-round: skip the long press, start practising (demos and layout checks)
+        await asyncio.sleep(0.5)
+        await session.new_round()
+
     tasks = [server, asyncio.create_task(follow()), asyncio.create_task(decide())]
+    if start_round:
+        tasks.append(asyncio.create_task(begin()))
     try:
         await asyncio.gather(*tasks)
     finally:
