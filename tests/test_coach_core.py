@@ -319,25 +319,54 @@ class CoachRunnerTests(unittest.TestCase):
             self.assertEqual(len(fake.calls), 2)
             self.assertEqual(feed.frame["todos"][0]["status"], "in_progress")
 
-    def test_pedal_recording_transition_approves_pending_actions(self):
+    def test_pedal_hold_approves_before_new_recording_and_is_consumed(self):
         with tempfile.TemporaryDirectory() as folder:
             feed = CoachFeed("session-test")
             state = RigStateReader()
-            state.observe({"loop": {"state": "idle"}})
+            state.observe({"loop": {"state": "playing"}, "pedal": {"practice_count": 0}})
             service = CoachTools(Path(folder), feed, RigClient(fixture_mode=True), state)
             runner = CoachRunner(None, service, feed, state, BudgetGuard(Path(folder) / "usage.jsonl"),
                                  fixture_mode=True, approval_timeout_s=1)
+            runner._session_active = True
 
-            def pedal():
+            def hold():
                 time.sleep(0.05)
-                state.observe({"loop": {"state": "recording"}})
+                state.observe({"loop": {"state": "playing"}, "pedal": {"practice_count": 1}})
 
-            thread = threading.Thread(target=pedal)
+            thread = threading.Thread(target=hold)
             thread.start()
             self.assertTrue(runner._await_approval([{"control": "bypass"}]))
             thread.join()
+            self.assertEqual(state.recording_counter(), 0)
+            self.assertEqual(runner._last_practice_count, 1)
+            runner._poll_practice_action()
+            self.assertTrue(runner._session_active)
+            self.assertEqual(service.session.mode, "practice")
             self.assertIsNone(feed.frame["awaiting_approval"])
             self.assertTrue(VALIDATOR.is_valid(feed.frame))
+
+    def test_loop_taps_do_not_approve_pending_rig_change(self):
+        with tempfile.TemporaryDirectory() as folder:
+            feed = CoachFeed("session-test")
+            state = RigStateReader()
+            state.observe({"loop": {"state": "playing"}, "pedal": {"practice_count": 0}})
+            service = CoachTools(Path(folder), feed, RigClient(fixture_mode=True), state)
+            runner = CoachRunner(None, service, feed, state, BudgetGuard(Path(folder) / "usage.jsonl"),
+                                 fixture_mode=True, approval_timeout_s=0.35)
+
+            def taps():
+                time.sleep(0.05)
+                state.observe({"loop": {"state": "idle"}, "pedal": {"practice_count": 0}})
+                time.sleep(0.05)
+                state.observe({"loop": {"state": "recording"}, "pedal": {"practice_count": 0}})
+
+            thread = threading.Thread(target=taps)
+            thread.start()
+            self.assertFalse(runner._await_approval([{"control": "bypass"}]))
+            thread.join()
+            self.assertEqual(state.recording_counter(), 1)
+            self.assertEqual(service.rig.sent, [])
+            self.assertIsNone(feed.frame["awaiting_approval"])
 
     def test_budget_guard_uses_conservative_logged_usage(self):
         with tempfile.TemporaryDirectory() as folder:
