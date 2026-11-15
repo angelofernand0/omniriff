@@ -17,6 +17,17 @@ const OPEN_HAND_OFFSETS: ReadonlyArray<[number, number]> = [
   [0.33, -0.66], [0.4, -0.9], [0.44, -1.05], [0.47, -1.18],
 ];
 
+// Closed right fist offsets in hand units: fingers curled tightly into palm.
+// MCP knuckles (5, 9, 13, 17) remain visible while tips (8, 12, 16, 20) curl down into palm.
+const FIST_OFFSETS: ReadonlyArray<[number, number]> = [
+  [0.0, 0.0], // 0: wrist
+  [-0.25, -0.15], [-0.35, -0.32], [-0.25, -0.48], [-0.10, -0.56], // 1-4: thumb across folded fingers
+  [-0.22, -0.74], [-0.24, -0.90], [-0.18, -0.80], [-0.15, -0.66], // 5-8: index MCP, PIP, DIP, tip curled in
+  [-0.02, -0.76], [-0.02, -0.94], [-0.02, -0.82], [-0.02, -0.68], // 9-12: middle MCP, PIP, DIP, tip curled in
+  [0.17, -0.72], [0.18, -0.90], [0.15, -0.78], [0.12, -0.64],   // 13-16: ring MCP, PIP, DIP, tip curled in
+  [0.33, -0.64], [0.34, -0.80], [0.30, -0.70], [0.26, -0.56],   // 17-20: pinky MCP, PIP, DIP, tip curled in
+];
+
 const PINCH_POINT: [number, number] = [-0.45, -0.95];
 const SCALE = 0.2;
 const ASPECT = 4 / 3;
@@ -25,7 +36,8 @@ export function generateHandPoints(
   x: number,
   y: number,
   pinch: number,
-  wobble: number = 0.0
+  wobble: number = 0.0,
+  fist: number = 0.0
 ): Array<[number, number]> {
   const pts: Array<[number, number]> = [];
 
@@ -36,7 +48,12 @@ export function generateHandPoints(
       hx = hx + (PINCH_POINT[0] - hx) * k;
       hy = hy + (PINCH_POINT[1] - hy) * k;
     }
-    if (i > 0) {
+    if (fist > 0) {
+      const [fx, fy] = FIST_OFFSETS[i];
+      hx = hx + (fx - hx) * fist;
+      hy = hy + (fy - hy) * fist;
+    }
+    if (i > 0 && fist < 0.9) {
       hy += 0.03 * Math.sin(wobble + i);
     }
     const px = x + (hx * SCALE) / ASPECT;
@@ -80,6 +97,8 @@ export class SimulatedHandModel {
   public wristX: number = 0.55;
   public wristY: number = 0.70;
   public pinchAmount: number = 0.0; // 0 = open, 1 = pinched
+  public fistAmount: number = 0.0; // 0 = open, 1 = closed fist
+  public swapTriggered: boolean = false;
 
   constructor() {}
 
@@ -94,8 +113,9 @@ export class SimulatedHandModel {
       };
     }
 
-    const pts = generateHandPoints(this.wristX, this.wristY, this.pinchAmount, (timestampMs / 1000) * 2.0);
-    const pinch = computePinchRatio(pts);
+    const pts = generateHandPoints(this.wristX, this.wristY, this.pinchAmount, (timestampMs / 1000) * 2.0, this.fistAmount);
+    // When curling into a fist, disarm pinch engagement so it doesn't accidentally modulate sliders
+    const pinch = this.fistAmount > 0.3 ? 0.85 : computePinchRatio(pts);
 
     return {
       present: true,
@@ -121,7 +141,7 @@ export class SimulatedHandModel {
       };
     }
 
-    const pts = generateHandPoints(this.wristX, this.wristY, this.pinchAmount, (timestampMs / 1000) * 2.0);
+    const pts = generateHandPoints(this.wristX, this.wristY, this.pinchAmount, (timestampMs / 1000) * 2.0, this.fistAmount);
 
     return {
       version: 1,

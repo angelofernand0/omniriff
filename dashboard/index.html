@@ -61,13 +61,19 @@
     <section class="mod tone" aria-labelledby="h-tone">
       <div class="tone-head-bar">
         <h2 class="label" id="h-tone"><i data-icon="tone"></i>TONE</h2>
-        <button type="button" class="side-fx" id="fxPower" data-reach="left" data-riff-name="FX" aria-pressed="true" title="Effects on/off (B)">
-          <span class="fx-label-text">FX</span>
-          <span class="fx-slider-switch" aria-hidden="true">
-            <span class="fx-slider-thumb"></span>
-          </span>
-          <span class="fx-word">ON</span>
-        </button>
+        <div class="tone-head-controls">
+          <button type="button" class="sim-play-btn" id="simGuitarBtn" title="Play or pause simulated guitar" hidden>
+            <span class="sim-play-icon" aria-hidden="true">⏸</span>
+            <span class="sim-play-text">GUITAR</span>
+          </button>
+          <button type="button" class="side-fx" id="fxPower" data-reach="left" data-riff-name="FX" aria-pressed="true" title="Effects on/off (B)">
+            <span class="fx-label-text">FX</span>
+            <span class="fx-slider-switch" aria-hidden="true">
+              <span class="fx-slider-thumb"></span>
+            </span>
+            <span class="fx-word">ON</span>
+          </button>
+        </div>
       </div>
       <div class="tone-row">
         <div class="fx-zone">

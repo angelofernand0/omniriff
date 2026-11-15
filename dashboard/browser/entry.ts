@@ -168,7 +168,31 @@ function label() {
   stop.textContent = active === 'python' ? 'Disconnect' : 'Stop';
   mute.disabled = !active || active === 'python' || !browserAdapter().audio.isRunning;
   mute.textContent = active && active !== 'python' && browserAdapter().audio.isMuted ? 'Unmute instrument' : 'Mute instrument';
+  updateSimGuitarBtn();
 }
+const simGuitarBtn = $('simGuitarBtn') as HTMLButtonElement | null;
+function updateSimGuitarBtn() {
+  if (!simGuitarBtn) return;
+  const isSim = manager.activeMode === 'simulator' && connected;
+  simGuitarBtn.hidden = !isSim;
+  if (!isSim) return;
+  const playing = manager.simulator.isGuitarPlaying;
+  simGuitarBtn.dataset.playing = String(playing);
+  const icon = simGuitarBtn.querySelector('.sim-play-icon');
+  const text = simGuitarBtn.querySelector('.sim-play-text');
+  if (icon) icon.textContent = playing ? '⏸' : '▶';
+  if (text) text.textContent = playing ? 'GUITAR' : 'PLAY';
+  simGuitarBtn.title = playing ? 'Pause simulated guitar' : 'Play simulated guitar';
+}
+if (simGuitarBtn) {
+  simGuitarBtn.addEventListener('click', () => {
+    if (manager.activeMode === 'simulator') {
+      manager.simulator.toggleGuitar();
+      updateSimGuitarBtn();
+    }
+  });
+}
+manager.simulator.onGuitarState(() => updateSimGuitarBtn());
 let loopControl: HTMLButtonElement | undefined;
 manager.onConnection(info => {
   connected = info.status === 'connected';
@@ -189,6 +213,7 @@ manager.onState(frame => {
     const emptyHint = document.querySelector('#waveEmpty > span');
     if (emptyHint) emptyHint.textContent = 'Tap Record loop. Play. Tap Finish.';
   }
+  updateSimGuitarBtn();
 });
 
 async function refreshDevices() {
