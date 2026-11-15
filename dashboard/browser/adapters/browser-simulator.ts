@@ -1,7 +1,7 @@
 /**
  * Browser Simulator Mode Adapter (Mode B).
  * Runs real Web Audio DSP with Karplus-Strong / harmonic guitar synth and synthetic hand choreography.
- * Conforms 100% to protocol/state.schema.json and protocol/hand.schema.json.
+ * Publishes the shared v1 state/hand shapes; hardware xruns are not measured here.
  */
 
 import { AudioEngine, type WorkletTelemetryState } from '../audio/audio-engine';
@@ -10,6 +10,7 @@ import { Setlist } from '../vision/setlist';
 import { SimulatedHandModel } from '../simulation/simulated-hand';
 import { SimulatorChoreography } from '../simulation/choreography';
 import type { StateFrame, HandFrame } from '../protocol/types';
+import { absentHand, type ConnectionCallback } from './connection';
 
 export class BrowserSimulatorAdapter {
   public readonly modeId = 'simulator' as const;
@@ -23,6 +24,19 @@ export class BrowserSimulatorAdapter {
 
   private onStateCb: ((frame: StateFrame) => void) | null = null;
   private onHandCb: ((frame: HandFrame) => void) | null = null;
+
+  private generation = 0;
+  private starting: Promise<void> | null = null;
+  private onConnectionCb: ConnectionCallback | null = null;
+  private target: 'filter' | 'reverb' | 'scene' = 'filter';
+  public get gestureTarget(): 'filter' | 'reverb' | 'scene' { return this.target; }
+  public set gestureTarget(value: 'filter' | 'reverb' | 'scene') {
+    if (!['filter', 'reverb', 'scene'].includes(value)) throw new Error('Unknown gesture target');
+    if (this.target === value) return;
+    this.target = value;
+    this.controller.control = value === 'reverb' ? 'reverb' : 'filter';
+    this.controller.rearm();
+  }
 
   private animFrameId: number | null = null;
   private isRunning: boolean = false;
@@ -64,17 +78,42 @@ export class BrowserSimulatorAdapter {
 
   public async start(): Promise<void> {
     if (this.isRunning) return;
-    this.isRunning = true;
+    if (this.starting) {
+      await this.starting;
+      if (!this.isRunning) return this.start();
+      return;
+    }
+    const pending = this.startRun(++this.generation);
+    this.starting = pending;
+    try { await pending; } finally { if (this.starting === pending) this.starting = null; }
+  }
 
-    await this.audio.start('synth');
-    this.choreography.reset();
-
-    const loop = (nowMs: number) => {
-      if (!this.isRunning) return;
-      this.step(nowMs);
+  private async startRun(generation: number): Promise<void> {
+    this.onConnectionCb?.({ status: 'starting' });
+    this.controller.rearm();
+    this.acceptedEvents = 0;
+    this.lastAcceptedMs = null;
+    this.lastStateEmitMs = 0;
+    this.hand.present = false;
+    try {
+      await this.audio.start('synth');
+      if (generation !== this.generation) { await this.audio.stop(); return; }
+      this.choreography.reset();
+      this.isRunning = true;
+      this.onConnectionCb?.({ status: 'connected' });
+      const loop = (nowMs: number) => {
+        if (!this.isRunning || generation !== this.generation) return;
+        this.step(nowMs);
+        this.animFrameId = requestAnimationFrame(loop);
+      };
       this.animFrameId = requestAnimationFrame(loop);
-    };
-    this.animFrameId = requestAnimationFrame(loop);
+    } catch (error) {
+      if (generation === this.generation) {
+        await this.stop();
+        this.onConnectionCb?.({ status: 'error', message: String(error) });
+      }
+      throw error;
+    }
   }
 
   private step(nowMs: number): void {
@@ -86,19 +125,19 @@ export class BrowserSimulatorAdapter {
 
     // 3. Update deterministic gesture controller
     const nowSec = nowMs / 1000;
-    const ev = this.controller.update(obs.y, obs.pinch, obs.confidence, nowSec, Math.floor(nowMs));
+    const ev = this.controller.update(obs.y, obs.pinch, obs.confidence, nowSec, Date.now());
 
     // 4. Update hand engagement state
     this.hand.engaged = this.controller.active;
     this.hand.value = this.controller.value;
-    this.hand.control = this.controller.control;
+    this.hand.control = this.target === 'scene' ? null : this.controller.control;
 
     // 5. If controller emitted gesture event, route through Setlist and Audio
     if (ev) {
       this.acceptedEvents++;
-      this.lastAcceptedMs = Math.floor(nowMs);
+      this.lastAcceptedMs = Date.now();
 
-      const morphedEvents = this.setlist.current.events(ev);
+      const morphedEvents = this.target === 'scene' ? this.setlist.current.events(ev) : [ev];
       for (const mev of morphedEvents) {
         if (mev.control === 'filter') {
           this.audio.setFilter(mev.value);
@@ -110,14 +149,14 @@ export class BrowserSimulatorAdapter {
 
     // 6. Emit Hand Frame at 60 FPS for smooth rendering
     if (this.onHandCb) {
-      this.onHandCb(this.hand.getHandFrame(Math.floor(nowMs)));
+      this.onHandCb(this.hand.getHandFrame(Date.now()));
     }
 
     // 7. Emit State Frame throttled at ~25 Hz (every 40ms)
     if (nowMs - this.lastStateEmitMs >= 40) {
       this.lastStateEmitMs = nowMs;
       if (this.onStateCb) {
-        this.onStateCb(this.buildStateFrame(Math.floor(nowMs)));
+        this.onStateCb(this.buildStateFrame(Date.now()));
       }
     }
   }
@@ -157,7 +196,7 @@ export class BrowserSimulatorAdapter {
           last_accepted_ms: this.lastAcceptedMs,
           accepted: this.acceptedEvents,
           dropped: 0,
-          confidence: this.hand.present ? 0.95 : null,
+          session: 0,
         },
       },
       adapters: {
@@ -177,6 +216,7 @@ export class BrowserSimulatorAdapter {
   }
 
   public sendControl(control: string, value?: number): boolean {
+    if (!this.isRunning) return false;
     if (control === 'loop') {
       this.audio.toggleLoop();
       return true;
@@ -185,12 +225,12 @@ export class BrowserSimulatorAdapter {
       this.audio.toggleBypass();
       return true;
     }
-    if (control === 'filter' && typeof value === 'number') {
-      this.audio.setFilter(value);
+    if (control === 'filter' && typeof value === 'number' && Number.isFinite(value)) {
+      this.audio.setFilter(Math.min(1, Math.max(0, value)));
       return true;
     }
-    if (control === 'reverb' && typeof value === 'number') {
-      this.audio.setReverb(value);
+    if (control === 'reverb' && typeof value === 'number' && Number.isFinite(value)) {
+      this.audio.setReverb(Math.min(1, Math.max(0, value)));
       return true;
     }
     return false;
@@ -216,12 +256,18 @@ export class BrowserSimulatorAdapter {
     this.audio.clearLoop();
   }
 
+  public onConnection(cb: ConnectionCallback): void { this.onConnectionCb = cb; }
+
   public async stop(): Promise<void> {
+    ++this.generation;
     this.isRunning = false;
+    this.controller.rearm();
+    this.onHandCb?.(absentHand());
     if (this.animFrameId !== null) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
     }
     await this.audio.stop();
+    this.onConnectionCb?.({ status: 'stopped' });
   }
 }

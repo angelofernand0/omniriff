@@ -1,134 +1,123 @@
-/**
- * Unified Source Manager for OmniRiff.
- * Manages the three operating modes:
- *   Mode A: LIVE RIG (Browser Live)
- *   Mode B: BROWSER SIM (Browser Simulator - Default)
- *   Mode C: PYTHON BRIDGE (Local Python Engine)
- * Ensures strictly one active engine at a time.
- */
-
+/** Serializes source transitions. Only the current, successfully started adapter can publish frames. */
 import { BrowserSimulatorAdapter } from './adapters/browser-simulator';
 import { BrowserLiveAdapter } from './adapters/browser-live';
 import { PythonBridgeAdapter } from './adapters/python-bridge';
+import { absentHand, type AdapterConnection } from './adapters/connection';
 import type { StateFrame, HandFrame } from './protocol/types';
 
 export type OperatingMode = 'simulator' | 'live' | 'python';
+export interface SourceModeChangeInfo { mode: OperatingMode; label: string }
+export interface SourceConnectionInfo extends AdapterConnection { mode: OperatingMode | null }
 
-export interface SourceModeChangeInfo {
-  mode: OperatingMode;
-  label: string;
-}
+type Adapters = { simulator: BrowserSimulatorAdapter; live: BrowserLiveAdapter; python: PythonBridgeAdapter };
+type Adapter = Adapters[OperatingMode];
 
 export class SourceManager {
-  private activeAdapter: BrowserSimulatorAdapter | BrowserLiveAdapter | PythonBridgeAdapter | null = null;
+  public readonly simulator: BrowserSimulatorAdapter;
+  public readonly live: BrowserLiveAdapter;
+  public readonly python: PythonBridgeAdapter;
   public activeMode: OperatingMode | null = null;
-
-  public readonly simulator = new BrowserSimulatorAdapter();
-  public readonly live = new BrowserLiveAdapter();
-  public readonly python = new PythonBridgeAdapter();
-
+  private activeAdapter: Adapter | null = null;
+  private ready = false;
+  private request = 0;
+  private transition: Promise<void> = Promise.resolve();
+  private connection: SourceConnectionInfo = { mode: null, status: 'stopped' };
   private onStateCallbacks: Array<(frame: StateFrame) => void> = [];
   private onHandCallbacks: Array<(frame: HandFrame) => void> = [];
   private onModeChangeCallbacks: Array<(info: SourceModeChangeInfo) => void> = [];
+  private onConnectionCallbacks: Array<(info: SourceConnectionInfo) => void> = [];
 
-  constructor() {
-    // Wire adapters to dispatcher
-    const handleState = (frame: StateFrame) => {
-      for (const cb of this.onStateCallbacks) cb(frame);
-    };
-    const handleHand = (frame: HandFrame) => {
-      for (const cb of this.onHandCallbacks) cb(frame);
-    };
-
-    this.simulator.onState(handleState);
-    this.simulator.onHand(handleHand);
-
-    this.live.onState(handleState);
-    this.live.onHand(handleHand);
-
-    this.python.onState(handleState);
-    this.python.onHand(handleHand);
-  }
-
-  public get currentAdapter() {
-    return this.activeAdapter;
-  }
-
-  public async setMode(mode: OperatingMode): Promise<void> {
-    if (this.activeMode === mode && this.activeAdapter) return;
-
-    // 1. Gracefully stop current active engine
-    if (this.activeAdapter) {
-      await this.activeAdapter.stop();
-      this.activeAdapter = null;
-    }
-
-    this.activeMode = mode;
-
-    // 2. Start newly selected mode
-    if (mode === 'simulator') {
-      this.activeAdapter = this.simulator;
-      await this.simulator.start();
-    } else if (mode === 'live') {
-      this.activeAdapter = this.live;
-      await this.live.start();
-    } else if (mode === 'python') {
-      this.activeAdapter = this.python;
-      await this.python.start();
-    }
-
-    // 3. Notify listeners
-    if (this.activeAdapter) {
-      const info: SourceModeChangeInfo = {
-        mode,
-        label: this.activeAdapter.modeLabel,
-      };
-      for (const cb of this.onModeChangeCallbacks) cb(info);
+  constructor(adapters: Partial<Adapters> = {}) {
+    this.simulator = adapters.simulator ?? new BrowserSimulatorAdapter();
+    this.live = adapters.live ?? new BrowserLiveAdapter();
+    this.python = adapters.python ?? new PythonBridgeAdapter();
+    for (const mode of ['simulator', 'live', 'python'] as const) {
+      const adapter = this[mode];
+      adapter.onState(frame => {
+        if (this.activeAdapter === adapter && this.ready) this.onStateCallbacks.forEach(cb => cb(frame));
+      });
+      adapter.onHand(frame => {
+        if (this.activeAdapter === adapter && this.ready) this.onHandCallbacks.forEach(cb => cb(frame));
+      });
+      adapter.onConnection(info => {
+        if (this.activeAdapter === adapter) this.publishConnection({ mode, ...info });
+      });
     }
   }
 
+  public get currentAdapter() { return this.activeAdapter; }
+
+  /** Latest request wins; failed transitions do not poison subsequent retries. */
+  public setMode(mode: OperatingMode): Promise<void> {
+    if (!['simulator', 'live', 'python'].includes(mode)) return Promise.reject(new Error('Unknown source mode'));
+    const request = ++this.request;
+    const job = this.transition.then(async () => {
+      if (request !== this.request) return;
+      if (this.activeMode === mode && this.activeAdapter && this.ready) return;
+      await this.releaseCurrent();
+      if (request !== this.request) return;
+      const adapter = this[mode];
+      this.activeAdapter = adapter;
+      this.activeMode = mode;
+      this.publishConnection({ mode, status: 'starting' });
+      try {
+        await adapter.start();
+        if (request !== this.request) {
+          if (this.activeAdapter === adapter) await this.releaseCurrent();
+          return;
+        }
+        this.ready = true;
+        this.onModeChangeCallbacks.forEach(cb => cb({ mode, label: adapter.modeLabel }));
+      } catch (error) {
+        if (this.activeAdapter === adapter) await this.releaseCurrent();
+        if (request !== this.request) return;
+        this.publishConnection({ mode, status: 'error', message: String(error) });
+        throw error;
+      }
+    });
+    this.transition = job.catch(() => undefined);
+    return job;
+  }
+
+  private async releaseCurrent(): Promise<void> {
+    const adapter = this.activeAdapter;
+    this.activeAdapter = null;
+    this.activeMode = null;
+    this.ready = false;
+    this.onHandCallbacks.forEach(cb => cb(absentHand()));
+    if (adapter) await adapter.stop();
+  }
+
+  /** Invalidate callbacks immediately, including while permission acquisition is pending. */
   public async stop(): Promise<void> {
-    if (this.activeAdapter) {
-      await this.activeAdapter.stop();
-      this.activeAdapter = null;
-      this.activeMode = null;
-    }
+    const request = ++this.request;
+    const cleanup = this.releaseCurrent();
+    // A browser permission prompt cannot be dismissed programmatically. Do not
+    // let its old start promise block another source after Stop; adapters drop
+    // late results using their own generation and stop any acquired tracks.
+    this.transition = cleanup.catch(() => undefined);
+    await cleanup;
+    if (request === this.request) this.publishConnection({ mode: null, status: 'stopped' });
   }
 
-  public onState(cb: (frame: StateFrame) => void): void {
-    this.onStateCallbacks.push(cb);
+  private publishConnection(info: SourceConnectionInfo): void {
+    this.connection = info;
+    this.onConnectionCallbacks.forEach(cb => cb({ ...info }));
   }
-
-  public onHand(cb: (frame: HandFrame) => void): void {
-    this.onHandCallbacks.push(cb);
+  /** Reports transport availability; the dashboard must still age received state frames. */
+  public onConnection(cb: (info: SourceConnectionInfo) => void): void {
+    this.onConnectionCallbacks.push(cb);
+    cb({ ...this.connection });
   }
-
-  public onModeChange(cb: (info: SourceModeChangeInfo) => void): void {
-    this.onModeChangeCallbacks.push(cb);
-  }
-
-  // Delegated manual controls to active adapter
+  public onState(cb: (frame: StateFrame) => void): void { this.onStateCallbacks.push(cb); }
+  public onHand(cb: (frame: HandFrame) => void): void { this.onHandCallbacks.push(cb); }
+  public onModeChange(cb: (info: SourceModeChangeInfo) => void): void { this.onModeChangeCallbacks.push(cb); }
   public sendControl(control: string, value?: number): boolean {
-    return this.activeAdapter ? this.activeAdapter.sendControl(control, value) : false;
+    return this.ready && this.activeAdapter ? this.activeAdapter.sendControl(control, value) : false;
   }
-
-  public setFilter(v: number): void {
-    this.activeAdapter?.setFilter(v);
-  }
-
-  public setReverb(v: number): void {
-    this.activeAdapter?.setReverb(v);
-  }
-
-  public toggleBypass(): void {
-    this.activeAdapter?.toggleBypass();
-  }
-
-  public toggleLoop(): void {
-    this.activeAdapter?.toggleLoop();
-  }
-
-  public clearLoop(): void {
-    this.activeAdapter?.clearLoop();
-  }
+  public setFilter(v: number): void { this.sendControl('filter', v); }
+  public setReverb(v: number): void { this.sendControl('reverb', v); }
+  public toggleBypass(): void { this.sendControl('bypass'); }
+  public toggleLoop(): void { this.sendControl('loop'); }
+  public clearLoop(): void { if (this.ready) this.activeAdapter?.clearLoop(); }
 }

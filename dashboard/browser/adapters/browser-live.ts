@@ -9,6 +9,7 @@ import { LiveHandTracker } from '../vision/hand-tracker';
 import { GestureController } from '../vision/gesture-controller';
 import { Setlist } from '../vision/setlist';
 import type { StateFrame, HandFrame } from '../protocol/types';
+import { absentHand, type ConnectionCallback } from './connection';
 
 export class BrowserLiveAdapter {
   public readonly modeId = 'live' as const;
@@ -22,6 +23,19 @@ export class BrowserLiveAdapter {
 
   private onStateCb: ((frame: StateFrame) => void) | null = null;
   private onHandCb: ((frame: HandFrame) => void) | null = null;
+
+  private generation = 0;
+  private starting: Promise<void> | null = null;
+  private onConnectionCb: ConnectionCallback | null = null;
+  private target: 'filter' | 'reverb' | 'scene' = 'filter';
+  public get gestureTarget(): 'filter' | 'reverb' | 'scene' { return this.target; }
+  public set gestureTarget(value: 'filter' | 'reverb' | 'scene') {
+    if (!['filter', 'reverb', 'scene'].includes(value)) throw new Error('Unknown gesture target');
+    if (this.target === value) return;
+    this.target = value;
+    this.controller.control = value === 'reverb' ? 'reverb' : 'filter';
+    this.controller.rearm();
+  }
 
   private animFrameId: number | null = null;
   public isRunning: boolean = false;
@@ -66,31 +80,59 @@ export class BrowserLiveAdapter {
 
   public async start(): Promise<void> {
     if (this.isRunning) return;
-
-    // 1. Enumerate and acquire audio stream upon explicit user gesture
-    await this.devices.enumerate();
-    this.audioStream = await this.devices.getAudioStream();
-
-    // 2. Start audio engine with hardware input stream
-    await this.audio.start('input', this.audioStream);
-    this.audio.setInputChannel(this.devices.selectedChannel);
-
-    // 3. Acquire webcam stream
-    try {
-      this.videoStream = await this.devices.getVideoStream();
-      await this.tracker.start(this.videoStream);
-    } catch (camErr) {
-      console.warn('Webcam initialization failed or was declined; manual controls remain active:', camErr);
+    if (this.starting) {
+      await this.starting;
+      if (!this.isRunning) return this.start();
+      return;
     }
+    const pending = this.startRun(++this.generation);
+    this.starting = pending;
+    try { await pending; } finally { if (this.starting === pending) this.starting = null; }
+  }
 
-    this.isRunning = true;
-
-    const loop = (nowMs: number) => {
-      if (!this.isRunning) return;
-      this.step(nowMs);
+  private async startRun(generation: number): Promise<void> {
+    this.onConnectionCb?.({ status: 'starting' });
+    this.controller.rearm();
+    this.acceptedEvents = 0;
+    this.lastAcceptedMs = null;
+    this.lastStateEmitMs = 0;
+    try {
+      await this.devices.enumerate();
+      if (generation !== this.generation) return;
+      const audioStream = await this.devices.getAudioStream();
+      if (generation !== this.generation) { audioStream.getTracks().forEach(t => t.stop()); return; }
+      this.audioStream = audioStream;
+      await this.audio.start('input', audioStream);
+      if (generation !== this.generation) { await this.audio.stop(); return; }
+      this.audio.setInputChannel(this.devices.selectedChannel);
+      let cameraWarning: string | undefined;
+      try {
+        const videoStream = await this.devices.getVideoStream();
+        if (generation !== this.generation) { videoStream.getTracks().forEach(t => t.stop()); return; }
+        this.videoStream = videoStream;
+        await this.tracker.start(videoStream);
+      } catch (error) {
+        this.tracker.stop();
+        this.videoStream?.getTracks().forEach(t => t.stop());
+        this.videoStream = null;
+        cameraWarning = 'Camera unavailable; manual audio controls remain available';
+      }
+      if (generation !== this.generation) return;
+      this.isRunning = true;
+      this.onConnectionCb?.({ status: 'connected', ...(cameraWarning ? { message: cameraWarning } : {}) });
+      const loop = (nowMs: number) => {
+        if (!this.isRunning || generation !== this.generation) return;
+        this.step(nowMs);
+        this.animFrameId = requestAnimationFrame(loop);
+      };
       this.animFrameId = requestAnimationFrame(loop);
-    };
-    this.animFrameId = requestAnimationFrame(loop);
+    } catch (error) {
+      if (generation === this.generation) {
+        await this.stop();
+        this.onConnectionCb?.({ status: 'error', message: String(error) });
+      }
+      throw error;
+    }
   }
 
   private step(nowMs: number): void {
@@ -100,18 +142,20 @@ export class BrowserLiveAdapter {
     }
 
     // 2. Sample latest observation from tracker
-    const obs = this.tracker.getObservation();
+    const observed = this.tracker.getObservation();
+    const fresh = this.tracker.isRunning && nowMs - observed.timestamp_ms >= 0 && nowMs - observed.timestamp_ms <= 250;
+    const obs = fresh ? observed : { y: null, pinch: null, confidence: 0 };
 
     // 3. Update gesture controller
     const nowSec = nowMs / 1000;
-    const ev = this.controller.update(obs.y, obs.pinch, obs.confidence, nowSec, Math.floor(nowMs));
+    const ev = this.controller.update(obs.y, obs.pinch, obs.confidence, nowSec, Date.now());
 
     // 4. Route events to Setlist and AudioWorklet
     if (ev) {
       this.acceptedEvents++;
-      this.lastAcceptedMs = Math.floor(nowMs);
+      this.lastAcceptedMs = Date.now();
 
-      const morphedEvents = this.setlist.current.events(ev);
+      const morphedEvents = this.target === 'scene' ? this.setlist.current.events(ev) : [ev];
       for (const mev of morphedEvents) {
         if (mev.control === 'filter') {
           this.audio.setFilter(mev.value);
@@ -123,14 +167,16 @@ export class BrowserLiveAdapter {
 
     // 5. Emit Hand Frame
     if (this.onHandCb) {
-      this.onHandCb(this.tracker.getHandFrame());
+      const hand = fresh ? this.tracker.getHandFrame() : absentHand();
+      this.onHandCb({ ...hand, engaged: fresh && this.controller.active,
+        control: this.target === 'scene' ? null : this.controller.control, value: this.controller.value });
     }
 
     // 6. Emit State Frame throttled at ~25 Hz
     if (nowMs - this.lastStateEmitMs >= 40) {
       this.lastStateEmitMs = nowMs;
       if (this.onStateCb) {
-        this.onStateCb(this.buildStateFrame(Math.floor(nowMs), obs.confidence));
+        this.onStateCb(this.buildStateFrame(Date.now(), obs.confidence));
       }
     }
   }
@@ -170,7 +216,7 @@ export class BrowserLiveAdapter {
           last_accepted_ms: this.lastAcceptedMs,
           accepted: this.acceptedEvents,
           dropped: 0,
-          confidence: handConfidence > 0 ? handConfidence : null,
+          session: 0,
         },
       },
       adapters: {
@@ -190,6 +236,7 @@ export class BrowserLiveAdapter {
   }
 
   public sendControl(control: string, value?: number): boolean {
+    if (!this.isRunning) return false;
     if (control === 'loop') {
       this.audio.toggleLoop();
       return true;
@@ -198,12 +245,12 @@ export class BrowserLiveAdapter {
       this.audio.toggleBypass();
       return true;
     }
-    if (control === 'filter' && typeof value === 'number') {
-      this.audio.setFilter(value);
+    if (control === 'filter' && typeof value === 'number' && Number.isFinite(value)) {
+      this.audio.setFilter(Math.min(1, Math.max(0, value)));
       return true;
     }
-    if (control === 'reverb' && typeof value === 'number') {
-      this.audio.setReverb(value);
+    if (control === 'reverb' && typeof value === 'number' && Number.isFinite(value)) {
+      this.audio.setReverb(Math.min(1, Math.max(0, value)));
       return true;
     }
     return false;
@@ -229,8 +276,13 @@ export class BrowserLiveAdapter {
     this.audio.clearLoop();
   }
 
+  public onConnection(cb: ConnectionCallback): void { this.onConnectionCb = cb; }
+
   public async stop(): Promise<void> {
+    ++this.generation;
     this.isRunning = false;
+    this.controller.rearm();
+    this.onHandCb?.(absentHand());
     if (this.animFrameId !== null) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
@@ -245,5 +297,6 @@ export class BrowserLiveAdapter {
       this.videoStream = null;
     }
     await this.audio.stop();
+    this.onConnectionCb?.({ status: 'stopped' });
   }
 }

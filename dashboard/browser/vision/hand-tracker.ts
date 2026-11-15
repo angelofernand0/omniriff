@@ -7,8 +7,11 @@
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import type { GestureObservation } from '../simulation/simulated-hand';
 import type { HandFrame } from '../protocol/types';
+import { absentHand } from '../adapters/connection';
 
 export class LiveHandTracker {
+  private generation = 0;
+  private cancelMetadata: (() => void) | null = null;
   private landmarker: HandLandmarker | null = null;
   private videoEl: HTMLVideoElement | null = null;
   private stream: MediaStream | null = null;
@@ -83,25 +86,44 @@ export class LiveHandTracker {
   }
 
   public async start(videoStream: MediaStream): Promise<void> {
+    const generation = ++this.generation;
+    this.resetObservation();
     await this.initialize();
+    if (generation !== this.generation) { videoStream.getTracks().forEach(t => t.stop()); return; }
     this.stream = videoStream;
-
-    this.videoEl = document.createElement('video');
-    this.videoEl.autoplay = true;
-    this.videoEl.playsInline = true;
-    this.videoEl.muted = true;
-    this.videoEl.srcObject = videoStream;
-
-    await new Promise<void>((resolve) => {
-      if (!this.videoEl) return resolve();
-      this.videoEl.onloadedmetadata = () => {
-        this.videoEl?.play().then(() => resolve()).catch(() => resolve());
+    const video = document.createElement('video');
+    this.videoEl = video;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = true;
+    await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout>;
+      const finish = (error?: Error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        video.removeEventListener('loadedmetadata', ready);
+        video.removeEventListener('error', failed);
+        this.cancelMetadata = null;
+        if (error) reject(error); else resolve();
       };
+      const ready = () => finish();
+      const failed = () => finish(new Error('Camera video could not start'));
+      this.cancelMetadata = () => finish();
+      video.addEventListener('loadedmetadata', ready);
+      video.addEventListener('error', failed);
+      timer = setTimeout(() => finish(new Error('Camera metadata timed out')), 10000);
+      video.srcObject = videoStream;
+      if (video.readyState >= 1) ready();
     });
-
+    if (generation !== this.generation) return;
+    await video.play();
+    if (generation !== this.generation) return;
     this.isRunning = true;
     this.consecutiveMisses = 0;
     this.lastWrist = null;
+    this.lastInferenceTimeMs = 0;
   }
 
   public update(nowMs: number, engaged: boolean, control: 'filter' | 'reverb' | null, value: number | null): void {
@@ -119,7 +141,8 @@ export class LiveHandTracker {
 
     try {
       const result = this.landmarker.detectForVideo(this.videoEl, nowMs);
-      this.processResult(result, nowMs, engaged, control, value);
+      if (performance.now() - nowMs > 250) this.onMissedFrame(nowMs);
+      else this.processResult(result, nowMs, engaged, control, value);
     } catch (e) {
       console.warn('Inference error:', e);
       this.onMissedFrame(nowMs);
@@ -158,6 +181,11 @@ export class LiveHandTracker {
     }
 
     const hand = rawHands[bestHandIdx];
+    if (!Array.isArray(hand) || hand.length !== 21 || hand.some((p: any) =>
+      !Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < 0 || p.x > 1 || p.y < 0 || p.y > 1)) {
+      this.onMissedFrame(nowMs);
+      return;
+    }
     const wrist = hand[0];
     const wristCoord: [number, number] = [wrist.x, wrist.y];
 
@@ -179,11 +207,14 @@ export class LiveHandTracker {
 
     // Compute pinch ratio
     const d = (a: number, b: number) =>
-      Math.hypot((landmarks[a][0] - landmarks[b][0]) * 640, (landmarks[a][1] - landmarks[b][1]) * 480);
-    const palmWidth = Math.max(1e-4, d(5, 17));
+      Math.hypot((landmarks[a][0] - landmarks[b][0]) * (this.videoEl?.videoWidth || 640),
+        (landmarks[a][1] - landmarks[b][1]) * (this.videoEl?.videoHeight || 480));
+    const palmWidth = d(5, 17);
+    if (palmWidth <= 1) { this.onMissedFrame(nowMs); return; }
     const pinch = d(4, 8) / palmWidth;
 
-    const conf = scores && scores[bestHandIdx] && scores[bestHandIdx][0] ? scores[bestHandIdx][0].score : 0.9;
+    const conf = scores && scores[bestHandIdx] && scores[bestHandIdx][0] ? scores[bestHandIdx][0].score : 0;
+    if (!Number.isFinite(conf) || conf < 0 || conf > 1) { this.onMissedFrame(nowMs); return; }
 
     this.latestObservation = {
       present: true,
@@ -196,7 +227,7 @@ export class LiveHandTracker {
     this.latestHandFrame = {
       version: 1,
       type: 'hand',
-      timestamp_ms: Math.floor(nowMs),
+      timestamp_ms: Date.now(),
       present: true,
       engaged,
       confidence: conf,
@@ -223,7 +254,7 @@ export class LiveHandTracker {
     this.latestHandFrame = {
       version: 1,
       type: 'hand',
-      timestamp_ms: Math.floor(nowMs),
+      timestamp_ms: Date.now(),
       present: false,
       engaged: false,
       confidence: 0.0,
@@ -241,8 +272,17 @@ export class LiveHandTracker {
     return this.latestHandFrame;
   }
 
+  private resetObservation(): void {
+    this.latestObservation = { present: false, y: null, pinch: null, confidence: 0, timestamp_ms: 0 };
+    this.latestHandFrame = absentHand();
+  }
+
   public stop(): void {
+    ++this.generation;
+    this.cancelMetadata?.();
+    this.cancelMetadata = null;
     this.isRunning = false;
+    this.resetObservation();
     this.isProcessing = false;
     if (this.stream) {
       this.stream.getTracks().forEach((t) => t.stop());

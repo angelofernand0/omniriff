@@ -49,20 +49,21 @@ export interface StateSources {
     last_accepted_ms: number | null;
     accepted: number;
     dropped: number;
-    session: number | null;
+    session: number;
   };
   vision?: {
     last_seen_ms: number | null;
     last_accepted_ms: number | null;
     accepted: number;
     dropped: number;
-    confidence: number | null;
+    session: number;
   };
   sensecap?: {
     last_seen_ms: number | null;
     last_accepted_ms: number | null;
     accepted: number;
     dropped: number;
+    session: number;
   };
 }
 
