@@ -1,0 +1,226 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 820" width="100%" height="100%" style="background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <!-- Arrowhead markers -->
+    <marker id="arr" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0284c7" />
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#059669" />
+    </marker>
+    <marker id="arr-amber" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#d97706" />
+    </marker>
+    <marker id="arr-purple" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#7c3aed" />
+    </marker>
+    <marker id="arr-rose" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#e11d48" />
+    </marker>
+  </defs>
+
+  <!-- Clean Canvas Background -->
+  <rect width="100%" height="100%" fill="#ffffff" />
+  <rect x="15" y="15" width="1210" height="790" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" />
+
+  <!-- Diagram Title -->
+  <g transform="translate(45, 50)">
+    <text x="0" y="0" font-size="22" font-weight="800" fill="#0f172a" letter-spacing="-0.5">OmniRiff Architecture</text>
+    <text x="0" y="20" font-size="12" font-weight="500" fill="#64748b">Real-time cyber-physical audio engine, schema-gated control routing, and deep agent practice coach</text>
+
+    <!-- Transports Header Summary Pills -->
+    <g transform="translate(620, -10)">
+      <rect x="0" y="0" width="85" height="22" rx="4" fill="#f0f9ff" stroke="#0284c7" stroke-width="1"/>
+      <text x="42" y="15" font-size="10" font-weight="700" fill="#0369a1" text-anchor="middle">UDP 47800</text>
+
+      <rect x="95" y="0" width="75" height="22" rx="4" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1"/>
+      <text x="132" y="15" font-size="10" font-weight="700" fill="#6d28d9" text-anchor="middle">WS 47801</text>
+
+      <rect x="180" y="0" width="75" height="22" rx="4" fill="#faf5ff" stroke="#9333ea" stroke-width="1"/>
+      <text x="217" y="15" font-size="10" font-weight="700" fill="#7e22ce" text-anchor="middle">WS 47802</text>
+
+      <rect x="265" y="0" width="75" height="22" rx="4" fill="#fdf4ff" stroke="#c026d3" stroke-width="1"/>
+      <text x="302" y="15" font-size="10" font-weight="700" fill="#a21caf" text-anchor="middle">WS 47803</text>
+
+      <rect x="350" y="0" width="90" height="22" rx="4" fill="#fffbeb" stroke="#d97706" stroke-width="1"/>
+      <text x="395" y="15" font-size="10" font-weight="700" fill="#b45309" text-anchor="middle">Serial 115200</text>
+
+      <rect x="450" y="0" width="85" height="22" rx="4" fill="#ecfdf5" stroke="#059669" stroke-width="1"/>
+      <text x="492" y="15" font-size="10" font-weight="700" fill="#047857" text-anchor="middle">WASAPI 48k</text>
+    </g>
+  </g>
+
+  <!-- ==================== ROW 1: AUDIO PIPELINE ==================== -->
+
+  <!-- 1. Guitar -->
+  <g transform="translate(45, 95)">
+    <rect width="140" height="65" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2"/>
+    <text x="14" y="26" font-size="13" font-weight="700" fill="#0f172a">Electric Guitar</text>
+    <text x="14" y="46" font-size="11" fill="#475569">Magnetic pickups</text>
+  </g>
+
+  <!-- Arrow: Guitar -> Scarlett -->
+  <line x1="185" y1="127" x2="240" y2="127" stroke="#059669" stroke-width="1.8" marker-end="url(#arr-green)"/>
+  <text x="212" y="120" font-size="9" font-weight="600" fill="#047857" text-anchor="middle">1/4" cable</text>
+
+  <!-- 2. Scarlett Solo -->
+  <g transform="translate(240, 95)">
+    <rect width="200" height="65" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2"/>
+    <text x="14" y="26" font-size="13" font-weight="700" fill="#166534">Scarlett Solo</text>
+    <text x="14" y="46" font-size="10" fill="#15803d">Inst 2 &#183; Direct Monitor OFF</text>
+  </g>
+
+  <!-- Arrow: Scarlett -> Audio Engine -->
+  <line x1="440" y1="127" x2="555" y2="127" stroke="#059669" stroke-width="1.8" marker-end="url(#arr-green)"/>
+  <text x="497" y="120" font-size="9" font-weight="600" fill="#047857" text-anchor="middle">WASAPI / duplex</text>
+
+  <!-- 3. Audio Engine -->
+  <g transform="translate(555, 85)">
+    <rect width="390" height="85" rx="6" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+    <text x="16" y="26" font-size="13" font-weight="700" fill="#064e3b">Audio Engine (audio/engine.py, audio/dsp.py)</text>
+    <text x="16" y="46" font-size="10" fill="#047857">30s Looper &#183; Biquad Filter (120–18000 Hz) &#183; Freeverb</text>
+    <text x="16" y="65" font-size="10" fill="#047857">PeakLimiter (&lt;0.999 ceiling) &#183; 5 ms dry bypass</text>
+  </g>
+
+  <!-- Arrow: Audio Engine -> Speakers -->
+  <line x1="945" y1="127" x2="1015" y2="127" stroke="#059669" stroke-width="1.8" marker-end="url(#arr-green)"/>
+  <text x="980" y="120" font-size="9" font-weight="600" fill="#047857" text-anchor="middle">analog out</text>
+
+  <!-- 4. Output / Amp -->
+  <g transform="translate(1015, 95)">
+    <rect width="180" height="65" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2"/>
+    <text x="14" y="26" font-size="13" font-weight="700" fill="#0f172a">Speakers / Amp</text>
+    <text x="14" y="46" font-size="11" fill="#475569">Processed guitar output</text>
+  </g>
+
+  <!-- ==================== ROW 2: SENSORS & RECORDING ==================== -->
+
+  <!-- Arrow: Audio Engine -> Takes -->
+  <line x1="840" y1="170" x2="840" y2="215" stroke="#059669" stroke-width="1.8" marker-end="url(#arr-green)"/>
+  <text x="848" y="196" font-size="9" font-weight="600" fill="#047857">saves loop WAV + JSON</text>
+
+  <!-- 5. Takes Store -->
+  <g transform="translate(780, 215)">
+    <rect width="230" height="58" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2"/>
+    <text x="14" y="24" font-size="12.5" font-weight="700" fill="#1e293b">Takes (runs/takes/)</text>
+    <text x="14" y="43" font-size="10" fill="#475569">audio/takes.py background writer</text>
+  </g>
+
+  <!-- 6. Webcam -->
+  <g transform="translate(45, 230)">
+    <rect width="140" height="58" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2"/>
+    <text x="14" y="24" font-size="12.5" font-weight="700" fill="#0f172a">Webcam</text>
+    <text x="14" y="43" font-size="10.5" fill="#475569">Frontal hand view</text>
+  </g>
+
+  <!-- Arrow: Webcam -> Vision -->
+  <line x1="185" y1="259" x2="245" y2="259" stroke="#0284c7" stroke-width="1.8" marker-end="url(#arr)"/>
+  <text x="215" y="251" font-size="9" font-weight="600" fill="#0369a1" text-anchor="middle">video</text>
+
+  <!-- 7. Vision Process -->
+  <g transform="translate(245, 215)">
+    <rect width="240" height="88" rx="6" fill="#f0f9ff" stroke="#38bdf8" stroke-width="1.2"/>
+    <text x="12" y="22" font-size="13" font-weight="700" fill="#0369a1">Vision (vision/)</text>
+    <text x="12" y="40" font-size="10" fill="#0284c7">MediaPipe Hand Landmarker (21 points)</text>
+    <text x="12" y="56" font-size="10" fill="#0284c7">Pinch clutch (vision/control.py)</text>
+    <text x="12" y="74" font-size="9.5" fill="#0284c7">StrumGuard: opt-in (--strum-guard)</text>
+  </g>
+
+  <!-- ==================== ROW 3: ROUTING & PRACTICE COACH ==================== -->
+
+  <!-- 8. Footswitch -->
+  <g transform="translate(45, 360)">
+    <rect width="210" height="80" rx="6" fill="#fffbeb" stroke="#fcd34d" stroke-width="1.2"/>
+    <text x="12" y="22" font-size="12.5" font-weight="700" fill="#92400e">Arduino Footswitch</text>
+    <text x="12" y="40" font-size="10" fill="#b45309">firmware/arduino/Footswitch.ino</text>
+    <text x="12" y="56" font-size="9.5" fill="#b45309">Tap: loop &#183; Hold: practice</text>
+    <text x="12" y="72" font-size="9.5" fill="#b45309">Press: dry crossfade bypass</text>
+  </g>
+
+  <!-- Arrow: Footswitch -> Router -->
+  <line x1="255" y1="395" x2="360" y2="395" stroke="#d97706" stroke-width="1.8" marker-end="url(#arr-amber)"/>
+  <text x="307" y="388" font-size="9" font-weight="600" fill="#b45309" text-anchor="middle">serial 115200</text>
+
+  <!-- Arrow: Vision -> Router (UDP 47800) -->
+  <path d="M 430 303 L 430 355" fill="none" stroke="#0284c7" stroke-width="1.8" marker-end="url(#arr)"/>
+  <text x="438" y="332" font-size="9" font-weight="600" fill="#0369a1">UDP 47800 (20 Hz)</text>
+
+  <!-- 9. Router Box -->
+  <g transform="translate(360, 355)">
+    <rect width="260" height="85" rx="6" fill="#f0f9ff" stroke="#0284c7" stroke-width="1.5"/>
+    <text x="12" y="22" font-size="13" font-weight="700" fill="#0369a1">Router (engine/router.py)</text>
+    <text x="12" y="41" font-size="10" fill="#0284c7">Schema gate (control.schema.json)</text>
+    <text x="12" y="57" font-size="10" fill="#0284c7">Clamps [0, 1] &#183; Cutoff 120–18000 Hz</text>
+    <text x="12" y="73" font-size="9.5" fill="#0284c7">Drops malformed, stale, duplicate</text>
+  </g>
+
+  <!-- Arrow: Router -> Audio Engine Mailbox -->
+  <path d="M 590 355 L 590 170" fill="none" stroke="#0284c7" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="598" y="225" font-size="9.5" font-weight="700" fill="#0369a1">submit() mailbox</text>
+
+  <!-- 10. Practice Coach -->
+  <g transform="translate(760, 330)">
+    <rect width="430" height="135" rx="6" fill="#fff1f2" stroke="#f43f5e" stroke-width="1.5"/>
+    <text x="14" y="24" font-size="13.5" font-weight="700" fill="#9f1239">Practice Coach (coach/agent.py)</text>
+    <text x="14" y="46" font-size="10.5" fill="#be123c">LangGraph Deep Agent &#183; claude-sonnet-5-5</text>
+    <text x="14" y="68" font-size="10.5" fill="#be123c">Ears + Eyes subagents &#183; skills &#183; memory</text>
+    <text x="14" y="90" font-size="10.5" fill="#be123c">$8 budget gate &#183; HITL: pedal tap to approve</text>
+    <text x="14" y="112" font-size="9.5" fill="#e11d48">&#8594; dispatches rig_control only with player tap</text>
+  </g>
+
+  <!-- Arrow: Takes -> Coach -->
+  <line x1="895" y1="273" x2="895" y2="330" stroke="#059669" stroke-width="1.8" marker-end="url(#arr-green)"/>
+  <text x="903" y="306" font-size="9" font-weight="600" fill="#047857">reads takes</text>
+
+  <!-- Arrow: Coach -> Router (rig_control) -->
+  <line x1="760" y1="395" x2="620" y2="395" stroke="#e11d48" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arr-rose)"/>
+  <text x="690" y="384" font-size="9" font-weight="700" fill="#e11d48" text-anchor="middle">rig_control (needs tap)</text>
+  <text x="690" y="412" font-size="8.5" font-weight="600" fill="#be123c" text-anchor="middle">UDP 47800 (source: coach)</text>
+
+  <!-- ==================== ROW 4: STATE PUBLISHER ==================== -->
+
+  <!-- Arrow: Audio Engine -> State Publisher -->
+  <path d="M 670 170 L 670 525" fill="none" stroke="#7c3aed" stroke-width="1.8" marker-end="url(#arr-purple)"/>
+  <text x="678" y="505" font-size="9.5" font-weight="700" fill="#6d28d9">engine state</text>
+
+  <!-- 11. State Publisher Box -->
+  <g transform="translate(490, 525)">
+    <rect width="290" height="60" rx="6" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="1.2"/>
+    <text x="14" y="24" font-size="12.5" font-weight="700" fill="#5b21b6">State Publisher</text>
+    <text x="14" y="43" font-size="10" fill="#6d28d9">engine/runtime.py &#183; state.schema.json</text>
+  </g>
+
+  <!-- ==================== ROW 5: PRESENTATION (DASHBOARD) ==================== -->
+
+  <!-- 12. Dashboard Box -->
+  <g transform="translate(370, 650)">
+    <rect width="470" height="75" rx="6" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="16" y="24" font-size="13" font-weight="700" fill="#0f172a">Dashboard (dashboard/)</text>
+    <text x="16" y="43" font-size="10.5" fill="#475569">Plain HTML/JS (app.js, coach.js, riff.js)</text>
+    <text x="16" y="60" font-size="10" fill="#475569">01 VU/RMS &#183; 02 Looper/Sliders &#183; 03 Hands &#183; 04 Coach</text>
+  </g>
+
+  <!-- Arrow: State Publisher -> Dashboard (WS 47801) -->
+  <line x1="615" y1="585" x2="615" y2="650" stroke="#7c3aed" stroke-width="1.8" marker-end="url(#arr-purple)"/>
+  <text x="623" y="622" font-size="9.5" font-weight="700" fill="#6d28d9">state WS 47801</text>
+
+  <!-- Arrow: State Publisher -> Coach (WS 47801) -->
+  <path d="M 780 555 L 830 555 L 830 465" fill="none" stroke="#7c3aed" stroke-width="1.8" marker-end="url(#arr-purple)"/>
+  <text x="838" y="525" font-size="9.5" font-weight="700" fill="#6d28d9">state WS 47801</text>
+
+  <!-- Arrow: Vision -> Dashboard (WS 47802) routed down at x=310 (in gap between footswitch 255 and router 360) -->
+  <path d="M 310 303 L 310 690 L 370 690" fill="none" stroke="#9333ea" stroke-width="1.8" marker-end="url(#arr-purple)"/>
+  <text x="225" y="550" font-size="9.5" font-weight="700" fill="#7e22ce">hand WS 47802</text>
+
+  <!-- Arrow: Coach -> Dashboard (WS 47803) -->
+  <path d="M 980 465 L 980 690 L 840 690" fill="none" stroke="#c026d3" stroke-width="1.8" marker-end="url(#arr-purple)"/>
+  <text x="988" y="580" font-size="9.5" font-weight="700" fill="#a21caf">coach feed WS 47803</text>
+
+  <!-- Arrow: Dashboard -> Router (controls via WS 47801) -->
+  <line x1="470" y1="650" x2="470" y2="440" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arr)"/>
+  <text x="478" y="490" font-size="8.5" font-weight="600" fill="#0369a1">controls (WS 47801)</text>
+
+  <!-- Footer -->
+  <g transform="translate(45, 785)">
+    <text x="0" y="0" font-size="11" fill="#64748b">OmniRiff Architecture &#183; Strictly reflects production code on main &#183; 12 functional blocks &#183; HackPrinceton 2026</text>
+  </g>
+</svg>

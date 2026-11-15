@@ -15,6 +15,7 @@ Windows blocks `.ps1` files by default ("running scripts is disabled"), so start
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\setup.ps1 -Coach
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -SerialPort COM3 -Coach  # use the port --check printed; omit -SerialPort if no pedal, -Coach if the coach isn't set up
+# add -StrumHand Left and/or -Camera 1 if that's what the camera rehearsal verified; with -Coach, vision and the coach share runs/hand-<time>.jsonl for Eyes
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -Headless         # alternative: silence processing, no Focusrite output
 ```
 
@@ -51,6 +52,8 @@ Engine keys: `b` bypass, `l` loop, `f 0.3` filter, `r 0.3` reverb, `s` status, `
 ## 3. The 2-minute demo (rehearse to time)
 From [ROADMAP.md §7](ROADMAP.md). The coach is the centrepiece; pedal and pinch are how player and coach share the rig.
 
+**How to say it** (identity-first talk track, openers by track, prepared answers, roles and the rehearsal plan): [PITCH.md](PITCH.md).
+
 | Time | Beat |
 |---|---|
 | 0:00–0:15 | **Problem.** "Practising alone, you know you messed up but not why, and every tool makes you stop playing. Never put the guitar down." |
@@ -64,6 +67,9 @@ If the coach isn't working on the real rig by the midnight gate, fall back to th
 Coach launch, once `coach/` is on main: add `--coach --hand-log runs/hand.jsonl` to the `engine.demo` command in §2 (the coach then watches the engine's takes in `runs/takes`).
 
 ## 4. If something fails at the table
+
+Before each judge: run `python -m tools.tablecheck` (Windows: `.\scripts\windows\tablecheck.ps1`); resolve RED rows or explicitly omit unused vision/coach with `--no-vision` / `--no-coach` ([checks and limits](../tools/tablecheck/README.md)).
+
 | Failure | Do this | Say this |
 |---|---|---|
 | Camera / vision | Keep playing; use the pedal and keyboard `f`/`r` | "The instrument never depends on the camera." |
