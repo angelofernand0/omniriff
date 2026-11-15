@@ -7,7 +7,7 @@
 
 # OmniRiff
 
-[![Live Web App](https://img.shields.io/badge/Live%20App-omniriff.vercel.app-ff3399?style=for-the-badge&logo=vercel)](https://omniriff.vercel.app/)
+[![Live Web App](https://img.shields.io/badge/Live%20App-omniriff.courses-ff3399?style=for-the-badge&logo=vercel)](https://omniriff.courses/)
 [![Browser Tests](https://img.shields.io/badge/Browser%20Tests-95%20Passing-brightgreen?style=for-the-badge&logo=vitest)](https://github.com/angelofernand0/omniriff/actions)
 [![Python Tests](https://img.shields.io/badge/Python%20Tests-517%20Passing-blue?style=for-the-badge&logo=python)](https://github.com/angelofernand0/omniriff/actions)
 [![MediaPipe Vision](https://img.shields.io/badge/Vision-MediaPipe%20Right--Hand%20Only-orange?style=for-the-badge&logo=google)](https://developers.google.com/mediapipe)
@@ -20,7 +20,7 @@
 
 ## 🚀 Experience OmniRiff
 
-* **Play Online Right Now:** [**https://omniriff.vercel.app**](https://omniriff.vercel.app/)
+* **Play Online Right Now:** [**https://omniriff.courses**](https://omniriff.courses/) (Mirror: [**omniriff.vercel.app**](https://omniriff.vercel.app/))
   * **Browser Simulator:** Zero-install instant rig. Generated guitar loops and simulated hand gestures run 100% in your browser without hardware or accounts.
   * **Live Audio + Camera:** Plug in your electric guitar via any USB audio interface (e.g. Focusrite Scarlett Solo) and use your laptop or USB webcam for live, real-time gesture shaping.
 * **Team Passcode for Hosted Coach:** Available privately to hackathon judges to unlock live conversational AI coaching sessions powered by LangChain Deep Agents.
