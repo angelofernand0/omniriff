@@ -26,6 +26,10 @@ export class LiveHandTracker {
   private readonly maxWristJump: number = 0.30;
   private readonly maxMissedFrames: number = 15;
 
+  public onFistSwap: (() => void) | null = null;
+  private fistLatched: boolean = false;
+  private lastSwapTimeMs: number = -Infinity;
+
   private latestObservation: GestureObservation = {
     present: false,
     y: null,
@@ -91,7 +95,8 @@ export class LiveHandTracker {
     await this.initialize();
     if (generation !== this.generation) { videoStream.getTracks().forEach(t => t.stop()); return; }
     this.stream = videoStream;
-    const video = document.createElement('video');
+    const domVideo = typeof document !== 'undefined' && typeof document.getElementById === 'function' ? (document.getElementById('cameraVideo') as HTMLVideoElement | null) : null;
+    const video = domVideo || (typeof document !== 'undefined' && typeof document.createElement === 'function' ? document.createElement('video') : ({} as any));
     this.videoEl = video;
     video.autoplay = true;
     video.playsInline = true;
@@ -121,6 +126,12 @@ export class LiveHandTracker {
     await video.play();
     if (generation !== this.generation) return;
     this.isRunning = true;
+    if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+      const card = document.getElementById('card-camera');
+      const tag = document.getElementById('camTag');
+      if (card) card.dataset.cam = 'live';
+      if (tag) { tag.textContent = 'LIVE'; tag.classList.add('live'); }
+    }
     this.consecutiveMisses = 0;
     this.lastWrist = null;
     this.lastInferenceTimeMs = 0;
@@ -205,20 +216,48 @@ export class LiveHandTracker {
     // Convert to normalized 21 points
     const landmarks: Array<[number, number]> = hand.map((lm: any) => [lm.x, lm.y]);
 
-    // Compute pinch ratio
+    // Compute pixel distances
     const d = (a: number, b: number) =>
       Math.hypot((landmarks[a][0] - landmarks[b][0]) * (this.videoEl?.videoWidth || 640),
         (landmarks[a][1] - landmarks[b][1]) * (this.videoEl?.videoHeight || 480));
     const palmWidth = d(5, 17);
     if (palmWidth <= 1) { this.onMissedFrame(nowMs); return; }
+
+    // Index-to-thumb pinch ratio: controls the active slider up and down!
     const pinch = d(4, 8) / palmWidth;
+
+    // Fist curl ratio: average distance of non-thumb fingertips to MCPs and palm center
+    const fingerCurl = (d(8, 5) + d(12, 9) + d(16, 13) + d(20, 17)) / (4 * palmWidth);
+    const centerCurl = (d(8, 9) + d(12, 9) + d(16, 9) + d(20, 9)) / (4 * palmWidth);
+    const curl = (fingerCurl + centerCurl) / 2;
+
+    // Closed fist swaps between Filter and Reverb with anti-flicker cooldown and reliable unlatching
+    const SWAP_COOLDOWN_MS = 1400;
+    const isFist = curl <= 0.60;
+
+    // Unlatch cleanly as soon as fingers relax / uncurl past fist threshold
+    if (curl >= 0.68) {
+      this.fistLatched = false;
+    }
+
+    let swapTriggered = false;
+    if (isFist && !this.fistLatched && (nowMs - this.lastSwapTimeMs >= SWAP_COOLDOWN_MS)) {
+      this.fistLatched = true;
+      this.lastSwapTimeMs = nowMs;
+      swapTriggered = true;
+      this.onFistSwap?.();
+    }
 
     const conf = scores && scores[bestHandIdx] && scores[bestHandIdx][0] ? scores[bestHandIdx][0].score : 0;
     if (!Number.isFinite(conf) || conf < 0 || conf > 1) { this.onMissedFrame(nowMs); return; }
 
+    // Use palm joint (middle MCP landmark 9) for vertical drag coordinate
+    // Landmark 9 stays in frame even when hand is lowered near camera bottom edge
+    const yCoord = landmarks[9][1];
+
     this.latestObservation = {
       present: true,
-      y: wrist.y,
+      y: yCoord,
       pinch,
       confidence: conf,
       timestamp_ms: Math.floor(nowMs),
@@ -234,7 +273,9 @@ export class LiveHandTracker {
       control,
       value,
       landmarks,
-    };
+      isFist,
+      swapTriggered,
+    } as any;
   }
 
   private onMissedFrame(nowMs: number): void {
@@ -273,6 +314,8 @@ export class LiveHandTracker {
   }
 
   private resetObservation(): void {
+    this.fistLatched = false;
+    this.lastSwapTimeMs = -Infinity;
     this.latestObservation = { present: false, y: null, pinch: null, confidence: 0, timestamp_ms: 0 };
     this.latestHandFrame = absentHand();
   }
@@ -284,6 +327,12 @@ export class LiveHandTracker {
     this.isRunning = false;
     this.resetObservation();
     this.isProcessing = false;
+    if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+      const card = document.getElementById('card-camera');
+      const tag = document.getElementById('camTag');
+      if (card) card.dataset.cam = 'off';
+      if (tag) { tag.textContent = 'OFF'; tag.classList.remove('live'); }
+    }
     if (this.stream) {
       this.stream.getTracks().forEach((t) => t.stop());
       this.stream = null;
@@ -291,7 +340,9 @@ export class LiveHandTracker {
     if (this.videoEl) {
       this.videoEl.pause();
       this.videoEl.srcObject = null;
-      this.videoEl = null;
+      if (this.videoEl.id !== 'cameraVideo') {
+        this.videoEl = null;
+      }
     }
     this.lastWrist = null;
     this.consecutiveMisses = 0;

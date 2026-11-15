@@ -8,6 +8,7 @@ __pycache__/
 *.pyc
 node_modules/
 dist/
+.vercel/
 build/
 .DS_Store
 .claude/settings.local.json

@@ -30,6 +30,7 @@ export class GestureController {
   public armed: boolean = false;
   public value: number | null = null;
   public previous: number | null = null;
+  public previousY: number | null = null;
   public sentAt: number = -Infinity;
   public sentValue: number | null = null;
   public seq: number = 0;
@@ -72,6 +73,7 @@ export class GestureController {
     this.armed = false;
     this.value = null;
     this.previous = null;
+    this.previousY = null;
     this.sentValue = null;
     this.pickupY = null;
     this.pickupValue = null;
@@ -99,6 +101,7 @@ export class GestureController {
       this.active = false;
       this.armed = false;
       this.previous = null;
+      this.previousY = null;
       this.value = null;
       return null;
     }
@@ -107,9 +110,18 @@ export class GestureController {
       return null;
     }
 
-    if (pinch >= 0.45) {
+    // Downward velocity check for crisp let-go (prevents dragging down when dropping hand to guitar)
+    const dy = (this.previousY !== null && y !== null) ? y - this.previousY : 0;
+    this.previousY = y;
+
+    // Release threshold:
+    // When pinch opens past 0.32, OR if fingers are relaxing (pinch > 0.27) while hand is lowering (dy > 0.012),
+    // immediately disengage so reaching down for the guitar does NOT drag the sound down!
+    if (pinch >= 0.32 || (this.active && pinch > 0.27 && dy > 0.012)) {
       this.active = false;
-      this.armed = true;
+      if (pinch >= 0.40) {
+        this.armed = true;
+      }
       if (!this.relative) {
         this.value = null;
       }
