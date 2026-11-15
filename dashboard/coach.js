@@ -43,7 +43,7 @@
   }
   function later() { setTimeout(connect, Math.min(4000, 500 * 2 ** retry++)); }
   function send(type) {
-    if (!frame || !frame.awaiting_approval || !ws || ws.readyState !== 1) return false;
+    if (!frame || isReplay(frame) || !frame.awaiting_approval || !ws || ws.readyState !== 1) return false;  // a replay is read-only
     ws.send(JSON.stringify({ version: 1, type, timestamp_ms: Date.now(), approval_id: frame.awaiting_approval.id }));
     return true;
   }
@@ -56,9 +56,17 @@
     renderList(null); renderMark(null); renderMap();
   }
   function setLed(kind, word) {
-    if (led) { led.classList.toggle('online', kind === 'live'); led.classList.toggle('warn', kind === 'scripted'); led.querySelector('span').textContent = word; }
+    if (led) { led.classList.toggle('online', kind === 'live'); led.classList.toggle('warn', kind === 'scripted' || kind === 'replay'); led.querySelector('span').textContent = word; }
     if (app) app.dataset.coach = kind;
   }
+  // A recorded session played back by coach/replay.py: scripted=true and a replay- session id (agreed on the board,
+  // no schema change). It must say REPLAY the whole time, and nothing the player does can reach it.
+  const isReplay = (f) => !!f && f.scripted === true && typeof f.session_id === 'string' && f.session_id.startsWith('replay-');
+  const replayTag = document.createElement('div');
+  replayTag.className = 'replay-tag'; replayTag.hidden = true; replayTag.setAttribute('role', 'status');
+  replayTag.textContent = 'REPLAY · a recorded session, not live';
+  const coachCol = document.querySelector('.coach-col');
+  if (coachCol) coachCol.prepend(replayTag);
 
   // ---------- Riff: pose, place and bubble, always together with the voice ----------
   let marked = null;
@@ -99,7 +107,10 @@
   function onFrame(f) {
     const prevCue = frame && frame.cue;
     frame = f;
-    setLed(f.scripted ? 'scripted' : 'live', f.state === 'asleep' ? 'OFF' : f.scripted ? 'SCRIPTED' : 'LIVE');
+    const replay = isReplay(f);
+    replayTag.hidden = !replay;
+    setLed(replay ? 'replay' : f.scripted ? 'scripted' : 'live',
+      f.state === 'asleep' ? 'OFF' : replay ? 'REPLAY' : f.scripted ? 'SCRIPTED' : 'LIVE');
     const newLine = !!f.cue && f.cue !== prevCue;
     renderMark(f); renderMap();
     if (!newLine || joined) renderList(f);   // a new line changes the rows and steps when it starts (show)
@@ -622,6 +633,7 @@
   }
   function sendSay(text, via) {
     const msg = { version: 1, type: 'coach.say', timestamp_ms: Date.now(), text: text.slice(0, 240), via };
+    if (isReplay(frame)) { youMode('idle', 'This is a replay. Riff can\u2019t hear you.'); riffListens(false); talk.hide = setTimeout(hideYou, 3000); return; }
     if (!ws || ws.readyState !== 1) { youMode('idle', 'Riff isn\u2019t connected.'); riffListens(false); talk.hide = setTimeout(hideYou, 3000); return; }
     ws.send(JSON.stringify(msg));
     youMode('sent', msg.text);
