@@ -1,6 +1,8 @@
 """Evidence-backed tools exposed to the coach and its Ears/Eyes subagents."""
 from __future__ import annotations
 
+import logging
+
 import asyncio
 import json
 import re
@@ -14,6 +16,9 @@ from .session import PracticeSession
 
 TAKE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 SKILLS = frozenset({"isolate-the-change", "slow-then-speed-up", "dry-check", "keep-the-hand-moving"})
+
+
+LOG = logging.getLogger(__name__)
 
 
 def _safe_take_id(take_id: str) -> str:
@@ -165,11 +170,17 @@ class CoachTools:
         except ImportError:
             return text
         try:
-            audio = asyncio.run(Voice.from_env().render(text))
-            if audio is not None:
-                self.feed.broadcast_audio(audio)
-        except Exception:
-            pass  # voice is optional: the dashboard retains its browser fallback
+            voice = Voice.from_env()
+            audio = asyncio.run(voice.render(text))
+            if audio is None:
+                LOG.warning("coach voice: no audio rendered (%s); the dashboard falls back to the browser voice",
+                            getattr(voice, "last_error", None) or "no key or empty response")
+            else:
+                sent = self.feed.broadcast_audio(audio)
+                LOG.info("coach voice: %d bytes of MP3 %s", len(audio.get("audio_b64", "")) * 3 // 4,
+                         "sent to the dashboard" if sent else "REJECTED by the feed schema")
+        except Exception as exc:  # voice is optional: the dashboard retains its browser fallback
+            LOG.warning("coach voice failed: %s: %s", type(exc).__name__, exc)
         return text
 
     def rig_control(self, control: str, value: float | None = None) -> str:
@@ -255,7 +266,11 @@ def build_langchain_tools(service: CoachTools) -> dict:
 
     @tool
     def write_drill_card(skill: str, passage: str, reps: int, pass_rule: str, rig: dict) -> str:
-        """Save a measurable drill card; proposed rig settings still need approval."""
+        """Save a measurable drill card; proposed rig settings still need approval.
+
+        Limits (a call that breaks one is rejected): passage at most 80 characters; reps 1 to 20;
+        pass_rule at most 120 characters; rig is {} or only the keys bypass (true/false), filter (0 to 1)
+        and reverb (0 to 1) -- nothing else, no loop or tempo keys."""
         return service.write_drill_card(skill, passage, reps, pass_rule, rig)
 
     @tool

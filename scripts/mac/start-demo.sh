@@ -112,9 +112,11 @@ PY
 echo "ports: dashboard $HTTP, control udp $UDP, state ws $WS, hand ws $HAND, coach ws $COACHP"
 
 # 5. Build the command.
+HANDLOG="runs/hand-$(date +%Y%m%d-%H%M%S).jsonl"   # vision writes it, the coach's "eyes" read it
+mkdir -p runs
 CMD=("$PYBIN" -m engine.demo --http-port "$HTTP" --udp-port "$UDP" --ws-port "$WS")
 if [ -n "$AUDIO" ]; then read -r -a AUDIO_ARR <<<"$AUDIO"; CMD+=("${AUDIO_ARR[@]}"); else CMD+=(--headless); fi
-[ "$VISION" = 1 ] && CMD+=(--vision --vision-args "--model $MODEL --camera $CAMERA --port $UDP --hand-view-port $HAND --relative")
+[ "$VISION" = 1 ] && CMD+=(--hand-log "$HANDLOG" --vision --vision-args "--model $MODEL --camera $CAMERA --port $UDP --hand-view-port $HAND --relative")
 if [ "$COACH" = 1 ]; then
   if [ ! -f .env ] && [ ! -f "$HOME/.config/omniriff/.env" ]; then
     echo "WARNING: no .env with ANTHROPIC_API_KEY found; the coach will not start. See coach/README.md." >&2

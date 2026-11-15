@@ -303,7 +303,7 @@ class CoachRunner:
         except ImportError:
             pass
         config = {"configurable": {"thread_id": self.session_id},
-                  "recursion_limit": 40, "callbacks": callbacks}
+                  "recursion_limit": 60, "callbacks": callbacks}
         start = time.monotonic()
         try:
             result = self.agent.invoke({"messages": [("user", message)]}, config=config)
