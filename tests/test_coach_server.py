@@ -51,6 +51,8 @@ class CoachServerTest(unittest.TestCase):
         good = "/coach?player=p-0123456789"      # the passcode is never in the URL
         self.assertIsNone(self.check(good))
         self.assertIsNone(self.check(good, origin="https://omniriff.vercel.app"))
+        self.assertIsNone(self.check(good, origin="https://omniriff.courses"))
+        self.assertIsNone(self.check(good, origin="https://www.omniriff.courses"))
         self.assertEqual(self.check(good, origin="https://evil.example"), HTTPStatus.FORBIDDEN)
         self.assertEqual(self.check("/coach?player=../x"), HTTPStatus.BAD_REQUEST)
         self.assertEqual(self.check("/healthz"), HTTPStatus.OK)
