@@ -30,7 +30,7 @@
 <p align="center">
   <img src="docs/media/gallery-01-coach-3x2.png" alt="OmniRiff Practice Dashboard with AI Coach Riff" width="100%">
   <br>
-  <em>The OmniRiff Practice Dashboard: real-time waveform looping, active tone DSP with gesture knuckle tracking (`SWAPPED TO REVERB`), adaptive practice drill checklist, and conversational AI Coach Riff.</em>
+  <em>The OmniRiff Practice Dashboard: live signal meters, real-time waveform looping, adaptive practice checklist, and AI Coach Riff proposing a targeted drill based on acoustic timing hesitation.</em>
 </p>
 
 ---
