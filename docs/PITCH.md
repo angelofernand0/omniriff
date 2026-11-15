@@ -40,7 +40,7 @@ Use the same words and speaker assignments for the optional product video. Film 
 
 ## Demo coach (the scripted session on the website)
 
-**Load:** `https://omniriff.vercel.app/?coach=demo`. Press Start. Add `&source=live` to use Aditya's real guitar input and webcam (choose the instrument channel in the settings); without it the simulated guitar plays. Add `&fresh=1` for a first visit with no memory.
+**Load:** on omniriff.vercel.app, settings → **Riff, the AI coach** → **Start demo session** (or `?coach=demo`). Press Start. Add `&source=live` to use Aditya's real guitar input and webcam (choose the instrument channel in the settings); without it the simulated guitar plays. Add `&fresh=1` for a first visit with no memory.
 
 **What reacts to the room:** the goal Aditya says or types to Riff (any words), each finished loop recording (Record loop / L, real guitar or simulator), and the approval (a held thumbs-up on camera, or Y). Riff's voice is pre-rendered in its ElevenLabs voice (`tools/showcase/demo_voice.py`).
 
@@ -49,7 +49,7 @@ Use the same words and speaker assignments for the optional product video. Film 
 **Memory:** the first visit opens with a remembered session (the ring-finger fix). Finishing the demo saves the third phrase, so a reload opens with *“Welcome back, last time swinging the third phrase evened out your timing.”* Use `&fresh=1` to reset before the real pitch.
 
 **Operator checklist (SM):**
-1. Before judges arrive: open `…/?coach=demo&source=live&fresh=1` once and press Start, so the browser has mic and camera permission. Then reload `…/?coach=demo&source=live` so the opening line is the remembered session, not a first visit.
+1. Before judges arrive: open omniriff.vercel.app, choose Source **Live audio + camera**, and in **Riff, the AI coach** press **Start demo session**, then Start (this grants mic and camera). Before each run press **Reset for the pitch** (settings → Riff), so Riff opens with the remembered ring-finger session. **Leave demo** returns to the normal site. The same as URL flags: `?coach=demo&source=live`; `&fresh=1` = a first visit with no memory.
 2. If speech-to-text mishears Aditya, type “I can't get my timing right” in the TALK box. Any words move the script on.
 3. If the thumbs-up doesn't register within two seconds, press **Y**.
 4. Second take: tap once to clear the old loop, then record. Riff answers when the recording finishes.

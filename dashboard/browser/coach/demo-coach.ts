@@ -33,6 +33,9 @@ function remember(value?: string | null): string {
   return value || '';
 }
 
+/** Back to the pitch opening (the remembered ring-finger session). */
+export function resetDemoMemory(): void { remember(null); }
+
 /** The WebSocket-shaped object coach.js talks to. */
 class DemoSocket {
   readyState = 1;
