@@ -2,8 +2,10 @@
 
 The browser owns camera permission. JPEG frames are sent to a bounded, latest-only
 worker; no pixels are saved or sent outside localhost. Nothing runs in audio's
-callback. The signal path after detection is the same Controller/SceneMorph and
-validated UDP envelope used by ``python -m vision``.
+callback. The signal path after detection uses the same Controller/SceneMorph and
+validated UDP envelope as ``python -m vision``. The play room tracks the middle
+finger's palm joint: unlike the wrist, it remains in frame when the user lowers
+a still-visible hand toward the bottom edge of a laptop camera.
 """
 from __future__ import annotations
 
@@ -39,6 +41,7 @@ class BrowserVision:
         self.error = None
         self.frame_count = self.event_count = 0
         self.last_frame_at = 0.0
+        self.hand_present = self.hand_confident = self.hand_engaged = self.hand_armed = False
         self.metrics = FrameMetrics()
 
     def start(self):
@@ -50,6 +53,7 @@ class BrowserVision:
         self.frames = queue.Queue(maxsize=1)
         self.status, self.error = 'starting', None
         self.frame_count = self.event_count = 0
+        self.hand_present = self.hand_confident = self.hand_engaged = self.hand_armed = False
         self.metrics = FrameMetrics()
         self.thread = threading.Thread(target=self._run, name='browser-vision', daemon=True)
         self.thread.start()
@@ -70,6 +74,7 @@ class BrowserVision:
 
     def stop(self):
         self.stop_event.set()
+        self.hand_present = self.hand_confident = self.hand_engaged = self.hand_armed = False
         self.status = 'stopping' if self.thread is not None and self.thread.is_alive() else 'off'
 
     def close(self):
@@ -80,6 +85,9 @@ class BrowserVision:
     def snapshot(self):
         return dict(status=self.status, error=self.error, frames=self.frame_count,
                     events=self.event_count, model_ready=self.model.is_file(),
+                    hand_present=self.hand_present, hand_confident=self.hand_confident,
+                    hand_engaged=self.hand_engaged,
+                    hand_armed=self.hand_armed,
                     scene=self.scene_name, control='filter' if self.scene_name is None else 'scene',
                     metrics=self.metrics.snapshot())
 
@@ -123,6 +131,7 @@ class BrowserVision:
                         if self.last_frame_at and time.monotonic() - self.last_frame_at > 0.7:
                             controller.update(None, None, 0., time.monotonic(), int(time.time() * 1000))
                             hand_view.publish(self._hand_frame(None, controller, 0., [], int(time.time() * 1000), scene))
+                            self.hand_present = self.hand_confident = self.hand_engaged = self.hand_armed = False
                             self.status = 'waiting'
                             self.last_frame_at = 0.0
                         continue
@@ -134,7 +143,11 @@ class BrowserVision:
                     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     stamp = max(stamp + 1, int((now - started) * 1000))
                     result = detector.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), stamp)
-                    selected = selector.select([(hand[0].x, hand[0].y) for hand in result.hand_landmarks])
+                    # MediaPipe can extrapolate the wrist below the image while
+                    # the palm remains plainly visible. HandSelector correctly
+                    # rejects out-of-frame centers, so select by an in-frame
+                    # palm joint and use that same joint for the drag coordinate.
+                    selected = selector.select([(hand[9].x, hand[9].y) for hand in result.hand_landmarks])
                     y = pinch = None
                     confidence = 0.
                     points = []
@@ -144,11 +157,15 @@ class BrowserVision:
                         distance = lambda a, b: math.hypot((points[a].x-points[b].x)*width, (points[a].y-points[b].y)*height)
                         scale = distance(5, 17)
                         if scale > 1:
-                            y = points[0].y
+                            y = points[9].y
                             pinch = distance(4, 8) / scale
                             confidence = result.handedness[selected][0].score
                     wall_ms = int(time.time() * 1000)
                     gesture = (slider or controller).update(y, pinch, confidence, now, wall_ms)
+                    self.hand_present = y is not None
+                    self.hand_confident = self.hand_present and confidence >= controller.confidence
+                    self.hand_engaged = self.hand_present and controller.active
+                    self.hand_armed = self.hand_present and controller.armed
                     if slider:
                         self.error = slider.error
                     landmarks = [[min(1., max(0., p.x)), min(1., max(0., p.y))] for p in points] if y is not None else []

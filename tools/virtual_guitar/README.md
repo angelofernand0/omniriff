@@ -52,7 +52,13 @@ to hold. Re-pinching picks up the latest target, including manual changes betwee
 gestures. At 100% the filter is fully open; move down first to hear a change.
 Keep the hand lit from the front. Tracking loss/low confidence requires a fresh
 open-hand arm. This does not change the camera model or make dim-light tracking
-accurate. Manual bypass remains independent.
+accurate. The play-room bridge follows the middle-finger palm joint for selection
+and vertical drag, so a visible palm is not rejected merely because MediaPipe
+projects the wrist below the camera frame. The camera status distinguishes no
+hand, uncertain detection, ready-to-pinch and grabbed/dragging; `TRACKING` no
+longer means only that frames are arriving. Keep the palm in view, and restart
+the live launcher after updating code—reloading the page does not reload its
+Python camera worker. Manual bypass remains independent.
 
 Advanced, absolute Scene Morph remains opt-in with `--scene bloom` or
 `--scene rise`; it is not the default pinch-slider demo. Set the model path with
