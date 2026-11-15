@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="dashboard/brand/logo-animated-light.gif">
+    <img src="dashboard/brand/logo-animated.gif" alt="OmniRiff: Riff hops and the letters spread, then snap back together" width="480">
+  </picture>
+</p>
+
 # OmniRiff
 
 **Never put the guitar down.** OmniRiff lets a guitarist shape their sound with a pinch of the hand and a tap of the foot, live, without taking their hands off the strings. HackPrinceton Fall 2026.

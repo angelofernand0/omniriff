@@ -70,6 +70,8 @@ async def run(w, h, port):
                     if r.get('id') == i:
                         return r.get('result', {})
             await call('Emulation.setDeviceMetricsOverride', width=w, height=h, deviceScaleFactor=1, mobile=False)
+            await call('Network.enable')                          # the profile dir is reused: never measure cached CSS/JS
+            await call('Network.setCacheDisabled', cacheDisabled=True)
             await call('Page.navigate', url=URL)
             t0 = time.time()
             while time.time() - t0 < SECS:

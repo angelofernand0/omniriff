@@ -1,0 +1,427 @@
+{
+  "version": 1,
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "duration_s": 96.0,
+  "project": "OmniRiff Devpost Video Promo",
+  "target": "Devpost 2-minute slot (~90s promo)",
+  "brand_palette": {
+    "background": "#0B0B10",
+    "primary_pink": "#FF5CCB",
+    "accent_cyan": "#00F0FF",
+    "text_white": "#FFFFFF",
+    "text_dim": "#A0A0B0",
+    "red_marker": "#FF3366",
+    "green_success": "#00FF66"
+  },
+  "honesty_rules": [
+    "Every simulated or scripted dashboard capture MUST keep visible SIMULATED / SCRIPTED badges on screen.",
+    "Every latency, gap, or timing number MUST be read directly off a real screen or measured run.",
+    "Numbers remain as ___ placeholders until populated from the tonight hardware run.",
+    "Real-rig footage MUST come exclusively from tonight hardware run."
+  ],
+  "segments": [
+    {
+      "id": "seg_01_hook",
+      "beat": 1,
+      "start_s": 0.0,
+      "end_s": 3.0,
+      "kind": "motion",
+      "scene": "hook",
+      "asset": "runs/promo/raw/motion_beat01_hook.mp4",
+      "source_start_s": 0.0,
+      "shot_number": null,
+      "description": "Black screen. Audio waveform freezes on stumble gap; red marker slams down. Riff pops in with speech bubble."
+    },
+    {
+      "id": "seg_02_problem",
+      "beat": 2,
+      "start_s": 3.0,
+      "end_s": 10.0,
+      "kind": "motion",
+      "scene": "collage",
+      "asset": "runs/promo/raw/motion_beat02_collage.mp4",
+      "source_start_s": 0.0,
+      "shot_number": null,
+      "description": "Fast kinetic collage: tapping phone app, rewinding video lesson, metronome swinging. No commercial brand logos."
+    },
+    {
+      "id": "seg_03_logo_reveal",
+      "beat": 3,
+      "start_s": 10.0,
+      "end_s": 16.0,
+      "kind": "motion",
+      "scene": "logo",
+      "asset": "runs/promo/raw/motion_beat03_logo.mp4",
+      "source_start_s": 0.0,
+      "shot_number": null,
+      "description": "Animated OmniRiff mascot hop + letter shockwave (#141). Tagline types on in pixel font: NEVER PUT THE GUITAR DOWN."
+    },
+    {
+      "id": "seg_04_rig_wide",
+      "beat": 4,
+      "start_s": 16.0,
+      "end_s": 24.0,
+      "kind": "video",
+      "scene": "rig",
+      "asset": "runs/promo/raw/shot01_rig_wide.mp4",
+      "fallback_asset": "runs/promo/raw/dashboard_rig_fallback.mp4",
+      "source_start_s": 0.0,
+      "shot_number": 1,
+      "description": "Wide establishing shot of physical rig on table with callout badges (Guitar In, Cam, One Pedal)."
+    },
+    {
+      "id": "seg_05_goal",
+      "beat": 5,
+      "start_s": 24.0,
+      "end_s": 30.0,
+      "kind": "video",
+      "scene": "goal",
+      "asset": "runs/promo/raw/shot04_goal_speech.mp4",
+      "fallback_asset": "runs/promo/raw/dashboard_simulated_beat05.mp4",
+      "source_start_s": 0.0,
+      "shot_number": 4,
+      "description": "Player holds V / TALK button on laptop and speaks goal aloud: \"My G to C change\". Dashboard confirms."
+    },
+    {
+      "id": "seg_06_diagnosis",
+      "beat": 6,
+      "start_s": 30.0,
+      "end_s": 44.0,
+      "kind": "video",
+      "scene": "diagnosis",
+      "asset": "runs/promo/raw/shot05_stumble_take.mp4",
+      "fallback_asset": "runs/promo/raw/dashboard_simulated_beat06.mp4",
+      "source_start_s": 0.0,
+      "shot_number": 5,
+      "description": "Take with planted stumble. Dashboard shows Ears transient analysis, Eyes wrist kinematics, and zooms on ___ ms gap."
+    },
+    {
+      "id": "seg_07_approval",
+      "beat": 7,
+      "start_s": 44.0,
+      "end_s": 56.0,
+      "kind": "video",
+      "scene": "approval",
+      "asset": "runs/promo/raw/shot03_footswitch_hold.mp4",
+      "fallback_asset": "runs/promo/raw/dashboard_simulated_beat07.mp4",
+      "source_start_s": 0.0,
+      "shot_number": 3,
+      "description": "Riff plays back take, goes dry, and pauses. Prompt shows HOLD PEDAL TO APPROVE (or press Y). Close-up of foot holding pedal."
+    },
+    {
+      "id": "seg_08_result",
+      "beat": 8,
+      "start_s": 56.0,
+      "end_s": 68.0,
+      "kind": "video",
+      "scene": "result",
+      "asset": "runs/promo/raw/shot06_drill_take.mp4",
+      "fallback_asset": "runs/promo/raw/dashboard_simulated_beat08.mp4",
+      "source_start_s": 0.0,
+      "shot_number": 6,
+      "description": "Fresh drill take. Dashboard before/after split displays: BEFORE ___ ms -> AFTER ___ ms. GAP bar turns green."
+    },
+    {
+      "id": "seg_09_memory",
+      "beat": 9,
+      "start_s": 68.0,
+      "end_s": 76.0,
+      "kind": "video",
+      "scene": "memory",
+      "asset": "runs/promo/raw/dashboard_beat09_memory.mp4",
+      "fallback_asset": "runs/promo/raw/dashboard_simulated_beat09.mp4",
+      "source_start_s": 0.0,
+      "shot_number": null,
+      "description": "Dashboard result card and NEXT TIME recommendation. Memory file icon flies into Riff avatar."
+    },
+    {
+      "id": "seg_10_failsafe",
+      "beat": 10,
+      "start_s": 76.0,
+      "end_s": 84.0,
+      "kind": "video",
+      "scene": "failsafe",
+      "asset": "runs/promo/raw/shot07_pinch_and_shot08_unplug.mp4",
+      "fallback_asset": "runs/promo/raw/dashboard_simulated_beat10.mp4",
+      "source_start_s": 0.0,
+      "shot_number": 7,
+      "description": "Hand pinch-and-sweep filter gesture with skeleton overlay (Shot 7), then USB cam cable yanked mid-song (Shot 8)."
+    },
+    {
+      "id": "seg_11_architecture",
+      "beat": 11,
+      "start_s": 84.0,
+      "end_s": 92.0,
+      "kind": "motion",
+      "scene": "architecture",
+      "asset": "runs/promo/raw/motion_beat11_architecture.mp4",
+      "source_start_s": 0.0,
+      "shot_number": null,
+      "description": "Rapid motion-graphics assembly of the 12 system blocks from architecture.svg (audio, vision, firmware, router, dashboard, coach)."
+    },
+    {
+      "id": "seg_12_endcard",
+      "beat": 12,
+      "start_s": 92.0,
+      "end_s": 96.0,
+      "kind": "motion",
+      "scene": "end",
+      "asset": "runs/promo/raw/motion_beat12_endcard.mp4",
+      "source_start_s": 0.0,
+      "shot_number": 9,
+      "description": "OmniRiff logo, identity line, and GitHub repository URL. Riff mascot waves goodbye. Optional team wave (Shot 9)."
+    }
+  ],
+  "audio": [
+    {
+      "id": "music_bed",
+      "kind": "music",
+      "asset": "runs/promo/audio/music_bed_110bpm.mp3",
+      "start_s": 0.0,
+      "source_start_s": 0.0,
+      "duration_s": 96.0,
+      "gain": 0.35,
+      "ducked_gain": 0.15,
+      "description": "Indie guitar-driven upbeat bed (~110 BPM); ducked under voiceover; drop at 0:10"
+    },
+    {
+      "id": "sfx_stumble",
+      "kind": "sfx",
+      "asset": "runs/promo/audio/sfx_stumble.wav",
+      "start_s": 0.5,
+      "source_start_s": 0.0,
+      "duration_s": 1.5,
+      "gain": 0.8,
+      "description": "Real guitar take stumble sound"
+    },
+    {
+      "id": "sfx_record_scratch",
+      "kind": "sfx",
+      "asset": "runs/promo/audio/sfx_record_scratch.wav",
+      "start_s": 1.8,
+      "source_start_s": 0.0,
+      "duration_s": 1.0,
+      "gain": 0.7,
+      "description": "Vinyl needle stop / scratch into silence"
+    },
+    {
+      "id": "vo_beat01",
+      "kind": "voice",
+      "speaker": "SM",
+      "asset": "runs/promo/audio/vo-01-1.m4a",
+      "start_s": 1.8,
+      "source_start_s": 0.0,
+      "duration_s": 1.2,
+      "gain": 1.0,
+      "line": "\u2026but do you know why?"
+    },
+    {
+      "id": "vo_beat02",
+      "kind": "voice",
+      "speaker": "SM",
+      "asset": "runs/promo/audio/vo-02-1.m4a",
+      "start_s": 3.2,
+      "source_start_s": 0.0,
+      "duration_s": 6.8,
+      "gain": 1.0,
+      "line": "Practising alone, every tool makes you stop. Apps grade notes. A teacher tells you why, but every week, for a fee."
+    },
+    {
+      "id": "vo_beat03",
+      "kind": "voice",
+      "speaker": "SM",
+      "asset": "runs/promo/audio/vo-03-1.m4a",
+      "start_s": 10.2,
+      "source_start_s": 0.0,
+      "duration_s": 5.0,
+      "gain": 1.0,
+      "line": "So we built a teacher that lives in your signal chain."
+    },
+    {
+      "id": "vo_beat04",
+      "kind": "voice",
+      "speaker": "SM",
+      "asset": "runs/promo/audio/vo-04-1.m4a",
+      "start_s": 16.5,
+      "source_start_s": 0.0,
+      "duration_s": 6.5,
+      "gain": 1.0,
+      "line": "Guitar in. Camera on. One pedal. That\u2019s it."
+    },
+    {
+      "id": "vo_beat05_player",
+      "kind": "voice",
+      "speaker": "Player",
+      "asset": "runs/promo/audio/vo-05-player.wav",
+      "start_s": 24.5,
+      "source_start_s": 0.0,
+      "duration_s": 2.5,
+      "gain": 1.0,
+      "line": "My G to C change."
+    },
+    {
+      "id": "vo_beat05_riff",
+      "kind": "voice",
+      "speaker": "Riff",
+      "asset": "runs/promo/audio/vo-05-riff.wav",
+      "start_s": 27.5,
+      "source_start_s": 0.0,
+      "duration_s": 1.5,
+      "gain": 1.0,
+      "line": "Got it."
+    },
+    {
+      "id": "vo_beat06",
+      "kind": "voice",
+      "speaker": "SM",
+      "asset": "runs/promo/audio/vo-06-1.m4a",
+      "start_s": 30.5,
+      "source_start_s": 0.0,
+      "duration_s": 12.5,
+      "gain": 1.0,
+      "line": "Riff listens with Ears, watches your hand with Eyes, and that ___ millisecond gap? Your strumming hand froze right at the change."
+    },
+    {
+      "id": "vo_beat07",
+      "kind": "voice",
+      "speaker": "SM",
+      "asset": "runs/promo/audio/vo-07-1.m4a",
+      "start_s": 44.5,
+      "source_start_s": 0.0,
+      "duration_s": 10.5,
+      "gain": 1.0,
+      "line": "It sets up the drill, plays your take back, but never touches your sound until you approve."
+    },
+    {
+      "id": "vo_beat08",
+      "kind": "voice",
+      "speaker": "SM",
+      "asset": "runs/promo/audio/vo-08-1.m4a",
+      "start_s": 56.5,
+      "source_start_s": 0.0,
+      "duration_s": 8.0,
+      "gain": 1.0,
+      "line": "A fresh drill take. Look at that: down to ___ milliseconds."
+    },
+    {
+      "id": "vo_beat09",
+      "kind": "voice",
+      "speaker": "SM",
+      "asset": "runs/promo/audio/vo-09-1.m4a",
+      "start_s": 68.5,
+      "source_start_s": 0.0,
+      "duration_s": 6.5,
+      "gain": 1.0,
+      "line": "And next session, it remembers right where you left off."
+    },
+    {
+      "id": "vo_beat10",
+      "kind": "voice",
+      "speaker": "SM",
+      "asset": "runs/promo/audio/vo-10-1.m4a",
+      "start_s": 76.5,
+      "source_start_s": 0.0,
+      "duration_s": 6.8,
+      "gain": 1.0,
+      "line": "Pinch to shape your tone. Unplug the camera, and the music keeps going."
+    },
+    {
+      "id": "vo_beat11",
+      "kind": "voice",
+      "speaker": "SM",
+      "asset": "runs/promo/audio/vo-11-1.m4a",
+      "start_s": 84.5,
+      "source_start_s": 0.0,
+      "duration_s": 7.0,
+      "gain": 1.0,
+      "line": "Real-time audio engine, hand tracking, and a LangChain deep agent with subagents, skills, and memory, built by four of us."
+    },
+    {
+      "id": "vo_beat12",
+      "kind": "voice",
+      "speaker": "SM",
+      "asset": "runs/promo/audio/vo-12-1.m4a",
+      "start_s": 92.2,
+      "source_start_s": 0.0,
+      "duration_s": 3.2,
+      "gain": 1.0,
+      "line": "OmniRiff. Never put the guitar down."
+    }
+  ],
+  "captions": [
+    {
+      "start_s": 0.0,
+      "end_s": 3.0,
+      "text": "You messed up.\n\u2026but do you know WHY?",
+      "speaker": "SM"
+    },
+    {
+      "start_s": 3.0,
+      "end_s": 10.0,
+      "text": "Practising alone, every tool makes you stop.\nApps grade notes. A teacher tells you why, but every week, for a fee.",
+      "speaker": "SM"
+    },
+    {
+      "start_s": 10.0,
+      "end_s": 16.0,
+      "text": "So we built a teacher that lives in your signal chain.\nNEVER PUT THE GUITAR DOWN",
+      "speaker": "SM"
+    },
+    {
+      "start_s": 16.0,
+      "end_s": 24.0,
+      "text": "Guitar in. Camera on. One pedal. That\u2019s it.",
+      "speaker": "SM"
+    },
+    {
+      "start_s": 24.0,
+      "end_s": 30.0,
+      "text": "Player: \"My G to C change.\"\nRiff: \"Got it.\"",
+      "speaker": "Player/Riff"
+    },
+    {
+      "start_s": 30.0,
+      "end_s": 44.0,
+      "text": "Riff listens with Ears, watches your hand with Eyes\u2026\nand that ___ ms gap? Your strumming hand froze right at the change.",
+      "speaker": "SM"
+    },
+    {
+      "start_s": 44.0,
+      "end_s": 56.0,
+      "text": "It sets up the drill, plays your take back,\nbut never touches your sound until you approve. [HOLD PEDAL TO APPROVE]",
+      "speaker": "SM"
+    },
+    {
+      "start_s": 56.0,
+      "end_s": 68.0,
+      "text": "A fresh drill take. Look at that: down to ___ ms.\nBEFORE ___ ms \u2192 AFTER ___ ms",
+      "speaker": "SM"
+    },
+    {
+      "start_s": 68.0,
+      "end_s": 76.0,
+      "text": "And next session, it remembers right where you left off.\n[NEXT TIME: G to C transition]",
+      "speaker": "SM"
+    },
+    {
+      "start_s": 76.0,
+      "end_s": 84.0,
+      "text": "Pinch to shape your tone.\nUnplug the camera, and the music keeps going.",
+      "speaker": "SM"
+    },
+    {
+      "start_s": 84.0,
+      "end_s": 92.0,
+      "text": "Real-time audio engine, hand tracking,\nand a LangChain deep agent with subagents, skills, and memory.",
+      "speaker": "SM"
+    },
+    {
+      "start_s": 92.0,
+      "end_s": 96.0,
+      "text": "OmniRiff. Never put the guitar down.\ngithub.com/angelofernand0/omniriff",
+      "speaker": "SM"
+    }
+  ]
+}

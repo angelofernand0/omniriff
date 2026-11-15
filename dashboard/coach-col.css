@@ -5,21 +5,12 @@
    hairlines, no box inside a box. Honesty labels live in the top status pill, not here. */
 
 .coach-col {
-  display: flex; flex-direction: column; gap: var(--s4); padding: var(--s5);
+  display: flex; flex-direction: column; gap: var(--gutter); padding: var(--gutter);
   background: var(--panel); border: var(--stroke) solid var(--line-2); box-shadow: none;
   overflow: hidden; container-type: inline-size; min-height: 0;
 }
 .coach-col[data-state] { border-color: var(--line-2); }
 
-/* ---- where you are ---- */
-.map { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s1); flex: none; }
-.map li { font: 400 12px/1 var(--font-pixel); color: var(--faint); text-align: center; padding: 0 0 var(--s2); border-bottom: 4px solid var(--off); white-space: nowrap; overflow: hidden; }
-.map[data-step="2"] li[data-n="1"],
-.map[data-step="3"] li[data-n="1"], .map[data-step="3"] li[data-n="2"],
-.map[data-step="4"] li[data-n="1"], .map[data-step="4"] li[data-n="2"], .map[data-step="4"] li[data-n="3"] { color: var(--muted); border-color: var(--accent-low); }
-.map[data-step="1"] li[data-n="1"], .map[data-step="2"] li[data-n="2"],
-.map[data-step="3"] li[data-n="3"], .map[data-step="4"] li[data-n="4"] { color: var(--text); border-color: var(--accent); }
-.map[data-mode="play"] li { color: var(--dim) !important; border-color: var(--off) !important; }
 
 /* ---- Riff and what it says: the bubble points at Riff ---- */
 .talk { display: flex; flex-direction: column; gap: var(--s3); flex: none; }
@@ -39,26 +30,8 @@
 .bubble:empty::after { content: 'Play me what you\2019re working on.'; font-weight: 400; color: var(--muted); }
 .coach-col[data-state="asleep"] .bubble { border-color: var(--line-2); }
 .coach-col[data-state="asleep"] .bubble::before { border-color: var(--line-2); }
-.coach-col[data-state="asleep"] .bubble:empty::after { content: 'Coach off. The rig plays without it.'; }
+.coach-col[data-state="asleep"] .bubble:empty::after { content: 'Riff is asleep. You can still play.'; }
 
-/* ---- the session ---- */
-.rows { margin: 0; display: flex; flex-direction: column; flex: none; }
-.row { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: baseline; gap: var(--s3); padding: var(--s3) 0; border-top: 1px solid var(--line); }
-.row[hidden] { display: none; }
-.row dt { font: 400 12px/1.5 var(--font-pixel); color: var(--muted); }
-.row dd { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s3); font: 600 18px/1.35 var(--font-mono); color: var(--text); min-width: 0; }
-.row small { font: 400 14px/1.35 var(--font-mono); color: var(--muted); }
-.gap dd { flex-direction: column; align-items: stretch; gap: var(--s2); }
-.gap .val { display: flex; align-items: baseline; gap: var(--s3); }
-.gap b { font-weight: 600; color: var(--warn); }
-.gap[data-pass="true"] b { color: var(--ok); }
-/* one bar: your number against the target line */
-.gap-bar { position: relative; display: block; height: 8px; background: var(--off); }
-.gap-bar::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--now, 0%); background: var(--warn); }
-.gap[data-pass="true"] .gap-bar::before { background: var(--ok); }
-.gap-bar::after { content: ''; position: absolute; left: var(--goal, 0%); top: -4px; bottom: -4px; width: 2px; background: var(--text); }
-.done dd { color: var(--ok); font-weight: 600; }
-.last { margin: 0; font: 400 14px/1.4 var(--font-mono); color: var(--muted); flex: none; }
 
 /* ---- what the pedal does now: pinned to the bottom ---- */
 .coach-col .pedal { margin: auto 0 0; padding-top: var(--s3); border-top: var(--stroke) solid var(--line-2); display: flex; align-items: baseline; gap: var(--s3); flex: none; }
@@ -68,13 +41,10 @@
 
 /* ---- laptop windows and 720p ---- */
 @media (max-height: 820px) {
-  .coach-col { padding: var(--s4); gap: var(--s3); }
   .talk { gap: var(--s2); }
   .talk .riff-socket { width: 72px; height: 72px; }
   .bubble { font-size: 18px; padding: var(--s2) var(--s3); }
   .bubble::before { left: 28px; }
-  .row { padding: var(--s2) 0; }
-  .row dd, .coach-col .pedal span { font-size: 16px; }
 }
 
 /* ======== SM review 2, 2026-11-14: a buddy, not a readout ======== */
@@ -91,44 +61,27 @@
 /* the bubble's empty text depends on where you are (coach.js sets data-empty) */
 .bubble:empty::after, .coach-col[data-state="asleep"] .bubble:empty::after { content: attr(data-empty); }
 
-.agent { flex: none; display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2) 0 0; border-top: 1px solid var(--line); }
-.agent[hidden] { display: none; }
-.agent header { display: flex; align-items: baseline; gap: var(--s3); min-width: 0; }
-.agent header b { font: 400 12px/1.4 var(--font-pixel); color: var(--accent); flex: none; }
-.agent header span { font: 400 13px/1.4 var(--font-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.agent ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.agent li { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; align-items: baseline; gap: var(--s2); font: 400 14px/1.4 var(--font-mono); color: var(--muted); }
-.agent li i { font: 400 10px/1.6 var(--font-pixel); font-style: normal; color: var(--faint); border: 1px solid var(--line-2); padding: 0 4px; text-align: center; }
-.agent li span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.agent li em { font-style: normal; font-weight: 600; }
-.agent li[data-s="done"] em { color: var(--ok); }
-.agent li[data-s="failed"] em { color: var(--rec); }
-.agent li[data-s="running"] { color: var(--text); }
-.agent li[data-s="running"] i { color: var(--accent); border-color: var(--accent); }
-.agent li[data-s="running"] em { color: var(--accent); animation: blink 1s steps(2) infinite; }
-.agent li[data-s="waiting"] em { color: var(--warn); font: 400 10px/1.6 var(--font-pixel); }
 
 /* the pedal: keycaps for what one press does now; WAIT while Riff has the floor */
 .coach-col .pedal { align-items: center; flex-wrap: wrap; row-gap: var(--s2); }
-.pedal .acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); min-width: 0; }
-.pedal .act { display: inline-flex; align-items: center; gap: var(--s2); }
-.pedal .cap { font: 400 14px/1 var(--font-pixel); color: var(--accent-ink); background: var(--accent); padding: 5px 8px 4px; box-shadow: 0 3px 0 var(--accent-low); }
+.pedal .acts { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: var(--s2) var(--s3); min-width: 0; }
+.pedal .act { display: contents; }
+.pedal .cap { grid-column: 1; box-sizing: border-box; height: 32px; display: grid; place-items: center; font: 400 14px/1 var(--font-pixel); color: var(--accent-ink); background: var(--accent); box-shadow: inset 0 -4px 0 var(--accent-low); padding-bottom: 3px; }
 .pedal .cap[hidden], .pedal kbd[hidden] { display: none; }
-.pedal .does { font: 600 17px/1.3 var(--font-mono); color: var(--text); }
-.pedal kbd { font: 400 11px/1 var(--font-pixel); color: var(--faint); border: 1px solid var(--line-2); padding: 3px 5px 2px; }
-.pedal[data-wait="true"] .cap { background: var(--off); color: var(--muted); box-shadow: 0 3px 0 var(--shadow); animation: blink 1.6s steps(2) infinite; }
+.pedal .does { grid-column: 2; font: 600 17px/1.3 var(--font-mono); color: var(--text); }
+.pedal kbd { grid-column: 3; box-sizing: border-box; height: 24px; display: grid; place-items: center; font: 400 11px/1 var(--font-pixel); color: var(--faint); border: var(--stroke) solid var(--line-2); padding: 0 6px; }
+.pedal[data-wait="true"] .cap { background: var(--off); color: var(--muted); box-shadow: inset 0 -4px 0 var(--shadow); animation: blink 1.6s steps(2) infinite; }
 .pedal[data-wait="true"] .does { color: var(--muted); font-weight: 400; }
 
 /* levels in the bar, always visible */
-.top-meters { display: flex; align-items: center; gap: var(--s2); }
+.top-meters { display: flex; align-items: center; gap: var(--s4); }
 .top-meters .segs { gap: 2px; }
 .top-meters .segs i { width: 5px; height: 14px; }
 .top-meters .db { min-width: 64px; font-size: 13px; }
 .top-meters .clip { font-size: 11px; padding: 2px 6px; }
 .top-meters .meter-label { font-size: 12px; }
-.top-meters .meter-label + .segs { margin-right: var(--s1); }
-.top-meters .segs + .db { margin-left: 0; }
-.top-meters .clip + .meter-label { margin-left: var(--s3); }
+.top-meters .meter-label { margin-right: calc(var(--s2) * -1); }   /* label sits 8px from its own bars */
+.top-meters .db { text-align: right; }
 
 /* the spot in your loop the coach found: a band on the waveform; Riff stands over it and points down */
 .wave-mark { position: absolute; top: 0; bottom: 0; z-index: 2; pointer-events: none; min-width: 8px;
@@ -140,19 +93,20 @@
 .app[data-loop="recording"] .wave-mark { display: none; }
 
 /* FX: a real toggle switch. The lever flips, the box jolts and settles */
-.fx-toggle { position: relative; width: 64px; height: 96px; display: block; }
-.fx-nut { position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; margin: -18px 0 0 -18px; background: var(--off); border: 4px solid var(--line-2); box-sizing: border-box; }
-.fx-lever { position: absolute; left: 50%; bottom: 50%; width: 12px; height: 42px; margin-left: -6px; transform-origin: 50% 100%; background: var(--muted); }
-.fx-lever::before { content: ""; position: absolute; left: -6px; top: -8px; width: 24px; height: 12px; background: inherit; }
+/* the toggle scales with the button (one unit, in whole 4 px steps), so it fills the slot at any window size */
+.fx-toggle { --u: 16px; --u: round(down, clamp(16px, 9cqb, 28px), 4px); position: relative; width: calc(var(--u) * 4); height: calc(var(--u) * 6); display: block; }
+.fx-nut { position: absolute; left: 50%; top: 50%; width: calc(var(--u) * 2.25); height: calc(var(--u) * 2.25); margin: calc(var(--u) * -1.125) 0 0 calc(var(--u) * -1.125); background: var(--off); border: 4px solid var(--line-2); box-sizing: border-box; }
+.fx-lever { position: absolute; left: 50%; bottom: 50%; width: calc(var(--u) * 0.75); height: calc(var(--u) * 2.625); margin-left: calc(var(--u) * -0.375); transform-origin: 50% 100%; background: var(--muted); }
+.fx-lever::before { content: ""; position: absolute; left: calc(var(--u) * -0.375); top: calc(var(--u) * -0.5); width: calc(var(--u) * 1.5); height: calc(var(--u) * 0.75); background: inherit; }
 .fx-power[data-on="true"] .fx-lever { background: var(--accent); transform: scaleY(1); }
 .fx-power[data-on="false"] .fx-lever { transform: scaleY(-1); }
 .fx-power.snap { animation: fxsnap 380ms steps(7); }
 .fx-power[data-on="true"].snap .fx-lever { animation: leveron 240ms steps(4); }
 .fx-power[data-on="false"].snap .fx-lever { animation: leveroff 240ms steps(4); }
 @keyframes fxsnap {
-  0% { transform: translateY(6px); box-shadow: 0 2px 0 var(--shadow); }
-  20% { transform: translateY(-3px) rotate(-1.6deg); }
-  40% { transform: translateY(1px) rotate(1.2deg); }
+  0% { transform: translateY(-4px); box-shadow: 0 2px 0 var(--shadow); }   /* kicks up, never down past the panel's edge */
+  20% { transform: translateY(-2px) rotate(-0.8deg); }
+  40% { transform: rotate(0.6deg); }
   60% { transform: rotate(-0.7deg); }
   80% { transform: rotate(0.3deg); }
   100% { transform: none; }
@@ -170,10 +124,7 @@
 }
 
 @media (max-height: 820px) {
-  .agent li { font-size: 13px; grid-template-columns: 70px minmax(0, 1fr) auto; }
   .pedal .does { font-size: 15px; }
-  .fx-toggle { width: 52px; height: 76px; }
-  .fx-lever { height: 32px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .fx-power.snap, .fx-power.snap .fx-lever, .wave-mark { animation: none !important; }
@@ -203,10 +154,11 @@
 .you input[hidden] { display: none; }
 
 /* the footer: TALK, then the pedal */
-.coach-foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--s3); flex: none; }
-.coach-col .coach-foot .pedal { margin: 0; }
+.coach-foot { margin-top: auto; display: flex; flex-direction: column; gap: 0; flex: none; }
+.coach-col .coach-foot .pedal { margin: var(--gutter) 0 0; padding-top: var(--gutter); }
+.talk-btn[hidden] + .pedal { margin-top: 0; }
 .talk-btn { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); cursor: pointer; text-align: left;
-  background: var(--bg); color: var(--text); border: var(--stroke) solid var(--line-2); box-shadow: 0 4px 0 var(--shadow);
+  background: var(--bg); color: var(--text); border: var(--stroke) solid var(--line-2); box-shadow: none; min-height: 40px; box-sizing: border-box;
   touch-action: none; user-select: none; -webkit-user-select: none; }
 .talk-btn[hidden] { display: none; }
 .talk-btn i { width: 12px; height: 12px; background: var(--muted); flex: none; }
@@ -215,30 +167,15 @@
 .talk-btn[data-ask="true"] { border-color: var(--accent); }
 .talk-btn[data-ask="true"] b, .talk-btn[data-ask="true"] span { color: var(--accent); }
 .talk-btn[data-ask="true"] i { background: var(--accent); animation: blink 1.4s steps(2) infinite; }
-.coach-col[data-talk="listening"] .talk-btn { transform: translateY(4px); box-shadow: 0 0 0 var(--shadow); border-color: var(--rec); }
+.coach-col[data-talk="listening"] .talk-btn { border-color: var(--rec); }
 .coach-col[data-talk="listening"] .talk-btn i { background: var(--rec); animation: none; }
 @media (max-height: 820px) {
   .you span, .you input { font-size: 16px; }
   .talk-btn { padding: 6px var(--s3); }
   .talk-btn span { font-size: 15px; }
-  .coach-foot { gap: var(--s2); }
 }
 
 /* ======== SM review 3: Riff at work in plain words; pop-ups for the moments to narrate ======== */
-.agent header { align-items: center; }
-.plan-dots { display: flex; gap: 4px; align-items: center; }
-.plan-dots i { width: 10px; height: 10px; background: var(--off); }
-.plan-dots i[data-s="completed"] { background: var(--accent-low); }
-.plan-dots i[data-s="in_progress"] { background: var(--accent); animation: blink 1s steps(2) infinite; }
-.agent li { grid-template-columns: 48px minmax(0, 1fr) auto; font: 600 16px/1.4 var(--font-mono); color: var(--text); }
-.agent li i { border: 0; padding: 0; text-align: left; font: 400 11px/1.9 var(--font-pixel); color: var(--muted); }
-.agent li[data-who="ears"] i, .agent li[data-who="eyes"] i { color: var(--accent); }
-.agent li[data-s="done"] { color: var(--muted); font-weight: 400; }
-.agent li[data-s="done"] em { color: var(--muted); }
-.agent li[data-s="running"] i { color: var(--accent); }
-.agent li[data-s="running"] span::after { content: '\2026'; }
-.agent li[data-s="running"] em { animation: none; }
-.agent li[data-new="true"] { animation: popin var(--bar) var(--step); }
 
 .riff-toast { position: fixed; z-index: 45; display: flex; flex-direction: column; gap: 4px; padding: 10px 14px;
   background: var(--bg); border: var(--stroke) solid var(--accent); box-shadow: 4px 4px 0 var(--shadow); pointer-events: none; }
@@ -247,11 +184,109 @@
 .riff-toast span { font: 600 17px/1.3 var(--font-mono); color: var(--text); }
 .riff-toast[data-on="true"] { animation: toastin 300ms steps(3); }
 @keyframes toastin { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
-.row[data-done="true"] dd > span:first-child { color: var(--ok); }
-@media (max-height: 820px) { .agent li { font-size: 15px; } .riff-toast span { font-size: 15px; } }
-@media (prefers-reduced-motion: reduce) { .riff-toast[data-on="true"], .agent li[data-new="true"] { animation: none; } }
+@media (max-height: 820px) { .riff-toast span { font-size: 15px; } }
+@media (prefers-reduced-motion: reduce) { .riff-toast[data-on="true"] { animation: none; } }
 /* the voice hint stays inside the actions column, under the keycaps; PEDAL stays on its line */
 .coach-col .pedal { flex-wrap: nowrap; align-items: flex-start; }
-.coach-col .pedal > b { padding-top: 6px; }
+.coach-col .pedal > b { padding-top: 7px; }
 .pedal .acts { flex: 1; min-width: 0; }
-.coach-col[data-voice="locked"] .pedal .acts::after { flex-basis: 100%; }
+.coach-col[data-voice="locked"] .pedal .acts::after { grid-column: 2 / -1; }
+
+/* ======== SM review 4: progress you can feel. Green means "done / you made it", only ======== */
+/* the stall in your loop: a dark veil with pink edges, so Riff, the band and the bars don't all shout pink */
+.wave-mark { background: linear-gradient(rgba(255, 92, 203, 0.10), rgba(255, 92, 203, 0.10)), rgba(11, 11, 16, 0.55); }
+
+/* pop-ups: a drill you passed is green */
+.riff-toast[data-kind="ok"] { border-color: var(--ok); }
+.riff-toast[data-kind="ok"] b { color: var(--ok); }
+
+
+/* ======== the session checklist (SM review 5) ========
+   One list, one row structure for every step Riff can plan:  mark | LABEL | what | result.
+   Done rows say what happened (result in green), the row you are on says how far along you are and opens to show
+   detail (your number against its target, or what Riff is doing right now), rows ahead sit back, darker.
+   Riff's bubble says only what Riff says; what it is doing lives here. Green only ever means done. */
+.list { list-style: none; margin: 0; padding: 0; flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: none; position: relative;
+  display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.list::-webkit-scrollbar { display: none; }
+.list[hidden] { display: none; }
+.step { flex: none; display: grid; grid-template-columns: 12px 64px minmax(0, 1fr); column-gap: var(--s3); align-items: start;
+  min-height: 44px; padding: var(--s2) 0; box-sizing: border-box; border-bottom: 1px solid var(--line); }
+.step .lab { font: 400 12px/1.3 var(--font-pixel); color: var(--muted); padding-top: 3px; }
+.step .mark { margin-top: 4px; }
+.step .body { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.step .what { font: 600 17px/1.3 var(--font-mono); color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+.step .val { font: 400 14px/1.3 var(--font-mono); font-style: normal; color: var(--muted); white-space: nowrap; }
+.step .val:empty { display: none; }
+.step .mark { width: 12px; height: 12px; box-sizing: border-box; }
+/* done: green check, what happened in calm text, the result in green */
+.step[data-s="done"] .mark { background: var(--ok);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 7' shape-rendering='crispEdges'%3E%3Cpath d='M7 0h2v2H7zM5 2h2v2H5zM3 4h2v2H3zM1 3h2v2H1zM0 2h1v1H0z'/%3E%3C/svg%3E") no-repeat center / 12px 9px;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 7' shape-rendering='crispEdges'%3E%3Cpath d='M7 0h2v2H7zM5 2h2v2H5zM3 4h2v2H3zM1 3h2v2H1zM0 2h1v1H0z'/%3E%3C/svg%3E") no-repeat center / 12px 9px; }
+.step[data-s="done"] .what { color: var(--muted); font-weight: 400; }
+.step[data-s="done"] .val { color: var(--ok); font-weight: 600; }
+/* now: pink, full brightness */
+.step[data-s="now"] .mark { background: var(--accent); }
+.step[data-s="now"] .lab { color: var(--accent); }
+/* next: sits back until you get there */
+.step[data-s="next"] .mark { border: var(--stroke) solid var(--off); }
+.step[data-s="next"] .lab, .step[data-s="next"] .what { color: var(--dim); }
+.step[data-s="next"] .what { font-weight: 400; }
+/* context (last time, next time) and skipped */
+.step[data-s="ctx"] .mark { background: var(--muted); width: 4px; height: 4px; margin: 8px 4px; }
+.step[data-s="ctx"] .what { color: var(--muted); font-weight: 400; font-size: 15px; }
+.step[data-s="skip"] .mark { background: var(--dim); height: 2px; margin: 9px 0; }
+.step[data-s="skip"] .what { color: var(--dim); text-decoration: line-through; font-weight: 400; }
+
+/* the open row: detail under the words */
+.detail { grid-column: 2 / -1; display: flex; flex-direction: column; gap: var(--s3); padding-top: var(--s2); min-width: 0; }
+.metric { display: flex; flex-direction: column; gap: var(--s2); }
+.metric-head { display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; }
+.metric-head em { font: 400 14px/1.3 var(--font-mono); font-style: normal; color: var(--muted); }
+.metric-head b { font: 600 20px/1.2 var(--font-mono); color: var(--warn); }
+.metric[data-pass="true"] .metric-head b, .metric[data-pass="true"] small { color: var(--ok); }
+.metric-head small { font: 400 14px/1.3 var(--font-mono); color: var(--muted); }
+.metric[data-pass="true"] small { font-weight: 600; }
+/* the green zone is where you are headed, the block is this take, the tick is where you started */
+.gap-bar { position: relative; display: block; height: 12px; background: var(--off); }
+.gap-bar i { position: absolute; display: block; }
+.gap-bar .zone { left: 0; top: 0; bottom: 0; width: var(--goal, 0%); background: rgba(143, 227, 166, 0.30); border-right: 2px solid var(--ok); box-sizing: border-box; }
+.gap-bar .was { left: var(--was, 0%); top: 2px; bottom: 2px; width: 2px; margin-left: -1px; background: var(--muted); }
+.gap-bar .trail { left: var(--now, 0%); width: calc(var(--was, 0%) - var(--now, 0%)); top: 5px; height: 2px; background: var(--muted); opacity: 0.6; }
+.gap-bar[data-moved="false"] .was, .gap-bar[data-moved="false"] .trail { display: none; }
+.gap-bar .now { left: var(--now, 0%); top: -3px; bottom: -3px; width: 8px; margin-left: -4px; background: var(--warn); }
+.metric[data-pass="true"] .gap-bar .now { background: var(--ok); }
+.metric[data-flash="true"] { animation: rowwin 900ms steps(6); }
+@keyframes rowwin { 0% { background: rgba(143, 227, 166, 0.22); } 100% { background: transparent; } }
+
+/* Riff's live steps (the deep agent): what it checks, in plain words, newest last */
+.work { display: flex; flex-direction: column; gap: var(--s1); }
+.work-head { display: flex; align-items: center; gap: var(--s2); }
+.work-head b { font: 400 12px/1.4 var(--font-pixel); color: var(--accent); }
+.work-head small { font: 400 13px/1.4 var(--font-mono); color: var(--muted); }
+.plan-dots { display: flex; gap: 4px; align-items: center; }
+.plan-dots i { width: 8px; height: 8px; background: var(--off); }
+.plan-dots i[data-s="completed"] { background: var(--ok); }
+.plan-dots i[data-s="in_progress"] { background: var(--accent); animation: blink 1s steps(2) infinite; }
+.work ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.work li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: baseline; gap: var(--s2); font: 400 15px/1.4 var(--font-mono); color: var(--muted); }
+.work li i { font: 400 11px/1.6 var(--font-pixel); font-style: normal; color: var(--muted); }
+.work li[data-who="ears"] i, .work li[data-who="eyes"] i { color: var(--accent); }
+.work li span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.work li em { font-style: normal; font-weight: 600; color: var(--ok); }
+.work li[data-s="failed"] em { color: var(--rec); }
+.work li[data-s="running"] { color: var(--text); font-weight: 600; }
+.work li[data-s="running"] i { color: var(--accent); }
+.work li[data-s="running"] span::after { content: '\2026'; }
+.work li[data-s="waiting"] em { color: var(--warn); font: 400 11px/1.6 var(--font-pixel); }
+.step[data-new="true"], .work li[data-new="true"] { animation: popin var(--bar) var(--step); }
+.step[data-just="true"] { animation: rowwin 900ms steps(6); }
+.step[data-just="true"] .mark { animation: popin 360ms steps(3); }
+@media (max-height: 820px) {
+  .step { min-height: 36px; padding: 6px 0; }
+  .step .what { font-size: 16px; }
+  .work li { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .step[data-new="true"], .work li[data-new="true"], .step[data-just="true"], .step[data-just="true"] .mark, .metric[data-flash="true"] { animation: none; }
+}

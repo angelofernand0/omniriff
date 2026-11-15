@@ -44,7 +44,7 @@ No. It's pretrained, and we say so. Our work is the real-time control system aro
 Takes and the practice journal stay on the laptop (`runs/takes`, `coach/workspace/`; both git-ignored). Only the coach's text analysis requests go to the model API; we don't upload video, and camera frames never leave the machine. [Confirm what the coach actually sends once it ships.]
 
 **Can the AI mess up my sound mid-song?**
-No. It proposes a change, and nothing happens until you tap the pedal or press Y. Its actions go through the same validation gate as every other control (stale, duplicate and malformed actions are dropped), and bypass is always yours.
+No. It proposes a change, and nothing happens until you hold the pedal or press Y. Its actions go through the same validation gate as every other control (stale, duplicate and malformed actions are dropped), and bypass is always yours.
 
 **How do you know the diagnosis is right?**
 Every claim comes from a measured number: Ears' gaps from the audio, Eyes' stalls from the hand. The coach shows before/after numbers from your own takes. [Report how it did on the planted-mistake take and on real takes.] No number, no claim.

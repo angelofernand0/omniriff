@@ -43,8 +43,9 @@ def _run(a) -> int:
 
     runtime = Runtime(audio, udp_port=a.udp_port, ws_port=a.ws_port)
     http = None
+    hooks = {}   # filled once the event loop exists: /sim/... manual test control (dashboard ?manual=1)
     if a.http_port:
-        http = make_server(a.http_port, sim='input')  # the page then reads SIMULATED
+        http = make_server(a.http_port, sim='input', hooks=hooks)  # the page then reads SIMULATED
         threading.Thread(target=http.serve_forever, daemon=True, name='omniriff-http').start()
 
     async def main():
@@ -56,25 +57,28 @@ def _run(a) -> int:
             print(f'[sim] dashboard http://127.0.0.1:{http.server_address[1]}/')
         print('[sim] SIMULATED input (synthetic guitar)' + (' + scripted demo' if a.demo else '') + '. Ctrl-C to stop.')
         view, hand_task = None, None
-        if a.demo and a.hand_port:
+        if a.hand_port:   # the hand view is always served (no hand in frame until the demo or the manual strip puts one there)
             from .hand import HandState, serve_hand
             view = HandState()
             hand_task = asyncio.create_task(serve_hand(view, a.hand_port))
             print(f'[sim] SIMULATED hand view ws://127.0.0.1:{a.hand_port}')
-        demo = asyncio.create_task(run_demo(runtime.udp_port, view=view)) if a.demo else None
+        from .control import SimControl
+        control = SimControl(asyncio.get_running_loop(), runtime.udp_port, view, guitar, guitar.level, a.demo)
+        hooks['handle'] = control.handle
+        demo = None   # SimControl owns the scripted demo: ?manual=1 on the dashboard stops it
         coach_task = None
         if a.coach_sim:
             from .coach import run_scripted_coach
             coach_task = asyncio.create_task(run_scripted_coach(
-                a.coach_port, f'ws://127.0.0.1:{runtime.ws_port}', runtime.udp_port, voice=_voice(a)))
+                a.coach_port, f'ws://127.0.0.1:{runtime.ws_port}', runtime.udp_port, voice=_voice(a), start_round=a.coach_round))
             print(f'[sim] SCRIPTED coach session ws://127.0.0.1:{a.coach_port} (no AI)')
         start = time.monotonic()
         try:
             while not (a.duration and time.monotonic() - start >= a.duration):
                 await asyncio.sleep(0.1)
         finally:
-            if demo:
-                demo.cancel()
+            if control.demo:
+                control.demo.cancel()
             if coach_task:
                 coach_task.cancel()
             if hand_task:
@@ -112,13 +116,15 @@ def main(argv=None) -> int:
     r.add_argument('--ws-port', type=int, default=47801)
     r.add_argument('--http-port', type=int, default=8080, help='0 disables the dashboard server')
     r.add_argument('--hand-port', type=int, default=47802,
-                   help='with --demo: serve a simulated hand-view feed here (0 disables; vision uses the same port)')
+                   help='serve a simulated hand-view feed here (0 disables; vision uses the same port)')
     r.add_argument('--samplerate', type=int, default=48000)
     r.add_argument('--blocksize', type=int, default=256)
     r.add_argument('--duration', type=float)
     r.add_argument('--coach-sim', action='store_true',
                    help='serve a SCRIPTED coach session on --coach-port (no AI; labelled on screen)')
     r.add_argument('--coach-port', type=int, default=47803)
+    r.add_argument('--coach-round', action='store_true',
+                   help='with --coach-sim: start a practice round at once (default: free play, Riff quiet until a long press / Y or you talk to it)')
     r.add_argument('--no-voice', action='store_true', help="with --coach-sim: browser voice only, no ElevenLabs")
     c = sub.add_parser('coach', help='SCRIPTED coach session against a running engine (no AI; labelled on screen)')
     c.add_argument('--port', type=int, default=47803)

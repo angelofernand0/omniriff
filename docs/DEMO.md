@@ -15,6 +15,7 @@ Windows blocks `.ps1` files by default ("running scripts is disabled"), so start
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\setup.ps1 -Coach
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -SerialPort COM3 -Coach  # use the port --check printed; omit -SerialPort if no pedal, -Coach if the coach isn't set up
+# add -StrumHand Left and/or -Camera 1 if that's what the camera rehearsal verified; with -Coach, vision and the coach share runs/hand-<time>.jsonl for Eyes
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -Headless         # alternative: silence processing, no Focusrite output
 ```
 
@@ -59,13 +60,16 @@ From [ROADMAP.md §7](ROADMAP.md). The coach is the centrepiece; pedal and pinch
 | 0:15–0:35 | **The rig.** The pedal starts a loop; the pinch sweeps the filter over it. Hands never leave the guitar. |
 | 0:35–1:20 | **The teacher (the ah-ha).** Play the take with the stumble. Riff thinks (plan on screen; Ears and Eyes run), then: *"Your strumming hand stops at the change."* Riff flies to the loop, sets up the drill and waits. Tap the pedal. Play the drill. Before/after numbers appear. |
 | 1:20–1:40 | **It remembers.** Show the journal entry and its "Last time…" opening line. |
-| 1:40–2:00 | **Safe by design.** Unplug the camera: the music keeps playing; the AI never touches the sound without your tap. One honest limitation. |
+| 1:40–2:00 | **Safe by design.** Unplug the camera: the music keeps playing; the AI never touches the sound until you hold the pedal (or press Y). One honest limitation. |
 
 If the coach isn't working on the real rig by the midnight gate, fall back to the instrument story: dry guitar → pedal loop → pinch sweep → dashboard → reliability. Show the coach only on the simulator, **labeled**. Track-specific 20-second angles are in [DEVPOST.md](DEVPOST.md). Likely judge questions with honest answers are in [QA.md](QA.md).
 
 Coach launch, once `coach/` is on main: add `--coach --hand-log runs/hand.jsonl` to the `engine.demo` command in §2 (the coach then watches the engine's takes in `runs/takes`).
 
 ## 4. If something fails at the table
+
+Before each judge: run `python -m tools.tablecheck` (Windows: `.\scripts\windows\tablecheck.ps1`); resolve RED rows or explicitly omit unused vision/coach with `--no-vision` / `--no-coach` ([checks and limits](../tools/tablecheck/README.md)).
+
 | Failure | Do this | Say this |
 |---|---|---|
 | Camera / vision | Keep playing; use the pedal and keyboard `f`/`r` | "The instrument never depends on the camera." |

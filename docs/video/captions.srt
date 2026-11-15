@@ -1,0 +1,59 @@
+1
+00:00:00,000 --> 00:00:03,000
+You messed up.
+…but do you know WHY?
+
+2
+00:00:03,000 --> 00:00:10,000
+Practising alone, every tool makes you stop.
+Apps grade notes. A teacher tells you why, but every week, for a fee.
+
+3
+00:00:10,000 --> 00:00:16,000
+So we built a teacher that lives in your signal chain.
+NEVER PUT THE GUITAR DOWN
+
+4
+00:00:16,000 --> 00:00:24,000
+Guitar in. Camera on. One pedal. That’s it.
+
+5
+00:00:24,000 --> 00:00:30,000
+Player: "My G to C change."
+Riff: "Got it."
+
+6
+00:00:30,000 --> 00:00:44,000
+I listen with Ears… watch your hand with Eyes…
+and that ___ ms gap? Your strumming hand froze right at the change.
+
+7
+00:00:44,000 --> 00:00:56,000
+I set up the drill,
+but I never touch your sound until you approve. [HOLD PEDAL TO APPROVE]
+
+8
+00:00:56,000 --> 00:01:08,000
+Next take: ___ ms. Look at that.
+BEFORE ___ ms → AFTER ___ ms
+
+9
+00:01:08,000 --> 00:01:16,000
+And next session, I remember where we left off.
+[NEXT TIME: G to C transition]
+
+10
+00:01:16,000 --> 00:01:24,000
+Pinch to shape your tone.
+Unplug the camera, and the music keeps going.
+
+11
+00:01:24,000 --> 00:01:32,000
+Real-time audio engine, hand tracking,
+and a LangChain deep agent with subagents, skills, and memory.
+
+12
+00:01:32,000 --> 00:01:36,000
+OmniRiff. Never put the guitar down.
+github.com/angelofernand0/omniriff
+

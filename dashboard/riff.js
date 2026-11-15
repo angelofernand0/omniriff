@@ -319,8 +319,11 @@
     if (!r.width) return homePoint();
     const perch = t.dataset.perch || 'tr';
     // a control (a button): stand beside it and reach over with the finger; a panel: perch in a corner
-    if (t.dataset.reach === 'down') {     // stand over the spot inside its panel, point down at it
-      return { x: Math.min(window.innerWidth - box() / 2 - 8, Math.max(box() / 2 + 8, r.left + r.width / 2)), y: r.top + box() * 0.5 };
+    if (t.dataset.reach === 'down') {     // perch on the panel's top edge over the spot, point down into it
+      // (SM review 4: standing inside the waveform crowded it; on the edge, the bars stay readable)
+      const bar = document.querySelector('.bar');
+      const floor = (bar ? bar.getBoundingClientRect().bottom : 0) + box() * 0.5 + 4;
+      return { x: Math.min(window.innerWidth - box() / 2 - 8, Math.max(box() / 2 + 8, r.left + r.width / 2)), y: Math.max(floor, r.top - box() * 0.05) };
     }
     if (t.dataset.reach) {
       const left = t.dataset.reach === 'left';
@@ -364,7 +367,7 @@
   function wink() { winkStart = performance.now() + 180; winkSide = Math.random() < 0.5 ? -1 : 1; }
 
   const COPY = {
-    asleep: ['COACH OFF', 'Not running. The rig plays without it.'],
+    asleep: ['COACH OFF', 'Riff is asleep. You can still play.'],
     idle: ['COACH READY', 'Play a take.'],
     listening: ['LISTENING', 'Keep playing.'],
     thinking: ['READING TAKE', 'One moment.'],
