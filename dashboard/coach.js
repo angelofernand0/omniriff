@@ -153,15 +153,19 @@
   let seenRows = new Set(), seenSteps = new Set(), doneKeys = new Set(), justUntil = new Map(), gapKey = null;
 
   function listModel(f) {
-    const ses = f && f.session, rows = [];
-    const play = ses && ses.mode === 'play';
+    let ses = f && f.session;
+    const rows = [];
+    const play = !!ses && ses.mode === 'play';
+    let carry = null;                              // a session that is over: it becomes LAST TIME, and the next one starts fresh
+    if (play) { carry = ses.summary || ses.last_time || null; ses = null; }
     const working = !!f && f.state === 'thinking' && !play;
     const plan = ses && ses.plan && ses.plan.length ? ses.plan : ses && ses.drill ? [{ title: ses.drill.title, status: 'now' }] : [];
     const m = ses && ses.metric, hist = m && m.history ? m.history : [];
     const summary = !!(ses && ses.summary);
     const goal = ses && ses.goal;
     const nowIdx = plan.findIndex((d) => d.status === 'now');
-    if (ses && ses.last_time && !summary && !plan.length) rows.push({ k: 'last', s: 'ctx', label: 'LAST TIME', text: ses.last_time });
+    const last = carry || (ses && !summary && !plan.length ? ses.last_time : null);
+    if (last) rows.push({ k: 'last', s: 'ctx', label: 'LAST TIME', text: last });
     rows.push(goal ? { k: 'goal', s: 'done', label: 'GOAL', text: goal }
       : working || plan.length ? { k: 'goal', s: 'ctx', label: 'GOAL', text: 'Not set' }
       : { k: 'goal', s: 'now', label: 'GOAL', text: 'Tell Riff what you’re working on' });
@@ -377,8 +381,8 @@
       window.OmniRiff.coach.set({ target: '#waveMark' }); mark('#waveMark');   // stand over the spot, now that it's there
     }
     const a = Math.max(0, mk.start_s / loopSecs), b = Math.min(1, Math.max(mk.end_s, mk.start_s + 0.05) / loopSecs);
-    ui.mark.style.left = `calc(12px + (100% - 24px) * ${a.toFixed(4)})`;
-    ui.mark.style.width = `calc((100% - 24px) * ${(b - a).toFixed(4)})`;
+    ui.mark.style.left = `calc(var(--wave-left, 12px) + (100% - var(--wave-left, 12px) - 12px) * ${a.toFixed(4)})`;
+    ui.mark.style.width = `calc((100% - var(--wave-left, 12px) - 12px) * ${(b - a).toFixed(4)})`;
     const tag = ui.mark.querySelector('span');
     tag.textContent = mk.label || `${Math.round((mk.end_s - mk.start_s) * 1000)} ms`;
     requestAnimationFrame(() => {            // the tag centres on the band but never leaves the waveform

@@ -37,5 +37,6 @@ http://127.0.0.1:8080/?manual=1
 - Keys that already exist: `L` loop pedal, `B` FX, `Y` / `N` answer Riff, `V` hold to talk.
 - For a completely quiet start, run the simulator without `--demo` (the flag still works the same).
 - Needs the simulator's own web server. On any other server the strip says `NO SIM SERVER`.
+- **No camera turns on in the simulator**: its hand is synthetic (the HAND button and PINCH pad). To use your real camera, run the simulator with `--hand-port 0` (so the port is free) and start `python -m vision --model /path/to/hand_landmarker.task` in another terminal (see `vision/README.md`; it needs MediaPipe and Google's hand-landmarker model, which is not in the repo). The strip then hides the simulated hand controls.
 
 The flag talks to `/sim/state`, `/sim/auto`, `/sim/guitar`, `/sim/hand`, `/sim/pedal` (see `control.py`; tests in `tests/test_sim_control.py`). Simulated input only.

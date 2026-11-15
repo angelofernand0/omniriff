@@ -22,7 +22,8 @@
   const bF = btn('FILTER'), bR = btn('REVERB');
   const pad = el('div', 'm-pad'); const knob = el('i'); pad.append(knob);
   const keys = el('span', 'm-keys', 'L loop · B FX · Y N Riff · V talk');
-  strip.append(tag, bAuto, bGuitar, bHand, el('span', 'm-sep', 'PINCH'), bF, bR, pad, keys);
+  const sepPinch = el('span', 'm-sep', 'PINCH');
+  strip.append(tag, bAuto, bGuitar, bHand, sepPinch, bF, bR, pad, keys);
   document.body.append(strip);
 
   const st = { auto: false, guitar: true, hand: false };
@@ -32,7 +33,15 @@
     bHand.textContent = `HAND ${st.hand ? 'IN' : 'OUT'}`; bHand.dataset.on = String(st.hand);
     bF.dataset.on = String(sel.control === 'filter'); bR.dataset.on = String(sel.control === 'reverb');
   };
-  const apply = (s) => { if (!s || s.error) return; st.auto = !!s.auto; st.guitar = !!s.guitar; st.hand = !!(s.hand && s.hand.present); paint(); };
+  const apply = (s) => {
+    if (!s || s.error) return;
+    st.auto = !!s.auto; st.guitar = !!s.guitar; st.hand = !!(s.hand && s.hand.present);
+    if (s.hand === null) {                       // the simulator's hand is off: vision (your camera) drives the hand and the pinch
+      [bHand, bF, bR, pad, sepPinch].forEach((e) => { e.hidden = true; });
+      keys.textContent = 'HAND: real camera (python -m vision) · L loop · B FX · Y N Riff · V talk';
+    }
+    paint();
+  };
   paint();
 
   api('/sim/auto', { on: '0' }).then((s) => {            // stop whatever the simulator was doing by itself

@@ -45,7 +45,7 @@ class SimControl:
     def state(self) -> dict:
         v = self.view
         return {'auto': self.demo is not None and not self.demo.done(), 'guitar': self.guitar.level > 0,
-                'hand': {'present': bool(v and v.present), 'engaged': bool(v and v.engaged)}}
+                'hand': None if v is None else {'present': bool(v.present), 'engaged': bool(v.engaged)}}   # None: --hand-port 0, the real camera (vision) owns the hand
 
     # runs on the http thread
     def handle(self, path: str, q: dict) -> dict:

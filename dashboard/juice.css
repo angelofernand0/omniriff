@@ -11,7 +11,7 @@
 
 /* loop moments: a stamp lands on the waveform (or on the tone zone when effects come back) */
 .juice-stamp {
-  position: absolute; left: 50%; top: 50%; z-index: 3; pointer-events: none;
+  position: absolute; left: calc(50% + var(--wave-left, 12px) / 2 - 6px); top: 50%; z-index: 3; pointer-events: none;   /* centred on the bars, not on the wheel */
   animation: jstamp 1000ms steps(2) forwards;
   transform: translate(-50%, -50%);
 }

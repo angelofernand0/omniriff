@@ -171,7 +171,8 @@
 /* ---------- sizing that can't overflow (measured review, SM 2026-11-14) ----------
    Every big readout sizes itself to its own box (container query units), so a 3-digit value or a
    narrow window can never push text out of its panel. */
-.card, .fx-power, .engaged-text, .practice, .p-now, .coach-col { container-type: inline-size; }
+.card, .engaged-text, .practice, .p-now, .coach-col { container-type: inline-size; }
+.fx-power { container-type: size; }   /* the toggle and its labels size to the button, both ways */
 .pct { font-size: clamp(32px, 26cqi, 112px); line-height: 1.05; white-space: nowrap; }
 .card h3 { font-size: clamp(14px, 7cqi, 24px); }
 .readout { flex-wrap: wrap; row-gap: var(--s1); }
@@ -294,7 +295,7 @@
 }
 @media (max-width: 1199px) { .bar-end { display: contents; } }
 
-/* the loop as a tape machine (tape.js): 32x20 pixel art at a whole-number scale, on the box's left axis */
-.tape { display: block; width: 160px; height: 100px; margin-bottom: var(--s2); image-rendering: pixelated; flex: none; }
-@media (max-height: 700px) { .tape { width: 128px; height: 80px; } }
-@media (min-height: 900px) { .tape { width: 192px; height: 120px; } }
+/* the waveform panel is the tape deck: the wheel (tape.js) sits at the left, the bars start at its edge */
+.wave-note { left: calc(var(--wave-left, 12px)); }
+.wave-empty { left: var(--wave-left, 0); }
+.step[data-s="ctx"] .what { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
