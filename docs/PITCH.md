@@ -17,19 +17,49 @@ The talk track, openers by track, prepared answers, and the rehearsal plan for S
 
 Short form for the end: **"Never put the guitar down."**
 
-## The 2-minute talk track (v2, identity first)
-The guitarist plays; the speaker talks. Lines are targets, not a script to read. Keep the guitar sounding the whole time.
+## The 2-minute talk track (v3, SM's, with who says what)
+Replaces the v2 table (identity first, one speaker). SM leads and owns the product/AI narration; Aditya performs the practice journey; John and Angelo each get one short line **over their feature working**. Each person replaces the suggested words with their own. **Not a locked script.** Time it against the real rig; the target is **≤1:50**, and the two-voice fallback in *Roles* below is the answer if the live coach needs the time. The [official rules](https://hackprinceton-fall-26.devpost.com/rules) cap judging at two minutes.
 
-| Time | Say (≈) | Show |
-|---|---|---|
-| 0:00–0:10 | "OmniRiff is a guitar teacher that lives in your signal chain. Watch: I'm not going to put this guitar down." | Already playing; dashboard visible; Riff idle |
-| 0:10–0:25 | "Practising alone, you know you messed up but not *why*. Apps score notes; a teacher tells you the cause. Lessons cost money every week." | Keep playing; tell Riff the goal (hold V: "my chord changes") |
-| 0:25–1:15 | "Here's a take with a real stumble." … "Riff heard a ___-millisecond gap (read it off the screen) *and* saw my strumming hand freeze at the change, so the cause is the hand, not the chord. [Only if the HAND panel shows wrist data for that take; otherwise say: "Riff heard a ___-millisecond hesitation at the change."] It played my take back and set up a drill, and it waits for my foot." **Hold the pedal.** Record a fresh drill take (the looper records, plays and clears; no overdub). "This take: the gap is down to ___." | Plan + Ears/Eyes trace on screen; mark on the loop; tap the pedal; before/after numbers |
-| 1:15–1:30 | "Next session it starts with *last time*: it remembers what you worked on." | Result card / NEXT TIME line |
-| 1:30–1:50 | "Safe by design." Unplug the camera: music keeps playing. "The AI never changes my sound unless I hold the pedal to approve. Honest limit: ___." | Camera shows offline; audio continues |
-| 1:50–2:00 | "Built this weekend by four of us. **Never put the guitar down.**" | Logo / Riff |
+Rules kept from v2: say every number from the screen, never from memory. If the coach isn't on the real rig, run the scripted session and **say "this is our simulator"**, then show the live instrument (DEMO.md §3 fallback). The identity line above is still how SM opens.
 
-Rules: say every number from the screen, never from memory. If the coach isn't on the real rig, run the scripted session and **say "this is our simulator"**, then show the live instrument (DEMO.md §3 fallback).
+### Four-voice table (first pass, ~1:53)
+
+| Clock | Who / action | Suggested words |
+| --- | --- | --- |
+| 0:00–0:08 | **SM** opens. Aditya already has the guitar sounding. | “This is OmniRiff: a guitar teacher you play *through*. Aditya can ask for help without ever putting the guitar down.” |
+| 0:08–0:18 | **Aditya** gives Riff the goal while a teammate holds on-screen TALK or **V**. This is the current microphone path, not a pedal-voice demo. | To Riff: “I'm working on this G-to-C change. I keep losing the rhythm right here.” **Aditya: replace with a passage you really play and words that sound like you.** If speech recognition is unreliable, omit this beat and let Riff infer a timing goal from the first take; do not imply it inferred the chord name. |
+| 0:18–0:25 | **Aditya** shows the rig as he starts the first take. | To judges: “This pedal records my take. My hands stay on the guitar.” **Aditya: choose the hardware detail you actually want to own.** |
+| 0:25–0:36 | **SM** narrates the first take; Aditya plays a deliberate hesitation. | “Watch the change—he hears that something slipped, but that isn't yet an explanation.” |
+| 0:36–0:44 | **John** over the visible hand/pinch moment. | “The camera tracks his hand. Pinch to sweep; release to lock the tone while playing.” **John's agent verified this for the `--relative` path; use it only if that is the rehearsal setup. John should still make it his own.** |
+| 0:44–0:52 | **Angelo** over guitar still sounding and engine state moving. | “The guitar stays on this laptop, not in the AI. Our engine keeps playing while Riff thinks.” **Angelo: pick the exact point you can prove live.** |
+| 0:52–1:18 | **SM** takes the center as Riff analyzes. Show plan, Ears/Eyes, marked loop and drill. | “Now Riff listens back. Ears finds where the timing breaks. If the camera caught his hand, Eyes can show what happened there too. The important part isn't a score—it's the next move. Riff points to that moment, chooses one drill, and sets up the practice.” Use the **specific finding actually shown**, not a rehearsed diagnosis. If Eyes has no usable hand evidence, say only what Ears found. |
+| 1:18–1:31 | **SM** narrates approval; Aditya holds the pedal (or a teammate presses Y on the dashboard) to approve, then he clears the old loop and records a fresh correction take. Pedal-hold approval is merged (#165) but not yet rehearsed on the real rig; use dashboard Y as the fallback. | “Riff asks before changing the rig. We approve, then Aditya records a fresh take with one thing to focus on.” Only say “it changed the sound” when the state confirms it. Do not call this an overdub or claim he recorded over the playing loop. |
+| 1:31–1:41 | **SM** on result or next step. | If a genuine before/after is visible: “The first take had **[read value from screen]**; this one has **[read value]**. There's the next step.” Mention memory only if the final NEXT TIME card has actually appeared. If the comparison hasn't finished: “That's the practice loop: hear it, see it, fix one thing, play again.” Do not invent a result to fill the clock. |
+| 1:41–1:49 | **Aditya** gives the guitarist's meaning. | “For me, that's the difference: it doesn't just say I missed it. It shows me what to fix.” **Aditya: make this genuinely yours; give us the specific frustration you recognize.** |
+| 1:49–1:53 | **SM** closes. | “A teacher in your signal chain. **Never put the guitar down.**” |
+
+This is deliberately **not** four equal speeches. SM carries the through-line;
+the other voices appear where they add proof. If the coach needs more time,
+move John and Angelo's lines to Q&A/sponsor-judge openers and let Aditya keep
+only the goal and one authentic closing line. Do not speed-read to hit 2:00.
+
+### SM's delivery notes
+
+- Lead with the product in one sentence, not a stack list. Use “watch” and
+  “now” to point to what a judge can see or hear *at that moment*.
+- Make the AI the turn in the story: **a mistake → evidence → one reason → one
+  drill → player approval → another take**. “The important part isn't a score—
+  it's the next move” is the line to test in rehearsal.
+- Keep a calm sentence ready for a slow agent: “The guitar is still playing
+  locally while Riff thinks.” Do not narrate a result before it arrives.
+- Current controls are **tap = loop**, **long hold = practice**, and **V / TALK
+  = voice**. A long pedal hold does not activate the microphone. From a playing
+  loop, one tap clears it and the next starts a new recording. Since #165 a
+  loop tap or new recording no longer approves a pending change; a **pedal hold**
+  (or Y on the dashboard) does. Rehearse the hold on the real rig before relying
+  on it; keep Y as the fallback.
+- The closing should be earned by Aditya still holding/playing the guitar,
+  rather than by an isolated logo screen.
 
 ## Openers by track (≈20–30 s, added for sponsor judges)
 Use after the identity line when the judge is there for a special track. Full angles are in [DEVPOST.md](DEVPOST.md#track-angles-20-seconds-each-on-top-of-the-shared-demo).
@@ -70,3 +100,54 @@ Timing caution: four voices in 2 minutes costs seconds at every handoff, and jud
 - **Devpost gallery:** a dashboard mid-session, the hand view, the evidence timeline, an architecture diagram. Simulated captures labeled as such.
 - **Real-rig video** recorded after hardware bring-up. Preferred over the backup for Devpost if it works.
 - **One screenshot** on the laptop as the last-resort fallback.
+
+## Optional product video: SM's storyboard (for docs/VIDEO.md)
+
+Target **75–100 seconds**, recorded from a real rig only after hardware
+rehearsal. Use the same opening, user journey, AI turn and closing; edit the
+waiting and playing passages, not the evidence. Suggested shot sequence:
+
+1. **Wide / 3–5 s:** Aditya with guitar and the physical rig in frame; SM's
+   opening as voiceover. Establish that this is a person playing an instrument.
+2. **Medium + screen / 8–12 s:** Aditya states the goal through the current
+   TALK control (or Riff infers a timing-only goal from the take), then plays the
+   intentional stumble. Capture his natural reaction without staged claims
+   about real users or personal history he has not endorsed.
+3. **Pedal/hand inserts / 8–12 s:** close-up pedal tap and pinch; John and
+   Angelo's short explanations over their corresponding real actions.
+4. **Dashboard capture / 25–35 s:** Riff plan, Ears/Eyes evidence, marked
+   moment, approval, a cleared loop and a fresh correction take. SM narrates the cause and next
+   step. Use an *actual* response, and show only measurements produced in
+   that recorded session. If multiple takes are edited together, caption it
+   “edited real session”; don't imply one uninterrupted instant response.
+5. **Aditya + result / 10–15 s:** he says, in his own words, what changes for
+   him as a guitarist. Cut to the actual next-step/result card, then SM closes.
+
+Capture guitar directly from the interface and speech separately. Screen-
+record the dashboard and film a wide view plus short hand/pedal inserts; a
+single phone can shoot inserts after the wide take if they accurately depict
+the same working action. No need for four talking-head cuts. Keep text large
+enough to read on a laptop. Do not publish raw private takes, credentials or
+hardware identifiers. The short, visibly **SIMULATED** coach backup is a
+separate 35–45-second fallback, not a substitute for a real-rig product video.
+
+### Inputs needed before this becomes the final script
+
+- **Aditya:** the passage he can reliably play with a deliberate pause; the
+  practice frustration he would *actually* say; whether the goal/closing lines
+  are natural for him; the hardware detail he most wants to own.
+- **John:** which exact pinch/gesture action is stable in the room's lighting,
+  and a shorter line he would say while demonstrating it.
+- **Angelo:** the audio-path/safety fact he can show on the rehearsal laptop,
+  and a shorter line he would say while it is audible.
+- **SM:** which opening/AI/closing phrasing sounds most like him, and whether
+  he wants Aditya's guitarist reflection before or after the measured result.
+- **All:** actual coach timing; whether the hand evidence appears; whether
+  approval matches the dashboard; which clip can be truthfully recorded.
+  The Windows `start-demo.ps1 -Coach` wrapper now passes a shared hand log when
+  the model is present (#155), but its first PowerShell/live launch is still
+  unverified. Say Riff *saw* the hand only when that run shows usable evidence;
+  Ears-only narration is the safe default otherwise.
+
+Until the hardware and UI handoff, this is a rehearsal draft, not a claim that
+the complete sequence has been demonstrated live.
