@@ -119,6 +119,19 @@ class ScriptedCoachTests(unittest.TestCase):
         self.assertEqual(ask['drill_card']['skill'], 'keep-the-hand-moving')
         self.assertEqual(ask['target'], 'bypass')
         self.assertTrue(done['before_after']['improved'])
+        # Generated fallback copy must match the single-track/HOLD-or-Y stage story.
+        self.assertIn('Hold the pedal or press Y', ask['cue'])
+        self.assertIn('after you approve', ask['cue'])
+        self.assertIn('tap to clear', ask['cue'])
+        self.assertIn('Clear the loop', done['cue'])
+        self.assertIn('fresh take', done['cue'])
+        for frame in frames:
+            shown = [frame.get('cue') or '']
+            session = frame.get('session') or {}
+            shown += [row['title'] for row in session.get('plan', [])]
+            shown += [session.get('next') or '']
+            self.assertFalse(any('over your loop' in text or 'over the loop' in text for text in shown))
+        self.assertIn('fresh take', done['session']['drill']['title'])
         whos = {a['who'] for f in frames for a in f['activity']}
         self.assertEqual(whos, {'ears', 'eyes', 'coach'})          # the harness is visible
         # bypass on after approval, back off after the drill; coach source, schema-valid envelopes

@@ -29,9 +29,9 @@ SCHEMA = Draft202012Validator(json.loads((ROOT / 'protocol/coach.schema.json').r
 SKILL = 'keep-the-hand-moving'
 # Riff's voice: a laid-back session player who teaches (BRAND_SPEC.md section 7, "Riff's voice").
 TAKE_CUE = "Ooh, close. Your strumming hand stops right at the G to C change. Keep it swinging, even if you miss a string."
-APPROVE_CUE = "Okay, I'll take the effects off so you can hear the timing. Tap the pedal when you're ready."
+APPROVE_CUE = "I'll take the effects off after you approve. Hold the pedal or press Y, then tap to clear and tap again to record."
 DRILL_CUE = 'Just the change, four times, no rush. Let the hand keep moving.'
-PASS_CUE = "Nice. That gap went from almost half a second to about a tenth. Now play the whole pattern over your loop."
+PASS_CUE = "Nice. That gap went from almost half a second to about a tenth. Clear the loop, then record the full pattern as a fresh take."
 WRAP_CUE = "That's the session. Your change went from half a second to about a tenth; next time let's push the tempo to 100."
 WRAP_SUMMARY = 'G to C change: longest gap 430 to 110 ms. Next: push the tempo to 100 bpm.'
 NEXT_TIME = 'Push the tempo to 100 bpm'
@@ -42,7 +42,7 @@ DECLINE_CUE = "All good, I'll leave your sound as it is."
 IDLE_CUE = "Hey, I'm Riff. What are you working on? Hold V and tell me, then play it for me."
 GOAL_CUE = "Got it, that's what we'll work on. Tap the pedal, play it for me, tap again."
 NOTED_CUE = "Got it, I'll keep that in mind."
-AGAIN_CUE = 'Want to run it again? Tap the pedal.'
+AGAIN_CUE = 'Want to run it again? Hold the pedal or press Y.'
 PAUSE_S = 0.9   # a beat of silence after Riff finishes a line, before the next thing happens
 WORDS_PER_S = 2.6
 TODOS = ['Check timing (ears)', 'Check strumming hand (eyes)', 'Pick one drill', 'Set up the rig']
@@ -285,7 +285,7 @@ class ScriptedSession:
     # ---- the session (ROADMAP §1 "How you use it") ------------------------
     def session(self, attempt: int | None = None) -> dict:
         """The practice session as the player sees it (coach.schema.json `session`). Scripted numbers."""
-        drills = [('Keep the hand moving', SKILL), ('Full pattern over your loop', 'slow-then-speed-up')]
+        drills = [('Keep the hand moving', SKILL), ('Full pattern, fresh take', 'slow-then-speed-up')]
         done = self.drill_step > 2
         step = min(self.drill_step, 2)
         title, skill = drills[step - 1]
@@ -295,7 +295,7 @@ class ScriptedSession:
                     drill=None if done else dict(title=title, skill=skill, step=step, of=2),
                     attempt=None if done else dict(n=self.tries if attempt is None else attempt, of=3),
                     metric=dict(name='longest gap', unit='ms', target=150, lower_is_better=True, history=self.history[-12:]),
-                    next=None if done else ('Full pattern over your loop' if step == 1 else 'Wrap up'),
+                    next=None if done else ('Full pattern, fresh take' if step == 1 else 'Wrap up'),
                     last_time=self.last_time, summary=self.summary, next_time=NEXT_TIME if self.summary else None)
 
     async def diagnose(self) -> None:
@@ -365,7 +365,7 @@ class ScriptedSession:
             self.we_bypassed = False
 
     async def check_drill1(self) -> None:
-        """Step 4: drill 1 passes; drill 2 puts it back in context over the loop."""
+        """Step 4: drill 1 passes; drill 2 asks for a fresh full-pattern take."""
         await self._thinking('Compare with last take')
         self.history.append(120.0)
         self.drill_step, self.tries = 2, 0
