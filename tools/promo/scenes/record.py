@@ -69,7 +69,7 @@ def main(argv=None) -> int:
 
     from playwright.sync_api import sync_playwright
 
-    out = Path(a.out)
+    out = Path(a.out).resolve()  # as_uri() needs an absolute path
     out.mkdir(parents=True, exist_ok=True)
 
     if a.cover:
