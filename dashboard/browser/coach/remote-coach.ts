@@ -32,7 +32,13 @@ function storage(key: string, value?: string): string {
 export function coachConfig(params: URLSearchParams): CoachServerConfig | null {
   const fromUrl = params.get('coachserver');
   if (fromUrl !== null) storage(SERVER_KEY, fromUrl);
-  if (params.get('coachkey') !== null) storage(PASS_KEY, params.get('coachkey')!);
+  if (params.get('coachkey') !== null) {
+    storage(PASS_KEY, params.get('coachkey')!);
+    // Keep the passcode out of the address bar, history and anything copied from it.
+    const clean = new URL(location.href);
+    clean.searchParams.delete('coachkey');
+    history.replaceState(null, '', clean);
+  }
   const url = fromUrl ?? (storage(SERVER_KEY) || (import.meta.env.VITE_COACH_SERVER as string | undefined) || '');
   return url ? { url, key: storage(PASS_KEY) } : null;
 }
@@ -105,18 +111,21 @@ export class RemoteCoach {
   /** coach.js calls this instead of `new WebSocket(...)`, on every (re)connect. */
   public socket = (): WebSocket => {
     const url = new URL(this.config.url);
-    if (this.config.key) url.searchParams.set('key', this.config.key);
     url.searchParams.set('player', playerId());
     const ws = new WebSocket(url);
     this.ws = ws;
     ws.addEventListener('open', () => {
+      // The passcode goes in the first message, never in the URL (proxy logs record URLs).
+      ws.send(JSON.stringify({ type: 'omniriff.hello', key: this.config.key }));
       this.status('Riff is connected.');
       window.clearInterval(this.pump);
       this.pump = window.setInterval(() => this.sendState(), 250);
     });
     ws.addEventListener('close', event => {
       if (this.ws === ws) { this.ws = null; window.clearInterval(this.pump); }
-      this.status(event.code === 1006 ? 'Cannot reach the coach server (wrong address or passcode, or it is busy).' : 'Coach disconnected.');
+      this.status(event.code === 4401 ? 'Wrong team passcode. Check it in the coach settings.'
+        : event.code === 4503 ? 'Riff is busy with other players. Try again in a minute.'
+        : event.code === 1006 ? 'Cannot reach the coach server (check the address).' : 'Coach disconnected.');
     });
     ws.addEventListener('message', event => {
       let message: any;

@@ -48,16 +48,44 @@ class CoachServerTest(unittest.TestCase):
         return result[0] if result else None
 
     def test_gate(self):
-        good = "/coach?key=team-pass&player=p-0123456789"
+        good = "/coach?player=p-0123456789"      # the passcode is never in the URL
         self.assertIsNone(self.check(good))
         self.assertIsNone(self.check(good, origin="https://omniriff.vercel.app"))
-        self.assertEqual(self.check("/coach?key=nope&player=p-0123456789"), HTTPStatus.UNAUTHORIZED)
         self.assertEqual(self.check(good, origin="https://evil.example"), HTTPStatus.FORBIDDEN)
-        self.assertEqual(self.check("/coach?key=team-pass&player=../x"), HTTPStatus.BAD_REQUEST)
+        self.assertEqual(self.check("/coach?player=../x"), HTTPStatus.BAD_REQUEST)
         self.assertEqual(self.check("/healthz"), HTTPStatus.OK)
         self.assertEqual(self.check("/other"), HTTPStatus.NOT_FOUND)
         self.srv.sessions.add(object())
         self.assertEqual(self.check(good), HTTPStatus.SERVICE_UNAVAILABLE)
+
+    def test_passcode_is_checked_in_the_first_message(self):
+        self.assertTrue(self.srv.authorized("team-pass"))
+        for wrong in ("nope", "", None, 5, "team-pass "):
+            self.assertFalse(self.srv.authorized(wrong))
+
+        class HelloSocket(FakeSocket):
+            def __init__(self, first):
+                super().__init__()
+                self.first = first
+                self.closed = None
+                self.request = SimpleNamespace(path="/coach?player=p-0123456789")
+
+            async def recv(self):
+                return self.first
+
+            async def close(self, code, reason):
+                self.closed = (code, reason)
+
+        async def run(first):
+            sock = HelloSocket(first)
+            await self.srv.handle(sock)
+            return sock
+        for first in (json.dumps({"type": "omniriff.hello", "key": "nope"}),
+                      json.dumps({"type": "coach.say", "text": "hi"}), "not json"):
+            sock = asyncio.run(run(first))
+            self.assertEqual(sock.closed[0], 4401)
+            self.assertEqual(sock.sent, [])          # nothing about the coach before the passcode
+            self.assertEqual(self.srv.sessions, set())
 
     def test_take_upload_control_and_practice(self):
         async def run():

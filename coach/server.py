@@ -1,10 +1,16 @@
 """Hosted coach: the real coach, one session per browser, over one WebSocket.
 
 The website (browser instrument: your guitar + webcam) connects to
-wss://<host>/coach?key=<team passcode>&player=<id>. Each connection gets the same
-CoachRunner the local rig uses, with three adapters instead of the loopback sockets:
+wss://<host>/coach?player=<id> and must send {"type": "omniriff.hello", "key": <team passcode>}
+as its first message within 5 s (the passcode never rides in a URL, so proxy access logs can't
+record it; it is compared in constant time). Nothing else, and no model call, happens before that.
+A missing Origin header (a native client, e.g. tools/showcase/realrun.py) is allowed: the passcode
+still gates it; browsers always send Origin, and only listed page origins are accepted.
+Each connection gets the same CoachRunner the local rig uses, with three adapters instead of the
+loopback sockets:
 
-  browser -> server  coach.say / coach.approve / coach.reject   (same as the local dashboard)
+  browser -> server  omniriff.hello     first message: the team passcode
+                     coach.say / coach.approve / coach.reject   (same as the local dashboard)
                      omniriff.state     the browser looper's state (loop, bypass, filter, reverb)
                      omniriff.practice  Y / pedal hold: start or pause a practice round
                      omniriff.take      a finished loop: 16-bit PCM + the webcam wrist track
@@ -22,6 +28,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
+import hmac
 import json
 import logging
 import os
@@ -49,6 +56,7 @@ PLAYER_ID = re.compile(r"^[a-z0-9][a-z0-9-]{7,63}$")
 MAX_TAKE_SECONDS = 32.0
 MAX_MESSAGE = 4 * 1024 * 1024        # a 30 s, 16 kHz 16-bit take is ~1.3 MB of base64
 MAX_HAND_SAMPLES = 32 * 60           # 32 s at 60 fps
+HELLO_TIMEOUT_S = 5.0
 LOG = logging.getLogger("coach.server")
 
 
@@ -258,16 +266,32 @@ class CoachServer:
         if origin is not None and origin not in self.origins:
             return self._reject(connection, HTTPStatus.FORBIDDEN, "origin not allowed")
         query = parse_qs(url.query)
-        if self.passcode and query.get("key", [""])[0] != self.passcode:
-            return self._reject(connection, HTTPStatus.UNAUTHORIZED, "wrong passcode")
         if not PLAYER_ID.match(query.get("player", [""])[0]):
             return self._reject(connection, HTTPStatus.BAD_REQUEST, "player id required")
         if len(self.sessions) >= self.max_sessions:
             return self._reject(connection, HTTPStatus.SERVICE_UNAVAILABLE, "coach is busy, try again soon")
         return None
 
+    def authorized(self, key: object) -> bool:
+        """Constant-time passcode check; no passcode configured = loopback test mode."""
+        if not self.passcode:
+            return True
+        return isinstance(key, str) and hmac.compare_digest(key.encode(), self.passcode.encode())
+
     async def handle(self, websocket) -> None:
         player = parse_qs(urlsplit(websocket.request.path).query)["player"][0]
+        try:
+            hello = json.loads(await asyncio.wait_for(websocket.recv(), HELLO_TIMEOUT_S))
+        except (asyncio.TimeoutError, json.JSONDecodeError, TypeError, ValueError):
+            hello = None
+        except Exception:
+            return  # the client went away before saying hello
+        if not (isinstance(hello, dict) and hello.get("type") == "omniriff.hello" and self.authorized(hello.get("key"))):
+            await websocket.close(4401, "wrong passcode")
+            return
+        if len(self.sessions) >= self.max_sessions:
+            await websocket.close(4503, "coach is busy, try again soon")
+            return
         session = Session(self, websocket, player)
         self.sessions.add(session)
         LOG.info("session %s open (player %s, %d active)", session.id[:8], player[:8], len(self.sessions))

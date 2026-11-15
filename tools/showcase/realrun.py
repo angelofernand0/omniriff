@@ -32,7 +32,7 @@ SCENARIOS = {
 
 
 class Client:
-    def __init__(self, url: str, out: Path):
+    def __init__(self, url: str, out: Path, key: str = ""):
         from websockets.sync.client import connect
         self.ws = connect(url,  # noqa: long-lived client, closed at exit max_size=8 * 1024 * 1024, open_timeout=10,
                           additional_headers={"Origin": "http://127.0.0.1:5173"})
@@ -44,6 +44,7 @@ class Client:
                                    "captured_at_ms": int(time.time() * 1000),
                                    "input_provenance": "unverified"}) + "\n")
         self.frame: dict = {}
+        self.key = key
         self.loop = {"state": "idle"}
         self.bypass = False
         self.controls: list[dict] = []
@@ -132,8 +133,9 @@ def main(argv=None) -> int:
     parser.add_argument("--scenario", choices=sorted(SCENARIOS), default="late-finger")
     parser.add_argument("--max-takes", type=int, default=6)
     args = parser.parse_args(argv)
-    url = f"{args.server}?key={args.key}&player={args.player}"
-    client = Client(url, args.out)
+    url = f"{args.server}?player={args.player}"
+    client = Client(url, args.out, args.key)
+    client.send({"type": "omniriff.hello", "key": args.key})   # the passcode is never in the URL
     print(f"connected; player {args.player}")
     client.pump(4)
     print(f"say: {args.goal}")
