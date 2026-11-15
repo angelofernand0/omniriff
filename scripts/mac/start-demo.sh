@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# NOTE: superseded by the cross-platform launcher: python -m tools.launch (see docs/TESTING.md).
 # macOS demo launcher: real engine + real camera hand tracking (+ optional coach) + dashboard.
 # Run from Terminal.app (macOS only grants the camera to apps launched from Terminal):
 #   bash scripts/mac/start-demo.sh                 # silence in, hand tracking, no coach
@@ -125,6 +126,7 @@ if [ "$COACH" = 1 ]; then
 fi
 
 URL="http://127.0.0.1:$HTTP/?ws=ws://127.0.0.1:$WS&hand=ws://127.0.0.1:$HAND&coachws=ws://127.0.0.1:$COACHP"
+[ "$AUDIO" = "--virtual-guitar" ] && URL="$URL&sim=guitar"   # a simulated guitar must say so on screen
 echo "dashboard: $URL"
 [ "$AUDIO" = "" ] && echo "HEADLESS: processing silence (no guitar audio). Use --virtual-guitar for a simulated guitar, or --audio for an interface."
 echo "${CMD[*]}"
