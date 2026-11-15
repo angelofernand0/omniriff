@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="riff.css">
 <link rel="stylesheet" href="stage.css">
 <link rel="stylesheet" href="coach-col.css">
+<link rel="stylesheet" href="manual.css">
 </head>
 <body>
 <!-- Spotlight layout (BRAND_SPEC section 9): while you play it is a guitar app; when Riff has
@@ -21,7 +22,7 @@
 <div class="app" id="app" data-conn="offline" data-boot="true" data-bypass="false" data-loop="idle" data-fx="idle" data-spot="off">
 
   <header class="bar">
-    <div class="logo"><span data-logo="lockup"></span></div>
+    <div class="logo"><span class="logo-anim"><img src="brand/logo-animated-bar.svg" width="162" height="46" alt="OmniRiff"></span></div>
     <span class="spacer"></span>
     <div class="meters top-meters" role="group" aria-label="Levels">
       <span class="meter-label">IN</span>
@@ -31,8 +32,10 @@
       <span class="meter-label">OUT</span>
       <div class="segs" id="outSegs" aria-label="Output level"></div>
     </div>
-    <span class="pill" id="statusPill" role="status">OFFLINE</span>
-    <button type="button" class="gear" id="drawerBtn" aria-controls="drawer" aria-expanded="false" title="Rig details (D)"><kbd>D</kbd>RIG</button>
+    <div class="bar-end">
+      <span class="pill" id="statusPill" role="status">OFFLINE</span>
+      <button type="button" class="gear" id="drawerBtn" aria-controls="drawer" aria-expanded="false" title="Rig details (D)"><kbd>D</kbd>RIG</button>
+    </div>
   </header>
 
   <main class="deck">
@@ -80,14 +83,14 @@
           </div>
           <div class="bypass-stamp" aria-hidden="true"><b>FX OFF</b><span>Dry signal.</span></div>
         </div>
-        <!-- HAND: a small inset, only while the camera sees a hand -->
-    <section class="hand-inset" aria-labelledby="h-hand">
-      <h2 class="label" id="h-hand"><i data-icon="hand"></i>HAND<span class="grow"></span><span class="label-r hand-state" id="handState" role="status">NO CAMERA</span></h2>
-      <div class="panel hand" id="handPanel" data-hand="off" data-perch="bl" data-riff-name="your hand">
-        <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
-        <div class="empty hand-empty"><i data-icon="cam" class="x4 if-off"></i><i data-icon="hand" class="x4 if-none"></i><b id="handEmptyWord">NO CAMERA</b><span id="handEmptyHint">Start vision to see your hand.</span></div>
-      </div>
-    </section>
+        <!-- HAND: takes the FX button's slot while you are adjusting an effect -->
+        <section class="hand-inset" aria-labelledby="h-hand">
+          <div class="panel hand" id="handPanel" data-hand="off" data-perch="bl" data-riff-name="your hand">
+            <h2 class="label hand-head" id="h-hand"><i data-icon="hand"></i>HAND<span class="grow"></span><span class="label-r hand-state" id="handState" role="status">NO CAMERA</span></h2>
+            <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
+            <div class="empty hand-empty"><i data-icon="cam" class="x4 if-off"></i><i data-icon="hand" class="x4 if-none"></i><b id="handEmptyWord">NO CAMERA</b><span id="handEmptyHint">Start vision to see your hand.</span></div>
+          </div>
+        </section>
         <button type="button" class="fx-power" id="fxPower" data-reach="left" data-riff-name="FX" aria-pressed="true" title="Effects on/off (B)">
           <span class="fx-led" aria-hidden="true"></span>
           <span class="fx-toggle" aria-hidden="true"><i class="fx-nut"></i><i class="fx-lever"></i></span>
@@ -98,9 +101,6 @@
 
     <!-- COACH COLUMN. One reading order: where you are, what Riff says, the session, the pedal. -->
     <aside class="coach-col" id="coachDock" data-state="asleep" aria-label="Coach">
-      <ol class="map" id="steps" data-step="1" data-mode="practice" aria-label="Session">
-        <li data-n="1">GOAL</li><li data-n="2">DRILL 1</li><li data-n="3">DRILL 2</li><li data-n="4">DONE</li>
-      </ol>
       <div class="talk">
         <div class="riff-socket riff-stage" aria-hidden="true"></div>
         <p class="bubble" id="coachLine" aria-live="polite"></p>
@@ -110,18 +110,10 @@
         <b>YOU</b><span id="youText" aria-live="polite"></span>
         <input id="youInput" type="text" maxlength="240" autocomplete="off" placeholder="Type it, Enter to send" hidden>
       </div>
-      <!-- Riff at work (the deep agent): its plan as dots, then its steps and helpers in plain words -->
-      <section class="agent" id="agent" hidden aria-label="What Riff is doing">
-        <header><b>RIFF IS WORKING</b><span class="plan-dots" id="agentPlan" aria-label="Riff's plan"></span></header>
-        <ol id="agentSteps"></ol>
-      </section>
-      <dl class="rows">
-        <div class="row" id="pGoalRow" hidden><dt>GOAL</dt><dd id="pGoal"></dd></div>
-        <div class="row" id="pNow" hidden><dt>NOW</dt><dd><span id="pDrill"></span><small id="pAttempt"></small></dd></div>
-        <div class="row gap" id="pMetric" hidden><dt id="pMetricName">GAP</dt><dd><span class="val"><b id="pMetricNow"></b><small id="pTarget"></small></span><span class="gap-bar" id="pChart"></span></dd></div>
-        <div class="row" id="pNextRow" hidden><dt>NEXT</dt><dd id="pNext"></dd></div>
-      </dl>
-      <p class="last" id="pLast" hidden></p>
+      <!-- ONE checklist: where you are (goal, drills, done) and what Riff is doing about it, in the same rows.
+           Every row is: mark | label | what | result. The row you are on opens to show detail:
+           your number against its target, or Riff's live steps. coach.js builds it from the feed. -->
+      <ol class="list" id="sessionList" aria-label="Your session" hidden></ol>
       <div class="coach-foot">
         <button type="button" class="talk-btn" id="talkBtn" hidden title="Hold to talk to Riff (V)"><i aria-hidden="true"></i><b>HOLD V</b><span>talk to Riff</span></button>
         <div class="pedal" id="pedalNext"><b>PEDAL</b><span class="acts"></span></div>
@@ -163,5 +155,7 @@
 <script src="riff.js"></script>
 <script src="coach.js"></script>
 <script src="stage.js"></script>
+<script src="tape.js"></script>
+<script src="manual.js"></script>
 </body>
 </html>

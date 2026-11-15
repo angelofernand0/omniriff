@@ -36,7 +36,6 @@
     filter: addViz($('card-filter'), $('blocks-filter'), 'juice-viz'),
     reverb: addViz($('card-reverb'), $('blocks-reverb'), 'juice-viz'),
   };
-  const engagedBg = addViz($('engaged'), $('engaged').firstChild, 'juice-bg');
 
   // offline screen: says the engine is gone and how to start one. The LED row scans because
   // the page really is retrying the socket.
@@ -211,17 +210,12 @@
     if (clip && !lastClip) shake(document.querySelector('.meters'));
     lastClip = clip;
 
-    const fxState = app.dataset.fx;
 
     // effect graphs
     if (s) {
       for (const k of ['filter', 'reverb']) {
         const tgt = $('card-' + k).classList.contains('target');
         drawGraph(viz[k], k, s, { bw: 6, gap: 2, q: 4, color: tgt ? P.accent : P.dim, offColor: P.off });
-      }
-      if (fxState === 'engaged') {
-        const k = $('engName').textContent.toLowerCase();
-        if (k === 'filter' || k === 'reverb') drawGraph(engagedBg, k, s, { bw: 12, gap: 4, q: 8, color: P.deep, offColor: P.panel2, mark: C('--accent-dim') });
       }
     }
 

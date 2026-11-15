@@ -80,7 +80,7 @@ h2, h3 { font-size: inherit; }
 .card.live { box-shadow: 0 0 0 4px rgba(255, 92, 203, 0.28), 4px 4px 0 var(--shadow); }
 .card.live .pct { color: var(--accent); }
 
-.engaged { grid-area: 1 / 1; position: relative; display: none; gap: var(--s6); padding: var(--s5) var(--s6); background: var(--panel); border: 4px solid var(--accent); box-shadow: 0 0 0 4px rgba(255, 92, 203, 0.2), 4px 4px 0 var(--shadow); min-height: 0; overflow: hidden; }
+.engaged { grid-area: 1 / 1; position: relative; display: none; gap: var(--s6); padding: var(--s5); background: var(--panel); border: 4px solid var(--accent); box-shadow: 0 0 0 4px rgba(255, 92, 203, 0.2), 4px 4px 0 var(--shadow); min-height: 0; overflow: hidden; }
 .app[data-fx="engaged"] .engaged { display: flex; animation: popin var(--bar) var(--step); }
 .app[data-fx="engaged"] .cards { opacity: 0; }
 .engaged-text { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--s2); min-width: 0; }
