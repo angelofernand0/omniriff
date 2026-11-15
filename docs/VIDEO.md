@@ -30,7 +30,7 @@ A ≤2-minute (target **~90 s**) promo for the Devpost video slot (YouTube link)
 Cut list if long: drop beat 11 to a 2 s flash, then beat 2 to 4 s.
 
 ## Shot list for tonight (humans, phone in landscape, 1080p+, steady)
-Record each 5–10 s, several takes; also save the dashboard screen at the same time (Joey's Codex captures it).
+Record each 5–10 s, several takes; also save the dashboard screen at the same time (John's Codex captures it).
 1. Wide establishing shot of the whole rig on the table (good light).
 2. Close-up: guitar cable into the Scarlett, input 2.
 3. Close-up: the foot tapping, then **holding** the footswitch (capture the click audio too).
@@ -43,8 +43,8 @@ Record each 5–10 s, several takes; also save the dashboard screen at the same 
 
 ## Production (who / what)
 - **Voice:** SM (phone recording, per above). **Music:** the team picks a royalty-free track.
-- **Motion graphics + assembler:** Joey's Codex (`tools/promo/`, local and free). **Edit plan, captions, timed voice script:** Joey's Gemini (`docs/video/`).
+- **Motion graphics + assembler:** John's Codex (`tools/promo/`, local and free). **Edit plan, captions, timed voice script:** John's Gemini (`docs/video/`).
 - **Direction, review and final QC:** Angelo's Claude.
-- **Dashboard screen captures:** Joey's Codex, from the final UI (after #140/#144), the scripted session segments 6–9 as backups, labeled SIMULATED, plus a live-rig dashboard capture tonight in sync with the phone footage.
+- **Dashboard screen captures:** John's Codex, from the final UI (after #140/#144), the scripted session segments 6–9 as backups, labeled SIMULATED, plus a live-rig dashboard capture tonight in sync with the phone footage.
 - **Real footage:** the humans tonight, per the shot list.
 - **Review:** SM (brand), the whole team (honesty pass) before upload.

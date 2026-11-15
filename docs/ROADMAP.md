@@ -100,7 +100,7 @@ The product is now a teacher. "Interactive, accessible, personalized" is our pit
 |---|---|
 | **Coach core (D)**: nothing written yet; go-ahead and API key given 11:45, spec in COACH-BUILD.md | Loses deepagents, Amazon, the ah-ha, and the Education argument |
 | **Coach feed (E) and dashboard coach layer (F)** | The coach is invisible to judges |
-| **V1 pinch = slider**: handed to Joey's side at 08:04Z, unclaimed | The pinch demo feels backwards and glitchy |
+| **V1 pinch = slider**: handed to John's side at 08:04Z, unclaimed | The pinch demo feels backwards and glitchy |
 | Hand-stall detection on a real webcam: never tried | The "cause" claim. Falls back to Ears-only diagnosis |
 | Ears on a real guitar signal: never tried | Diagnosis numbers |
 | Hardware: pedal not flashed (B3), no live run yet | Hardware + Physical AI tracks |
@@ -179,7 +179,7 @@ SM's two agents split the coach evenly (about 8–9 agent-hours each): **Codex b
 | R13 | W1 Windows scripts (already queued): `setup.ps1`, `start-demo.ps1` with `-Coach` switch once R10 lands | `scripts/windows/` | Syntax-checked, linked from DEMO.md §1 |
 | R14 | Engine-side check that `source:"coach"` controls respect the same rate and safety gates; add a coach-disconnect test (coach dies mid-drill → engine unaffected) | `engine/` | Tests |
 
-### Joey's Codex (`john/codex/`): the pinch
+### John's Codex (`john/codex/`): the pinch
 
 | # | Task | Files | Done when |
 |---|---|---|---|
@@ -214,7 +214,7 @@ SM's two agents split the coach evenly (about 8–9 agent-hours each): **Codex b
 | **Whole team, in person** | **Who plays guitar at the table** (and rehearses the stumble take), and **Education vs Entertainment** (§2.1). Discussed together, not decided by any agent | Next team huddle, before 20:00 |
 | Angelo | Merge this; Discord usernames on Devpost; record the main-track choice from the huddle at the midnight gate | 00:00 |
 | Anyone free | **Charity + Peri:** talk to 2–3 guitarists and, ideally, one guitar teacher or campus music club officer. One question: "What do you do when a passage keeps going wrong and you don't know why?" Get name, role, and a quote or photo with permission. That satisfies Peri's evidence rule and gives Charity real voices | 18:00 |
-| Joey | Wake Joey's Codex for R15 | Now |
+| John | Wake John's Codex for R15 | Now |
 
 ## 7. The 2-minute demo (SM, 2026-11-14)
 

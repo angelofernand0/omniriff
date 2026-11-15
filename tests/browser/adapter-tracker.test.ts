@@ -7,10 +7,13 @@ function result() {
   hand[5].x = .4; hand[17].x = .6; hand[8].x = .55;
   return { landmarks: [hand], handedness: [[{ score: .95, categoryName: 'Right' }]] as any };
 }
+// These legacy fixtures are drawn like the mirrored preview. Detection receives
+// raw camera pixels, so unmirror the geometry while retaining subject handedness.
+function camera(data: any) { return { ...data, landmarks: data.landmarks.map((hand: any[]) => hand.map(p => ({ ...p, x: 1-p.x }))) }; }
 describe('Live hand tracker guards without camera access', () => {
   it('clears observations on stop and never invents missing confidence', () => {
     const tracker: any = new LiveHandTracker(); const data = result(); data.handedness = [];
-    tracker.processResult(data, 1000, true, 'filter', .5);
+    tracker.processResult(camera(data), 1000, true, 'filter', .5);
     expect(tracker.getObservation().confidence).toBe(0);
     tracker.stop(); expect(tracker.getObservation().present).toBe(false);
     expect(tracker.getHandFrame()).toMatchObject({ present: false, engaged: false, landmarks: [] });
@@ -22,9 +25,9 @@ describe('Live hand tracker guards without camera access', () => {
     vi.spyOn(performance, 'now').mockReturnValue(1300); tracker.update(1000, true, 'filter', .5);
     expect(tracker.getObservation().present).toBe(false);
     const collapsed = result(); collapsed.landmarks[0][5].x = .6;
-    tracker.processResult(collapsed, 1400, false, 'filter', .5); expect(tracker.getObservation().present).toBe(false);
+    tracker.processResult(camera(collapsed), 1400, false, 'filter', .5); expect(tracker.getObservation().present).toBe(false);
     const invalid = result(); invalid.landmarks[0][2].x = Number.NaN;
-    tracker.processResult(invalid, 1500, false, 'filter', .5); expect(tracker.getObservation().present).toBe(false);
+    tracker.processResult(camera(invalid), 1500, false, 'filter', .5); expect(tracker.getObservation().present).toBe(false);
   });
   it('cancels metadata startup, stops the acquired stream and never starts video after stop', async () => {
     const tracker: any = new LiveHandTracker(); tracker.initialize = vi.fn(async () => {});
@@ -35,7 +38,7 @@ describe('Live hand tracker guards without camera access', () => {
     const pending = tracker.start(stream); await Promise.resolve(); tracker.stop(); await pending;
     expect(track.stop).toHaveBeenCalledOnce(); expect(video.play).not.toHaveBeenCalled(); expect(tracker.isRunning).toBe(false);
   });
-  it('detects closed fist and triggers onFistSwap with 2-second cooldown and anti-flicker protection', () => {
+  it('confirms closed fist and latches a swap until the hand opens', () => {
     const tracker: any = new LiveHandTracker();
     let swapCount = 0;
     tracker.onFistSwap = () => { swapCount++; };
@@ -50,15 +53,16 @@ describe('Live hand tracker guards without camera access', () => {
     fist.landmarks[0][16] = { x: 0.56, y: 0.48 }; // ring tip curled
     fist.landmarks[0][20] = { x: 0.60, y: 0.50 }; // pinky tip curled
 
-    tracker.processResult(fist, 1000, false, 'filter', 0.5);
+    tracker.processResult(camera(fist), 1000, false, 'filter', 0.5);
+    tracker.processResult(camera(fist), 1150, false, 'filter', 0.5);
     expect(swapCount).toBe(1);
 
     // Repeated fist frame at 1500ms (within 2s cooldown) must NOT trigger swap (anti-flicker)
-    tracker.processResult(fist, 1500, false, 'filter', 0.5);
+    tracker.processResult(camera(fist), 1500, false, 'filter', 0.5);
     expect(swapCount).toBe(1);
 
     // Frame at 3100ms (>2s cooldown) but WITHOUT opening hand first must NOT trigger swap (latching)
-    tracker.processResult(fist, 3100, false, 'filter', 0.5);
+    tracker.processResult(camera(fist), 3100, false, 'filter', 0.5);
     expect(swapCount).toBe(1);
 
     // Open hand: fingers extended
@@ -70,11 +74,12 @@ describe('Live hand tracker guards without camera access', () => {
     openHand.landmarks[0][12] = { x: 0.5, y: 0.15 };
     openHand.landmarks[0][16] = { x: 0.58, y: 0.2 };
     openHand.landmarks[0][20] = { x: 0.65, y: 0.25 };
-    tracker.processResult(openHand, 3200, false, 'filter', 0.5);
+    tracker.processResult(camera(openHand), 3200, false, 'filter', 0.5);
     expect(swapCount).toBe(1);
 
     // Now close fist again after cooldown and opening -> triggers second swap!
-    tracker.processResult(fist, 3300, false, 'filter', 0.5);
+    tracker.processResult(camera(fist), 3300, false, 'filter', 0.5);
+    tracker.processResult(camera(fist), 3450, false, 'filter', 0.5);
     expect(swapCount).toBe(2);
   });
   it('tracks palm joint y and index-to-thumb pinch for vertical slider control', () => {
@@ -86,7 +91,10 @@ describe('Live hand tracker guards without camera access', () => {
     handData.landmarks[0][4] = { x: 0.48, y: 0.40 }; // thumb tip
     handData.landmarks[0][8] = { x: 0.50, y: 0.40 }; // index tip (pinch = 0.02 / 0.2 = 0.1)
 
-    tracker.processResult(handData, 1000, false, 'filter', 0.5);
+    handData.landmarks[0][12] = { x: .5, y: .15 };
+    handData.landmarks[0][16] = { x: .58, y: .2 };
+    handData.landmarks[0][20] = { x: .65, y: .25 };
+    tracker.processResult(camera(handData), 1000, false, 'filter', 0.5);
     const obs = tracker.getObservation();
     expect(obs.present).toBe(true);
     expect(obs.y).toBe(0.42);
@@ -99,7 +107,7 @@ describe('Live hand tracker guards without camera access', () => {
     // 1. Only left hand in frame (fretting guitar neck): must be ignored completely
     const leftHand = result();
     leftHand.handedness = [[{ categoryName: 'Left', score: 0.98 }]];
-    tracker.processResult(leftHand, 1000, false, 'filter', 0.5);
+    tracker.processResult(camera(leftHand), 1000, false, 'filter', 0.5);
     expect(tracker.getObservation().present).toBe(false);
     expect(tracker.getObservation().y).toBeNull();
     expect(tracker.getObservation().pinch).toBeNull();
@@ -107,6 +115,7 @@ describe('Live hand tracker guards without camera access', () => {
     // 2. Both hands in frame: Left hand (neck) at idx 0, Right hand (air/strum) at idx 1
     const rightHand = result();
     rightHand.landmarks[0][9] = { x: 0.5, y: 0.35 }; // Right hand in air at y=0.35
+    for (const tip of [8,12,16,20]) rightHand.landmarks[0][tip].y = .15; // open pose, not a fist
     const twoHands = {
       landmarks: [leftHand.landmarks[0], rightHand.landmarks[0]],
       handedness: [
@@ -115,7 +124,7 @@ describe('Live hand tracker guards without camera access', () => {
       ],
     };
 
-    tracker.processResult(twoHands, 1050, false, 'filter', 0.5);
+    tracker.processResult(camera(twoHands), 1050, false, 'filter', 0.5);
     const obs = tracker.getObservation();
     expect(obs.present).toBe(true);
     expect(obs.y).toBe(0.35); // Selected Right hand, completely ignored Left hand!
@@ -141,7 +150,7 @@ describe('Live hand tracker guards without camera access', () => {
     backOfHand.landmarks[0][16] = { x: 0.46, y: 0.48 };
     backOfHand.landmarks[0][20] = { x: 0.42, y: 0.50 };
 
-    tracker.processResult(backOfHand, 1000, false, 'filter', 0.5);
+    tracker.processResult(camera(backOfHand), 1000, false, 'filter', 0.5);
 
     // Must be marked as strumming, suppressed observation, and NO fist swap!
     expect(tracker.getObservation().present).toBe(false);
@@ -160,11 +169,12 @@ describe('Live hand tracker guards without camera access', () => {
     // Hand in guitar zone (y = 0.65) holding a pick (pinch = 0.15)
     const strummingHand = result();
     strummingHand.handedness = [[{ categoryName: 'Right', score: 0.95 }]];
+    strummingHand.landmarks[0][0] = { x: .5, y: .8 }; // front-facing palm, isolating zone guard
     strummingHand.landmarks[0][9] = { x: 0.5, y: 0.65 };
     strummingHand.landmarks[0][4] = { x: 0.48, y: 0.63 };
     strummingHand.landmarks[0][8] = { x: 0.51, y: 0.63 }; // pinch = 0.03 / 0.2 = 0.15
 
-    tracker.processResult(strummingHand, 1000, false, 'filter', 0.5);
+    tracker.processResult(camera(strummingHand), 1000, false, 'filter', 0.5);
     expect(tracker.getObservation().present).toBe(false);
     expect(tracker.getHandFrame().isStrumming).toBe(true);
     expect(swapCount).toBe(0);
@@ -180,16 +190,16 @@ describe('Live hand tracker guards without camera access', () => {
 
     // Strum downstroke -> upstroke -> downstroke
     const f1 = frame(); f1.landmarks[0][9] = { x: 0.5, y: 0.40 };
-    tracker.processResult(f1, 1000, false, 'filter', 0.5);
+    tracker.processResult(camera(f1), 1000, false, 'filter', 0.5);
 
     const f2 = frame(); f2.landmarks[0][9] = { x: 0.5, y: 0.44 }; // dy/dt = +0.8
-    tracker.processResult(f2, 1050, false, 'filter', 0.5);
+    tracker.processResult(camera(f2), 1050, false, 'filter', 0.5);
 
     const f3 = frame(); f3.landmarks[0][9] = { x: 0.5, y: 0.39 }; // dy/dt = -1.0 (reversal 1)
-    tracker.processResult(f3, 1100, false, 'filter', 0.5);
+    tracker.processResult(camera(f3), 1100, false, 'filter', 0.5);
 
     const f4 = frame(); f4.landmarks[0][9] = { x: 0.5, y: 0.44 }; // dy/dt = +1.0 (reversal 2)
-    tracker.processResult(f4, 1150, false, 'filter', 0.5);
+    tracker.processResult(camera(f4), 1150, false, 'filter', 0.5);
 
     expect(tracker.getHandFrame().isStrumming).toBe(true);
     expect(tracker.getObservation().present).toBe(false);
@@ -207,7 +217,7 @@ describe('Live hand tracker guards without camera access', () => {
     airHand.landmarks[0][8] = { x: 0.4, y: 0.15 }; // fingers open
     airHand.landmarks[0][12] = { x: 0.5, y: 0.12 };
 
-    tracker.processResult(airHand, 1000, false, 'filter', 0.5);
+    tracker.processResult(camera(airHand), 1000, false, 'filter', 0.5);
     expect(tracker.getObservation().present).toBe(true);
     expect(tracker.getObservation().y).toBe(0.35);
     expect(tracker.getHandFrame().isStrumming).toBe(false);
@@ -222,7 +232,8 @@ describe('Live hand tracker guards without camera access', () => {
     airFist.landmarks[0][16] = { x: 0.56, y: 0.38 };
     airFist.landmarks[0][20] = { x: 0.60, y: 0.40 };
 
-    tracker.processResult(airFist, 1100, false, 'filter', 0.5);
+    tracker.processResult(camera(airFist), 1100, false, 'filter', 0.5);
+    tracker.processResult(camera(airFist), 1250, false, 'filter', 0.5);
     expect(swapCount).toBe(1);
     expect(tracker.getHandFrame().isFist).toBe(true);
   });

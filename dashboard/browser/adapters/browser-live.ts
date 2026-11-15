@@ -173,7 +173,7 @@ export class BrowserLiveAdapter {
   private step(nowMs: number): void {
     // 1. Update MediaPipe inference
     if (this.tracker.isRunning) {
-      this.tracker.update(nowMs, this.controller.active, this.controller.control, this.controller.value);
+      this.tracker.update(nowMs, this.controller.active, this.controller.control, this.controller.value, this.controller.armed);
     }
 
     // 2. Sample latest observation from tracker

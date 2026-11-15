@@ -70,13 +70,13 @@ python, numpy, scipy, sounddevice, portaudio, mediapipe, opencv, websockets, pys
 ## 6. Team & Discord Usernames
 
 - **Team Members (Devpost invitations):**
-  Angelo, SM, Joey, Aditya (Max 4 team members per HackPrinceton rules).
+  Angelo, SM, John, Aditya (Max 4 team members per HackPrinceton rules).
 
 - **Discord Usernames (Required for winner contact; handles kept out of repo):**
   ```text
   Angelo: [Paste Discord handle]
   SM:     [Paste Discord handle]
-  Joey:   [Paste Discord handle]
+  John:   [Paste Discord handle]
   Aditya: [Paste Discord handle]
   ```
 

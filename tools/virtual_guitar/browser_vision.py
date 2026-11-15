@@ -1,4 +1,4 @@
-"""Browser webcam frames through Joey's merged gesture controller and hand feed.
+"""Browser webcam frames through John's merged gesture controller and hand feed.
 
 The browser owns camera permission. JPEG frames are sent to a bounded, latest-only
 worker; no pixels are saved or sent outside localhost. Nothing runs in audio's
