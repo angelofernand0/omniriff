@@ -43,9 +43,12 @@ def _hesitation_mark(report: dict) -> dict | None:
                 not isinstance(gap, (int, float)) or isinstance(gap, bool) or
                 not math.isfinite(at) or not math.isfinite(gap) or gap <= 0 or at < gap):
             continue
+        extra = finding.get("extra_ms")
+        label = (f"{round(extra):g} ms late" if isinstance(extra, (int, float)) and not isinstance(extra, bool)
+                 and extra > 0 else f"{gap:g} ms gap")
         return {"start_s": round((at - gap) / 1000, 3),
                 "end_s": round(at / 1000, 3),
-                "label": f"{gap:g} ms gap"[:24]}
+                "label": label[:24]}   # same number Riff quotes and the practice card shows
     return None
 
 
