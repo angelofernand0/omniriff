@@ -114,7 +114,7 @@ echo "ports: dashboard $HTTP, control udp $UDP, state ws $WS, hand ws $HAND, coa
 # 5. Build the command.
 CMD=("$PYBIN" -m engine.demo --http-port "$HTTP" --udp-port "$UDP" --ws-port "$WS")
 if [ -n "$AUDIO" ]; then read -r -a AUDIO_ARR <<<"$AUDIO"; CMD+=("${AUDIO_ARR[@]}"); else CMD+=(--headless); fi
-[ "$VISION" = 1 ] && CMD+=(--vision --vision-args "--model $MODEL --camera $CAMERA --port $UDP --hand-view-port $HAND")
+[ "$VISION" = 1 ] && CMD+=(--vision --vision-args "--model $MODEL --camera $CAMERA --port $UDP --hand-view-port $HAND --relative")
 if [ "$COACH" = 1 ]; then
   if [ ! -f .env ] && [ ! -f "$HOME/.config/omniriff/.env" ]; then
     echo "WARNING: no .env with ANTHROPIC_API_KEY found; the coach will not start. See coach/README.md." >&2
