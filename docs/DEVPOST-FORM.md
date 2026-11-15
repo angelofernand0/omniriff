@@ -54,11 +54,11 @@ python, numpy, scipy, sounddevice, portaudio, mediapipe, opencv, websockets, pys
   https://github.com/angelofernand0/omniriff
   ```
 
-- **Demo / Try It Out (Offline UI Preview):**
+- **Demo / Try It Out (Browser Simulator):**
   ```text
-  https://omniriff-dashboard.vercel.app
+  https://omniriff.vercel.app
   ```
-  *(Devpost label note: Offline UI preview / simulated dashboard)*
+  *(Devpost label note: Browser simulator — synthetic guitar and hand controls. Tap Start simulator; no terminal required. The hosted simulator does not run the live AI coach. Real guitar/interface/camera operation still needs hardware verification.)*
 
 - **Video Demo Link (≤ 2 minutes):**
   ```text
