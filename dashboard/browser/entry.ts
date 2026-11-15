@@ -2,6 +2,8 @@ import { SourceManager, type OperatingMode } from './source-manager';
 import type { StateFrame, HandFrame } from './protocol/types';
 import './controls.css';
 import { RemoteCoach, coachConfig, saveCoachConfig } from './coach/remote-coach';
+import { DemoCoach, resetDemoMemory } from './coach/demo-coach';
+import { devDemoUnlocked, lockDevDemo, unlockDevDemo } from './coach/dev-demo-lock';
 
 type BrowserSource = {
   onState(cb: (frame: StateFrame) => void): void;
@@ -53,9 +55,20 @@ await import('../app.js');
 for (const file of ['juice.js', 'riff.js', 'stage.js', 'tape.js']) await loadClassic(file);
 
 // Riff, the real AI coach, hosted (coach/server.py). The instrument stays in this browser.
-const hosted = params.get('coach') === 'off' ? null : coachConfig(params);
+// ?coach=demo: the pitch's scripted session in the browser (coach/demo-coach.ts), no server.
+// Dev demo (?coach=demo): only in a browser unlocked with the team password (coach/dev-demo-lock.ts).
+const devUnlocked = await devDemoUnlocked();
+const demoCoach = params.get('coach') === 'demo' && devUnlocked ? new DemoCoach(manager, params.get('fresh') === '1') : null;
+if (params.get('fresh') === '1') {   // applied once; a later reload keeps whatever the demo remembers
+  const clean = new URL(location.href); clean.searchParams.delete('fresh'); history.replaceState(null, '', clean);
+}
+const hosted = params.get('coach') === 'off' || demoCoach ? null : coachConfig(params);
 const remoteCoach = hosted ? new RemoteCoach(hosted, manager) : null;
-if (remoteCoach) {
+if (demoCoach) {
+  window.OmniCoachSocket = demoCoach.socketFactory;
+  // @ts-expect-error This existing classic script is loaded for its side effects.
+  await import('../coach.js'); coachLoaded = true;
+} else if (remoteCoach) {
   window.OmniCoachSocket = remoteCoach.socket;
   // @ts-expect-error This existing classic script is loaded for its side effects.
   await import('../coach.js'); coachLoaded = true;
@@ -85,12 +98,24 @@ dialog.innerHTML = `
     <button type="button" id="browserRefresh" style="margin-top: 10px;">Refresh device list</button>
     <p>Starting requests microphone and camera access. Camera failure leaves audio and manual controls available.</p>
   </fieldset>
-  <details id="browserCoach"><summary>Riff, the AI coach</summary>
+  <details id="browserCoach" open><summary>Riff, the AI coach <span id="coachMode"></span></summary>
     <p>Riff listens to each loop you record (and watches your hand if the camera is on), then picks one thing to practice. Your sound stays in this browser; finished loops go to the coach server.</p>
     <label>Coach server<input id="coachServer" type="url" placeholder="wss://…/coach" autocomplete="off"></label>
     <label>Team passcode<input id="coachKey" type="password" autocomplete="off"></label>
     <div class="browser-actions"><button type="button" id="coachConnect">Connect Riff</button><button type="button" id="coachForget">Disconnect Riff</button></div>
     <p id="coachStatus" role="status" aria-live="polite"></p>
+  </details>
+  <details id="devDemo"><summary>Dev demo <span id="devMode"></span></summary>
+    <div id="devLocked">
+      <label>Password<input id="devPass" type="password" autocomplete="off"></label>
+      <div class="browser-actions"><button type="button" id="devUnlock">Unlock</button></div>
+    </div>
+    <div id="devOpen" hidden>
+      <div class="browser-actions"><button type="button" id="devLive">My guitar + camera</button><button type="button" id="devSim">Simulated guitar</button></div>
+      <div class="browser-actions"><button type="button" id="demoReset">Reset for the pitch</button><button type="button" id="demoLeave">Leave dev demo</button><button type="button" id="devLock">Lock</button></div>
+      <p>The pitch session, scripted. <strong>Simulated guitar</strong> is the backup when the real rig fails: the computer plays the riff and you take it from the keyboard. <strong>L</strong> starts and stops a take, <strong>V</strong> (hold) talks to Riff, <strong>Y</strong> approves.</p>
+    </div>
+    <p id="devStatus" role="status" aria-live="polite"></p>
   </details>
   <p class="browser-footnote">Filter, reverb and looping run in your browser. Riff, the coach, runs on the coach server.</p>`;
 document.body.append(dialog);
@@ -137,7 +162,7 @@ function label() {
     sourceButton.textContent = connected ? 'PYTHON · SOUND' : 'PYTHON · OFF';
   } else sourceButton.textContent = 'START SOUND';
   if (connected && active && active !== 'python' && browserAdapter().audio.isMuted) sourceButton.textContent = active === 'simulator' ? 'SIMULATED · MUTED' : 'LIVE INPUT · MUTED';
-  $('pedalNext').hidden = active !== 'python' && !remoteCoach;
+  $('pedalNext').hidden = active !== 'python' && !(remoteCoach || demoCoach);
   stop.disabled = !active && !busy;
   if (typeof loopControl !== 'undefined') loopControl.disabled = !connected;
   stop.textContent = active === 'python' ? 'Disconnect' : 'Stop';
@@ -194,7 +219,7 @@ start.addEventListener('click', async () => {
   busy = true; describe(); label();
   const requested = selectedMode();
   try {
-    if (coachLoaded && !remoteCoach && requested !== 'python') {
+    if (coachLoaded && !(remoteCoach || demoCoach) && requested !== 'python') {
       await manager.stop();
       if (request !== startupRequest) return;
       const url = new URL(location.href); url.searchParams.set('source', requested);
@@ -222,11 +247,12 @@ start.addEventListener('click', async () => {
       adapter.controller.rearm();
       adapter.audio.setInputChannel(Number(channel.value));
       if (requested === 'simulator') {
-        manager.simulator.choreography.enabled = true;
+        manager.simulator.choreography.enabled = !demoCoach;   // dev demo: no automatic hand, you drive it
+        if (demoCoach) manager.simulator.hand.present = false;
         adapter.audio.setSynthAuto(true);
         adapter.audio.setSynthBpm(92);
       }
-      if (!remoteCoach) $('coachLine').textContent = 'Play freely. Open settings to connect Riff, the coach.';
+      if (!remoteCoach && !demoCoach) $('coachLine').textContent = 'Play freely. Open settings to connect Riff, the coach.';
     }
     dialog.close();
   } catch (error) {
@@ -236,7 +262,7 @@ start.addEventListener('click', async () => {
   } finally { if (request === startupRequest) { busy = false; describe(); label(); } }
 });
 stop.addEventListener('click', async () => {
-  const python = manager.activeMode === 'python' || (coachLoaded && !remoteCoach) || (busy && selectedMode() === 'python');
+  const python = manager.activeMode === 'python' || (coachLoaded && !(remoteCoach || demoCoach)) || (busy && selectedMode() === 'python');
   ++startupRequest; busy = false; describe();
   await manager.stop(); connected = false; label();
   if (python) location.reload(); // unload the coach socket too; the Python instrument keeps playing
@@ -249,7 +275,7 @@ const coachKey = $<HTMLInputElement>('coachKey');
 coachServer.value = hosted?.url ?? '';
 coachKey.value = hosted?.key ?? '';
 const coachStatus = $('coachStatus');
-coachStatus.textContent = remoteCoach ? 'Connecting to Riff…' : 'Not connected. Ask your team for the server address and passcode.';
+coachStatus.textContent = demoCoach ? 'Dev demo: the pitch session, scripted in this browser.' : remoteCoach ? 'Connecting to Riff…' : 'Not connected. Ask your team for the server address and passcode.';
 if (remoteCoach) remoteCoach.status = text => { coachStatus.textContent = text; };
 function reloadWithCoach(url: string, key: string) {
   saveCoachConfig(url, key);
@@ -263,5 +289,46 @@ $('coachConnect').addEventListener('click', () => {
   reloadWithCoach(coachServer.value, coachKey.value);
 });
 $('coachForget').addEventListener('click', () => reloadWithCoach('', ''));
+
+// Dev demo: password, then the two ways to run the pitch session (same as ?coach=demo&source=...).
+function reloadDemo(demo: boolean, source?: 'live' | 'simulator') {
+  const next = new URL(location.href);
+  for (const key of ['coach', 'fresh', 'coachserver', 'coachkey']) next.searchParams.delete(key);
+  if (demo) next.searchParams.set('coach', 'demo');
+  next.searchParams.set('source', source ?? (selectedMode() === 'live' ? 'live' : 'simulator'));
+  location.assign(next);
+}
+const devStatus = $('devStatus');
+function showDev(open: boolean) {
+  $('devLocked').hidden = open;
+  $('devOpen').hidden = !open;
+  $('demoReset').hidden = $('demoLeave').hidden = !demoCoach;
+  $('devMode').textContent = demoCoach ? '· ON' : '';
+}
+showDev(devUnlocked);
+if (demoCoach) ($('devDemo') as HTMLDetailsElement).open = true;
+if (params.get('coach') === 'demo' && !devUnlocked) {
+  ($('devDemo') as HTMLDetailsElement).open = true;
+  devStatus.textContent = 'Enter the password to open the dev demo.';
+}
+async function tryUnlock() {
+  const ok = await unlockDevDemo($<HTMLInputElement>('devPass').value);
+  $<HTMLInputElement>('devPass').value = '';
+  devStatus.textContent = ok ? '' : 'Wrong password.';
+  if (ok) showDev(true);
+}
+$('devUnlock').addEventListener('click', () => { void tryUnlock(); });
+$('devPass').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); void tryUnlock(); } });
+$('devLive').addEventListener('click', () => reloadDemo(true, 'live'));
+$('devSim').addEventListener('click', () => reloadDemo(true, 'simulator'));
+$('demoReset').addEventListener('click', () => { resetDemoMemory(); reloadDemo(true); });   // the pitch opening
+$('demoLeave').addEventListener('click', () => reloadDemo(false));
+$('devLock').addEventListener('click', () => { lockDevDemo(); if (demoCoach) reloadDemo(false); else showDev(false); });
+$('coachMode').textContent = demoCoach ? '· DEV DEMO' : remoteCoach ? '· LIVE' : '';
+for (const id of ['coachServer', 'coachKey', 'coachConnect', 'coachForget']) {
+  const el = document.getElementById(id);
+  const row = el?.closest('label') ?? el;
+  if (row && demoCoach) (row as HTMLElement).hidden = true;   // the demo needs no server
+}
 describe();
 dialog.showModal();

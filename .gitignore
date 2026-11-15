@@ -30,3 +30,6 @@ runs/
 
 # recorded coach sessions (private coaching text + voice audio); add one deliberately if it is meant to ship
 dashboard/replays/*.jsonl
+
+# the demo coach's pre-rendered Riff lines ship with the website (tools/showcase/demo_voice.py)
+!dashboard/browser/coach/demo-voice/*.mp3
