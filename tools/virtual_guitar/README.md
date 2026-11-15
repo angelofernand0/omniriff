@@ -41,7 +41,7 @@ to the ignored `models/hand_landmarker.task` path. Press **Start webcam** in the
 play room in Chrome or another browser with camera permission and allow access
 to `127.0.0.1`. (The Codex in-app browser may not complete camera permission.)
 It shows a local webcam preview
-and feeds frames in memory to Joey's real MediaPipe hand tracker, clutch/scene
+and feeds frames in memory to John's real MediaPipe hand tracker, clutch/scene
 controller and hand-view publisher. Open hand → pinch thumb and index → drag
 up/down to move the filter; open again to hold. **Stop webcam**
 ends capture while guitar playback and manual bypass keep working. No camera

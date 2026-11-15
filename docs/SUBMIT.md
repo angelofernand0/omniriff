@@ -69,11 +69,11 @@ python, numpy, scipy, sounddevice, portaudio, mediapipe, opencv, websockets, pys
 
 ## 6. Team & Discord Usernames
 
-- **Team Members:** Angelo, SM, Joey, Aditya (Max 4 team members).
+- **Team Members:** Angelo, SM, John, Aditya (Max 4 team members).
 - **Discord Usernames:** (Required for HackPrinceton organizer contact — obtain live from Angelo):
   - Angelo: `[Angelo's Discord username]`
   - SM: `[SM's Discord username]`
-  - Joey: `[Joey's Discord username]`
+  - John: `[John's Discord username]`
   - Aditya: `[Aditya's Discord username]`
 
 ---

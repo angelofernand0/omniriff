@@ -77,4 +77,4 @@ A teacher for players between lessons or who can't afford them, and hands-free c
 - Any demo audio not from the live guitar is labeled as replay/simulation (SIM GUITAR / REPLAY on screen).
 
 ## Team (Discord)
-Angelo, SM, Joey, Aditya: handles go straight into the Devpost form (Angelo has SM's and Joey's). Kept out of this public repo.
+Angelo, SM, John, Aditya: handles go straight into the Devpost form (Angelo has SM's and John's). Kept out of this public repo.
