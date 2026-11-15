@@ -4,11 +4,17 @@
 # powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -SerialPort COM3
 # powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -Headless
 # Add -Coach to either command once the coach package and its dependencies are installed.
+# With -Coach and the hand model present, vision and the coach share a fresh wrist log
+# (runs\hand-<time>.jsonl) so Eyes has hand evidence for each take.
+# -StrumHand / -Camera carry the values you verified in the camera rehearsal (vision/REHEARSAL.md).
 [CmdletBinding()]
 param(
     [string]$SerialPort = '',
     [switch]$Headless,
-    [switch]$Coach
+    [switch]$Coach,
+    [ValidateSet('Left', 'Right')]
+    [string]$StrumHand = 'Right',
+    [int]$Camera = -1
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,8 +31,11 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'The .venv must use Python 3.12. Run scripts\windows\setup.ps1.' }
 
     $demoArgs = @('-m', 'engine.demo', '--open')
-    if (Test-Path -LiteralPath 'models/hand_landmarker.task' -PathType Leaf) {
-        $demoArgs += @('--vision', '--vision-args', '--model models/hand_landmarker.task')
+    $hasVision = Test-Path -LiteralPath 'models/hand_landmarker.task' -PathType Leaf
+    if ($hasVision) {
+        $visionArgs = "--model models/hand_landmarker.task --strum-hand $StrumHand"
+        if ($Camera -ge 0) { $visionArgs += " --camera $Camera" }
+        $demoArgs += @('--vision', '--vision-args', $visionArgs)
     }
     else {
         Write-Warning 'Hand model missing: starting audio/dashboard without vision. Download models/hand_landmarker.task using vision/README.md before the camera test.'
@@ -45,6 +54,15 @@ try {
     if ($Coach) {
         $demoArgs += '--coach'
         Write-Host 'Coach requested; engine.demo manages its process and take directory.'
+        if ($hasVision) {
+            New-Item -ItemType Directory -Force -Path 'runs' | Out-Null
+            $handLog = 'runs/hand-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.jsonl'
+            $demoArgs += @('--hand-log', $handLog)
+            Write-Host "Wrist log for Eyes: $handLog (strumming hand: $StrumHand)"
+        }
+        else {
+            Write-Warning 'No hand model: the coach will analyze timing only (no Eyes evidence).'
+        }
     }
 
     Write-Host 'Starting the local dashboard and engine. Keep this terminal open; q or Ctrl+C stops the demo.'
