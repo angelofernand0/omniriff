@@ -95,28 +95,28 @@ Practice becomes a live interactive duet with an AI teacher that lives inside yo
 *(Special Sponsor Track)*
 
 ```text
-Riff is built on the LangChain deepagents framework with an explicit planning graph and visible todo list on screen. The main deep agent orchestrates two dedicated subagents—Ears for acoustic transient onset analysis and Eyes for wrist kinematic tracking—while managing drills as discrete agent skills and persisting practice journals and player memory directly to the local filesystem. Every audio modification routes through a strict human-in-the-loop pause, requiring a physical footswitch tap before the agent can alter the live rig.
+Riff is built on the LangChain deepagents framework with an explicit planning graph and visible todo list on screen. The main deep agent orchestrates two dedicated subagents—Ears for acoustic transient onset analysis and Eyes for wrist kinematic tracking—while managing drills as discrete agent skills and persisting practice journals and player memory directly to the local filesystem. Every rig modification routes through a strict human-in-the-loop pause, requiring player approval (via pedal or dashboard) before the agent alters live sound settings.
 ```
 
 ### Track 3: Amazon — Best Practical AI
 *(Special Sponsor Track)*
 
 ```text
-OmniRiff delivers an agentic, adaptive practice assistant built for guitarists practising alone between lessons and players with limited dexterity for whom turning physical knobs or tapping phone screens is a barrier. It requires zero keyboard or mouse interaction during practice—clutched gestures shape tone and a single foot tap approves coach drills—while the agent adapts across takes and remembers your stumbling blocks in a persistent practice journal. The entire system is fully documented across modular runbooks and fails safe if external services drop out.
+OmniRiff delivers an agentic, adaptive practice assistant built for guitarists practising alone between lessons and players with limited dexterity for whom turning physical knobs or tapping tiny phone screens is a barrier. It minimizes friction during practice—clutched hand gestures shape tone, a voice goal uses push-to-talk, and player approval gates drills—while the agent adapts across takes and remembers your stumbling blocks in a persistent practice journal. The entire system is fully documented across modular runbooks and fails safe if external services drop out.
 ```
 
 ### Track 4: Best Physical AI ($500)
 *(Category Track)*
 
 ```text
-OmniRiff perceives the physical world through two concurrent sensor streams—an acoustic guitar DI signal into a Focusrite Scarlett Solo interface and video frames into a hand-tracking camera—and directly acts upon a physical musical rig. It controls a real-time DSP looper, automated parameter crossfades, and drill soundscapes, operating as a disciplined cyber-physical collaborator that gates every action behind physical pedal approval. Software contract tests ensure the physical audio stream continues uninterrupted even during complete sensor or network disconnection.
+OmniRiff perceives the physical world through two concurrent sensor streams—an acoustic guitar DI signal into a Focusrite Scarlett Solo interface and video frames into a hand-tracking camera—and directly acts upon a physical musical rig. It controls a real-time DSP looper, automated parameter crossfades, and practice drills, operating as a disciplined cyber-physical collaborator that gates rig changes behind player approval. Software contract tests ensure the audio stream continues running even during external sensor or network disconnection.
 ```
 
 ### Track 5: Best Hardware
 *(Category Track)*
 
 ```text
-The rig integrates an Arduino footswitch (debounced USB serial), USB webcam, Focusrite Scarlett Solo 3rd-gen interface, and electric guitar into a unified, zero-allocation Python audio engine running with PortAudio. If the camera is unplugged, the Arduino serial line disconnected, or the AI coach disconnected, the core audio callback remains completely isolated, maintaining playback without skips or crashes. Measured hardware metrics: [after the hardware run: Scarlett Solo latency median ± spread ms, xruns over a 5-minute sustained play test, real-take strum detection, and physical footswitch response].
+The rig integrates an Arduino footswitch (debounced USB serial), USB webcam, Focusrite Scarlett Solo 3rd-gen interface, and electric guitar into a unified Python audio engine running with PortAudio and preallocated NumPy buffers. In software tests, the core audio callback remains isolated from external input failures (adapter failure, USB disconnect), with hardware dropouts, real-take strum detection, and latency measured on the physical rig: [after the hardware run: Scarlett Solo latency median ± spread ms, xruns over a 5-minute sustained play test, real-take strum detection, and physical footswitch response].
 ```
 
 ---
