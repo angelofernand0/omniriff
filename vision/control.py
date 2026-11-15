@@ -13,9 +13,10 @@ class Controller:
     tau: float = 0.12
     control: str = 'filter'
     relative: bool = False
+    missing_grace: float = 0.25
 
     def __post_init__(self):
-        if not all(math.isfinite(x) for x in (self.low, self.high, self.rate, self.confidence, self.deadband, self.tau)):
+        if not all(math.isfinite(x) for x in (self.low, self.high, self.rate, self.confidence, self.deadband, self.tau, self.missing_grace)):
             raise ValueError('configuration must be finite')
         if not 0 <= self.high < self.low <= 1 or self.low - self.high < 0.05:
             raise ValueError('calibration needs separated high and low positions in [0,1]')
@@ -23,6 +24,8 @@ class Controller:
             raise ValueError('invalid rate, confidence, deadband or smoothing')
         if self.control not in ('filter', 'reverb'):
             raise ValueError('unsupported control')
+        if not 0 <= self.missing_grace <= 0.3:
+            raise ValueError('missing-hand grace must be in [0, 0.3] seconds')
         self.active = False
         self.armed = False
         self.value = None
@@ -32,6 +35,7 @@ class Controller:
         self.seq = 0
         self.pickup_y = None
         self.pickup_value = None
+        self.last_valid_at = None
 
     def rearm(self):
         """Hold output and require a new open/pinch cycle after a scene switch.
@@ -42,15 +46,31 @@ class Controller:
         self.active = self.armed = False
         self.value = self.previous = self.sent_value = None
         self.pickup_y = self.pickup_value = None
+        self.last_valid_at = None
 
-    def update(self, y, pinch, confidence, now, timestamp_ms):
-        if y is None or pinch is None or not all(math.isfinite(v) for v in (y, pinch, confidence, now)) or not 0 <= confidence <= 1 or confidence < self.confidence:
+    def update(self, y, pinch, confidence, now, timestamp_ms, *, missing=False):
+        # A brief *absent detection* freezes an active control, but cannot emit
+        # a stale value or arm a pinch. Low confidence, stale frames, and a
+        # rejected hand identity must call with missing=False and disarm.
+        if (missing and self.active and self.last_valid_at is not None
+                and math.isfinite(now) and self.last_valid_at <= now
+                and now - self.last_valid_at <= self.missing_grace):
+            self.previous = now  # Do not accumulate smoothing time in the gap.
+            return None
+        if (y is None or pinch is None or not all(math.isfinite(v) for v in (y, pinch, confidence, now))
+                or not 0 <= confidence <= 1 or confidence < self.confidence):
             self.active = self.armed = False
             self.previous = None
             self.value = None
+            self.last_valid_at = None
             return None
+        if self.last_valid_at is not None and now - self.last_valid_at > self.missing_grace:
+            self.active = self.armed = False
+            self.previous = None
+            self.value = None
         if self.previous is not None and now <= self.previous:
             return None
+        self.last_valid_at = now
         if pinch >= 0.45:
             self.active = False
             self.armed = True
