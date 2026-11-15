@@ -4,6 +4,8 @@
 'use strict';
 
 (() => {
+  // Optional browser transport; absent on the original Python-served dashboard.
+  const browserSource = window.OmniBrowserSource || null;
   const params = new URLSearchParams(location.search);
   const WS_URL = params.get('ws') || 'ws://127.0.0.1:47801';
   // optional hand-view feed from vision/ (protocol/hand.schema.json); ?hand=off disables
@@ -45,6 +47,7 @@
 
   // ---------- connection ----------
   function connect() {
+    if (browserSource) { browserSource.onState(onFrame); return; }
     try { ws = new WebSocket(WS_URL); } catch (e) { schedule(); return; }
     ws.onopen = () => { retry = 500; };
     ws.onmessage = (msg) => {
@@ -58,6 +61,10 @@
   // hand feed: aged by browser receive time, never by the frame's own timestamp
   const hand = { ws: null, retry: 1000, frame: null, at: 0 };
   function connectHand() {
+    if (browserSource) {
+      browserSource.onHand((f) => { hand.frame = f; hand.at = performance.now(); });
+      return;
+    }
     if (!HAND_URL) return;
     try { hand.ws = new WebSocket(HAND_URL); } catch (e) { scheduleHand(); return; }
     hand.ws.onopen = () => { hand.retry = 1000; };
@@ -73,6 +80,7 @@
   function scheduleHand() { setTimeout(connectHand, hand.retry); hand.retry = Math.min(5000, hand.retry * 2); }
 
   function send(control, value) {
+    if (browserSource) return browserSource.sendControl(control, value);
     if (!ws || ws.readyState !== WebSocket.OPEN) return false;
     const now = Date.now();
     seq = Math.max(seq + 1, now);  // strictly increasing, survives page reloads
@@ -138,7 +146,8 @@
   function render() {
     const now = performance.now();
     const age = now - lastFrameAt;
-    const conn = !state ? 'offline' : (ws && age < STALE_MS ? 'live' : (ws ? 'stale' : 'offline'));
+    const connected = browserSource ? browserSource.isConnected() : !!ws;
+    const conn = !state ? 'offline' : (connected && age < STALE_MS ? 'live' : (connected ? 'stale' : 'offline'));
     app.dataset.conn = conn;
     $('conn').textContent = conn === 'live' ? 'LIVE' : conn === 'stale' ? 'STALE' : 'OFFLINE';
     $('led-engine').classList.toggle('on', conn === 'live');
