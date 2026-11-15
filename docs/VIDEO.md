@@ -5,8 +5,9 @@ A ≤2-minute (target **~90 s**) promo for the Devpost video slot (YouTube link)
 **Honesty rules (non-negotiable):** every simulated or scripted clip keeps its on-screen SIMULATED / SCRIPTED label; every number is read off a real screen or measured run (no invented stats, no "X% of beginners quit"); real-rig shots come only from tonight's hardware run. If the real rig doesn't work, the video is the labeled simulated cut and says so in the first caption it appears under.
 
 ## Cast and sound
-- **Host: Riff**, the pixel mascot (dashboard/brand, animated logo from #141). It pops, squashes, points, and talks with its mouth (riff.js already animates it). Voice: a designed, warm, slightly mischievous synthetic voice (not a clone of a real person).
-- **Music:** an original generated bed, indie guitar-driven, upbeat ~110 BPM, ducked under the voice; a drop at the reveal.
+- **Host: Riff**, the pixel mascot (dashboard/brand, animated logo from #141). It pops, squashes, points, and talks with its mouth (riff.js already animates it); its lines also appear as speech-bubble captions.
+- **Voice: SM** (decided 2026-11-15) records the voice script on a phone: quiet room, phone 15–20 cm away, one line per file, three takes each, with 1 s of silence before and after. Name the files `vo-<beat>-<take>.m4a` (e.g. `vo-06-2.m4a`) and share them in the team folder (not the repo). Read it as an excited tech reviewer, smiling while talking. The player's beat-5 goal line is the player's own voice from the rig footage.
+- **Music:** a royalty-free track the team picks (e.g. the YouTube Audio Library, choosing a track that needs no attribution, or note the required credit in the Devpost description). Indie or guitar-driven, upbeat ~110 BPM, ducked under the voice, with a drop at the reveal. Save the license or source page link with the file.
 - **SFX:** real sounds where we have them, recorded tonight: the footswitch click, a guitar stumble, a clean strum. Plus whoosh / pop / record-scratch transitions.
 - **Captions:** kinetic, word-by-word, brand pink `#FF5CCB` on near-black `#0B0B10`, key words in the dashboard's pixel font.
 
@@ -41,7 +42,9 @@ Record each 5–10 s, several takes; also save the dashboard screen at the same 
 9. Faces: the four of you, a quick wave or nod (optional, 2 s).
 
 ## Production (who / what)
-- **Script, voice, music, motion graphics, edit:** Angelo's Claude (Creative Claw: designed Riff voice, generated music bed, HTML/HyperFrames motion graphics, assembly with captions).
+- **Voice:** SM (phone recording, per above). **Music:** the team picks a royalty-free track.
+- **Motion graphics + assembler:** Joey's Codex (`tools/promo/`, local and free). **Edit plan, captions, timed voice script:** Joey's Gemini (`docs/video/`).
+- **Direction, review and final QC:** Angelo's Claude.
 - **Dashboard screen captures:** Joey's Codex, from the final UI (after #140/#144), the scripted session segments 6–9 as backups, labeled SIMULATED, plus a live-rig dashboard capture tonight in sync with the phone footage.
 - **Real footage:** the humans tonight, per the shot list.
 - **Review:** SM (brand), the whole team (honesty pass) before upload.
