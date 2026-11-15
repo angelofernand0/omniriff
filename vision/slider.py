@@ -4,9 +4,9 @@ from .control import Controller
 
 
 class FilterSlider:
-    def __init__(self, read_target, *, rate=20):
+    def __init__(self, read_target, *, rate=20, control='filter'):
         self.read_target = read_target
-        self.controller = Controller(relative=True, control='filter', rate=rate)
+        self.controller = Controller(relative=True, control=control, rate=rate)
         self.error = None
 
     def update(self, y, pinch, confidence, now, timestamp_ms):
@@ -16,9 +16,12 @@ class FilterSlider:
                  c.confidence <= confidence <= 1)
         if valid and c.armed and not c.active and pinch <= .25:
             try:
-                value = self.read_target()
+                try:
+                    value = self.read_target(c.control)
+                except TypeError:
+                    value = self.read_target()
                 if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1:
-                    raise ValueError('filter target must be a finite value in [0,1]')
+                    raise ValueError(f'{c.control} target must be a finite value in [0,1]')
             except Exception as exc:
                 self.error = f'Pickup unavailable: {type(exc).__name__}'
                 c.rearm()
@@ -27,3 +30,7 @@ class FilterSlider:
             c.sent_value = c.value = value
             self.error = None
         return c.update(y, pinch, confidence, now, timestamp_ms)
+
+
+EffectSlider = FilterSlider
+

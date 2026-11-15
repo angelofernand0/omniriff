@@ -113,6 +113,9 @@ class Demo:
             self.camera.start()
         elif action == 'camera_stop' and self.camera is not None:
             self.camera.stop()
+        elif action == 'switch_control' and self.camera is not None:
+            new_ctrl = value if value in ('filter', 'reverb') else ('reverb' if self.camera.active_control == 'filter' else 'filter')
+            self.camera.set_control(new_ctrl)
         elif action == 'playing' and type(value) is bool:
             self.source.playing = value
         elif action == 'volume' and type(value) in (int, float) and 0 <= value <= 1:
@@ -256,7 +259,10 @@ async def run_live(args, mono, samplerate, label):
     from .browser_vision import BrowserVision
     camera = BrowserVision(Path(args.model), udp_port=args.udp_port,
                            hand_port=args.hand_port, scene=args.scene,
-                           read_filter=lambda: audio.snapshot()['filter']['target'])
+                           read_target=lambda ctrl: audio.snapshot()[ctrl]['target'],
+                           read_filter=lambda: audio.snapshot()['filter']['target'],
+                           gesture_switch=not getattr(args, 'no_gesture_switch', False),
+                           gesture_switch_hold=getattr(args, 'gesture_switch_hold', 0.20))
     demo = Demo(source, audio, runtime, label=label, headless=args.headless,
                 camera=camera, hand_port=args.hand_port)
     http = make_server(demo, args.http_port)

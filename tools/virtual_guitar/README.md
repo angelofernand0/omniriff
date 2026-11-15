@@ -60,6 +60,17 @@ longer means only that frames are arriving. Keep the palm in view, and restart
 the live launcher after updating code—reloading the page does not reload its
 Python camera worker. Manual bypass remains independent.
 
+**Switching effects (Filter ↔ Reverb):**
+Hold thumb to pinky (or thumb to outer finger / ring finger) for 0.20s to toggle
+between Filter and Reverb. The tracker measures multi-landmark outer-finger
+distance (thumb tip/joint to pinky tip, DIP joint, or ring tip) with tuned
+touch/confidence thresholds so the contact triggers easily without requiring
+awkward finger contortions. The camera status shows `SWITCHING TO REVERB · hold…`
+and the active slider lights up green. Re-pinching index and thumb picks up
+each effect's target independently without jumps. You can also switch effects
+manually at any time by clicking **Switch FX: Filter/Reverb** (or clicking either
+slider label) in the play room, or pressing the **S** key.
+
 Advanced, absolute Scene Morph remains opt-in with `--scene bloom` or
 `--scene rise`; it is not the default pinch-slider demo. Set the model path with
 `--model PATH`. Native webcam/physical Scarlett listening validation is separate

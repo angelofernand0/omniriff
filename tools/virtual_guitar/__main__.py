@@ -52,6 +52,8 @@ def main(argv=None) -> int:
     parser.add_argument("--hand-port", type=int, default=47802, help="real hand-view WebSocket")
     parser.add_argument("--model", default="models/hand_landmarker.task", help="MediaPipe hand model for browser webcam")
     parser.add_argument("--scene", choices=("bloom", "rise"), default=None, help="opt into advanced Scene Morph; default is pinch/drag filter slider")
+    parser.add_argument("--gesture-switch-hold", type=float, default=0.20, help="seconds to hold thumb-to-pinky to switch effects (default: 0.20)")
+    parser.add_argument("--no-gesture-switch", action="store_true", help="disable thumb-to-pinky effect switching")
     parser.add_argument("--volume", type=float, default=0.35, help="live listening level, 0..1; after DSP")
     parser.add_argument("--duration", type=float, help="stop live demo after this many seconds")
     parser.add_argument("--open", action="store_true", help="open the live demo in the default browser")
@@ -59,10 +61,10 @@ def main(argv=None) -> int:
 
     if args.demo and args.controls:
         parser.error("choose --demo or --controls, not both")
-    for name in ('seconds', 'duration', 'bpm'):
+    for name in ('seconds', 'duration', 'bpm', 'gesture_switch_hold'):
         value = getattr(args, name)
         if value is not None and (not math.isfinite(value) or value <= 0):
-            parser.error(f"--{name} must be finite and positive")
+            parser.error(f"--{name.replace('_', '-')} must be finite and positive")
     for name in ('level', 'volume', 'filter', 'reverb'):
         if not 0 <= getattr(args, name) <= 1:
             parser.error(f"--{name} must be in [0, 1]")

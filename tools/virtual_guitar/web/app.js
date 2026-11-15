@@ -20,8 +20,10 @@
     if (camera.status === 'stopping') return 'Stopping camera…';
     if (!camera.hand_present) return 'NO HAND · keep your palm in view';
     if (!camera.hand_confident) return 'HAND UNCERTAIN · face the camera and add light';
-    if (camera.hand_engaged) return `${camera.control === 'scene' ? 'SCENE' : 'FILTER'} GRABBED · drag up or down`;
-    if (camera.hand_armed) return 'HAND SEEN · pinch thumb and index to grab';
+    const ctrl = (camera.control === 'scene' ? 'SCENE' : (camera.control || 'filter')).toUpperCase();
+    if (camera.switching) return `SWITCHING TO ${camera.switch_target ? camera.switch_target.toUpperCase() : 'OTHER FX'} · hold…`;
+    if (camera.hand_engaged) return `${ctrl} GRABBED · drag up or down`;
+    if (camera.hand_armed) return `HAND SEEN · pinch to grab ${ctrl.toLowerCase()} (thumb-to-pinky to switch)`;
     return 'HAND SEEN · open your hand, then pinch';
   }
   function enabled(value) {
@@ -63,10 +65,19 @@
       text('mute', state.volume > 0 ? 'Mute' : 'Unmute');
       $('position').textContent = `${clock(state.position)} / ${clock(state.seconds)}`;
       const camera = state.camera;
-      text('cameraHint', camera.control === 'scene' ? 'Advanced Scene Morph: open hand, then pinch and move vertically to blend filter and reverb. Release holds the sound. Keep your palm in view.' : 'Open hand, then pinch to grab the current filter. Drag up for brighter, down for darker; release holds. At 100%, move down first. Keep your palm in view.');
+      const activeControl = camera.control || 'filter';
+      text('cameraHint', camera.control === 'scene'
+        ? 'Advanced Scene Morph: open hand, then pinch and move vertically to blend filter and reverb. Release holds the sound. Keep your palm in view.'
+        : 'Open hand, then pinch to grab the active effect. Drag up for higher, down for lower; release holds. Hold thumb to pinky to switch between filter and reverb. Keep your palm in view.');
       text('cameraButton', webcamStream ? 'Stop webcam' : 'Start webcam');
       $('cameraButton').disabled = cameraOpening || !camera.model_ready || camera.status === 'stopping';
       text('cameraStatus', cameraLabel(camera));
+      if ($('switchButton')) {
+        text('switchButton', `FX: ${activeControl.toUpperCase()}`);
+        $('switchButton').disabled = !ready || !webcamStream || camera.status === 'stopping' || camera.control === 'scene';
+      }
+      $('filterLabel')?.classList.toggle('active-cam', webcamStream && activeControl === 'filter');
+      $('reverbLabel')?.classList.toggle('active-cam', webcamStream && activeControl === 'reverb');
       for (const name of ['volume', 'filter', 'reverb']) {
         const value = name === 'volume' ? state.volume : engine[name].target;
         if (document.activeElement !== $(name) && !pending.has(name) && !commandCount) {
@@ -154,10 +165,13 @@
     if (!ready || commandCount) return;
     for (const [name, value] of pending) { pending.delete(name); command(name, value); }
   }, 60);
+  $('switchButton')?.addEventListener('click', () => command('switch_control'));
+  $('filterLabel')?.addEventListener('click', () => { if (state?.camera?.control !== 'filter') command('switch_control', 'filter'); });
+  $('reverbLabel')?.addEventListener('click', () => { if (state?.camera?.control !== 'reverb') command('switch_control', 'reverb'); });
   document.addEventListener('keydown', event => {
     if (!ready || event.repeat || /INPUT|BUTTON|TEXTAREA|SELECT/.test(event.target.tagName)) return;
-    const button = {' ': 'playing', l: 'loop', b: 'bypass'}[event.key.toLowerCase()];
-    if (button) { event.preventDefault(); $(button).click(); }
+    const button = {' ': 'playing', l: 'loop', b: 'bypass', s: 'switchButton'}[event.key.toLowerCase()];
+    if (button) { event.preventDefault(); $(button)?.click(); }
   });
   poll();
 })();

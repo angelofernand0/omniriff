@@ -27,6 +27,7 @@ class BrowserSliderPathTests(unittest.IsolatedAsyncioTestCase):
                 points[9]=NS(x=.5,y=float(y))
                 points[5]=NS(x=.4,y=.5);points[17]=NS(x=.6,y=.5)
                 points[8]=NS(x=.5+.2*pinch,y=.5)
+                points[16]=points[19]=points[20]=NS(x=.75,y=.5)
                 return NS(hand_landmarks=[points],handedness=[[NS(score=float(confidence))]])
         def decode(data,mode):
             frame=np.zeros((480,640,3),np.uint8);frame[0,0,:]=data[:3];return frame
