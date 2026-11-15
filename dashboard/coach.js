@@ -408,7 +408,7 @@
       const ask = !play && step === 1 && !(ses && ses.goal);
       ui.talkBtn.dataset.ask = String(ask);   // Riff is asking what you're working on: the button leads
     }
-    if (ui.line) ui.line.dataset.empty = play ? (awake ? 'Free play. I\u2019ll stay quiet.' : 'Coach off. The rig plays without it.')
+    if (ui.line) ui.line.dataset.empty = play ? (awake ? 'Free play. I\u2019ll stay quiet.' : 'Riff is asleep. You can still play.')
       : step === 1 ? 'Play me what you\u2019re working on.' : '';
   }
   if (app) new MutationObserver(() => {

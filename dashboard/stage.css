@@ -76,7 +76,7 @@
 /* what Riff says: big, in the same place every time, readable from the floor */
 .spot-cue { margin: 0; font: 600 30px/1.25 var(--font-mono); color: var(--text); text-wrap: pretty; }
 .spot-cue:empty::before { content: 'Riff is listening.'; color: var(--faint); font-weight: 400; }
-.coach-col[data-state="asleep"] .spot-cue:empty::before { content: 'Coach off. The rig plays without it.'; }
+.coach-col[data-state="asleep"] .spot-cue:empty::before { content: 'Riff is asleep. You can still play.'; }
 .acts { margin: 0; font: 600 var(--t1)/1.4 var(--font-mono); color: var(--muted); }
 .acts:empty { display: none; }
 

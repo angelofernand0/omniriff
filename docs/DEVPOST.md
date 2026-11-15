@@ -25,6 +25,7 @@ Practising alone, you know you messed up, but not *why*. Apps score your notes a
 - Built by a four-person team, each directing AI coding agents (Claude Code, Codex, Gemini) that coordinated through a GitHub-issue message board, with owner-scoped folders, versioned contracts and CI-gated PRs.
 
 ## Measured results (fill in on the Windows laptop)
+Run `scripts/windows/measure.ps1 -Pass Loopback` then `-Pass Guitar` (see DEMO.md §1) and paste the measured lines from `runs/measure/*/results.md`. Leave anything it marks "not measured" as a bracket.
 - Guitar-to-output latency: [median ± spread ms] at [block size / host API], via `tools.latency` loopback, [N] clicks
 - Dropouts over a 5-minute play test: [xruns]
 - Ears on real takes: [strums detected / actual; the stumble found at the right time?]

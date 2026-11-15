@@ -168,6 +168,8 @@ The machine moves in steps. Only Riff moves smoothly (section 7). `prefers-reduc
 
 Logo files: `dashboard/brand/` (`logo.svg`, `mark.svg`, `wordmark.svg`, `logo-on-light.svg`, `favicon.svg`, `app-icon.svg`). Regenerate with `node dashboard/brand.js --export`. Clear space is one mark-width on every side.
 
+**Animated logo** (`logo-animated.gif` and `.svg`, plus `-light` versions): Riff looks left and right, crouches, hops and lands; the landing shoves the letters right, they spread apart, then snap back together. A small second hop sends a weaker echo. 4.2 s loop. Use the GIF for README, Devpost and social, the SVG on the site (14 KB, scales crisply, honours `prefers-reduced-motion` by holding the still logo). It is generated from `logo.svg` by `python tools/brand/animate_logo.py`, so edit the script, not the files. Letters move in whole cells and never overlap; no particles. The dashboard header uses `logo-animated-bar.svg` (`--bar`): the same loop with a 2-cell hop, because the bar sits 8 px from the window top and a taller hop clips. It fills the same 136x32 box as the still lockup (`.logo-anim` in `brand.css`), so layout does not move. Use the still logo anywhere else the page is not about the brand.
+
 ## 7. Riff, the coach
 
 **Built as a design only.** `dashboard/riff.js` draws and animates the character. It has no AI, opens no socket and sends nothing. COACH piece F drives it later through `OmniRiff.coach.set({ state, target, cue })`.

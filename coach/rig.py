@@ -109,7 +109,7 @@ class RigStateReader:
 
     def mark_disconnected(self) -> None:
         with self._lock:
-            self._received_at = 0.0
+            self._received_at = -float("inf")
 
     def recording_counter(self) -> int:
         with self._lock:

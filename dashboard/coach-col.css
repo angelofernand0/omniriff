@@ -39,7 +39,7 @@
 .bubble:empty::after { content: 'Play me what you\2019re working on.'; font-weight: 400; color: var(--muted); }
 .coach-col[data-state="asleep"] .bubble { border-color: var(--line-2); }
 .coach-col[data-state="asleep"] .bubble::before { border-color: var(--line-2); }
-.coach-col[data-state="asleep"] .bubble:empty::after { content: 'Coach off. The rig plays without it.'; }
+.coach-col[data-state="asleep"] .bubble:empty::after { content: 'Riff is asleep. You can still play.'; }
 
 /* ---- the session ---- */
 .rows { margin: 0; display: flex; flex-direction: column; flex: none; }
