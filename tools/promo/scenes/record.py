@@ -3,6 +3,7 @@
     python -m tools.promo.scenes.record                 # all scenes -> runs/promo/scenes/<scene>.mp4
     python -m tools.promo.scenes.record hook logo       # selected scenes
     python -m tools.promo.scenes.record --stills 1.3    # one PNG per scene at t=1.3 s (for review)
+    python -m tools.promo.scenes.record --cover         # render docs/media/cover.png (1500x1000 3:2 Devpost thumbnail)
 
 Each scene in scenes.html is a pure function of time, so every render is identical.
 Frames are drawn with Playwright (your installed Chrome by default; --browser PATH
@@ -24,6 +25,7 @@ BRAND = ROOT / "dashboard" / "brand"
 FONTS = ROOT / "dashboard" / "fonts"
 FPS = 30
 SIZE = (1920, 1080)
+COVER_SIZE = (1500, 1000)
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 
@@ -34,6 +36,17 @@ def build_page(out_dir: Path) -> Path:
     html = html.replace("{{MARK_SVG}}", (BRAND / "mark.svg").read_text(encoding="utf-8").replace("`", ""))
     html = html.replace("{{WORDMARK_SVG}}", (BRAND / "wordmark.svg").read_text(encoding="utf-8").replace("`", ""))
     page = out_dir / "_scenes.html"
+    page.write_text(html, encoding="utf-8")
+    return page
+
+
+def build_cover_page(out_dir: Path) -> Path:
+    """Inline the brand SVGs and font paths into cover.html."""
+    html = (HERE / "cover.html").read_text(encoding="utf-8")
+    html = html.replace("{{FONT_DIR}}", FONTS.as_uri())
+    html = html.replace("{{MARK_SVG}}", (BRAND / "mark.svg").read_text(encoding="utf-8").replace("`", ""))
+    html = html.replace("{{WORDMARK_SVG}}", (BRAND / "wordmark.svg").read_text(encoding="utf-8").replace("`", ""))
+    page = out_dir / "_cover.html"
     page.write_text(html, encoding="utf-8")
     return page
 
@@ -50,6 +63,7 @@ def main(argv=None) -> int:
     p.add_argument("--browser", default=CHROME if Path(CHROME).exists() else None,
                    help="Chromium executable (default: installed Google Chrome)")
     p.add_argument("--stills", type=float, metavar="T", help="write one PNG per scene at time T instead of video")
+    p.add_argument("--cover", action="store_true", help="render docs/media/cover.png (1500x1000 3:2 Devpost thumbnail)")
     p.add_argument("--force", action="store_true", help="overwrite existing outputs")
     a = p.parse_args(argv)
 
@@ -57,6 +71,31 @@ def main(argv=None) -> int:
 
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
+
+    if a.cover:
+        cover_page_path = build_cover_page(out)
+        cover_target = ROOT / "docs" / "media" / "cover.png"
+        cover_target.parent.mkdir(parents=True, exist_ok=True)
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(executable_path=a.browser) if a.browser else pw.chromium.launch()
+            page = browser.new_page(viewport={"width": COVER_SIZE[0], "height": COVER_SIZE[1]}, device_scale_factor=1)
+            page.goto(cover_page_path.as_uri())
+            page.evaluate("document.fonts.ready")
+            page.screenshot(path=str(cover_target))
+            print(f"wrote cover thumbnail: {cover_target} (1500x1000, 3:2)")
+
+            # Downscaled 300x200 check
+            check_page = browser.new_page(viewport={"width": 300, "height": 200}, device_scale_factor=1)
+            check_page.goto(cover_page_path.as_uri())
+            check_page.evaluate("document.body.style.zoom = '0.2'")
+            check_page.evaluate("document.fonts.ready")
+            check_target = ROOT / "docs" / "media" / "cover-300x200.png"
+            check_page.screenshot(path=str(check_target))
+            print(f"wrote thumbnail preview: {check_target} (300x200)")
+
+            browser.close()
+        return 0
+
     page_path = build_page(out)
     with sync_playwright() as pw:
         browser = pw.chromium.launch(executable_path=a.browser) if a.browser else pw.chromium.launch()
