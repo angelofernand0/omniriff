@@ -1,6 +1,7 @@
 """Coach replay is private, validated, read-only, and needs no model/network call."""
 from __future__ import annotations
 
+import builtins
 import json
 import os
 import tempfile
@@ -9,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from coach import __main__ as coach_cli
-from coach.feed import CoachFeed
+from coach.feed import CoachFeed, VALIDATOR
 from coach.replay import CoachReplayRecorder, ReplayError, play_replay, replay_events
 
 
@@ -72,8 +73,10 @@ class CoachReplayTests(unittest.TestCase):
         self.assertEqual(observed[-1][1]["text"], replay.frame["cue"])
         self.assertFalse(replay.accept_decision({"version": 1, "type": "coach.approve",
                                                  "timestamp_ms": 1, "approval_id": "approval"}))
-        self.assertFalse(replay.accept_say({"version": 1, "type": "coach.say",
-                                            "timestamp_ms": 1, "text": "do this", "via": "text"}))
+        say = {"version": 1, "type": "coach.say", "timestamp_ms": 1,
+               "text": "do this", "via": "typed"}
+        self.assertTrue(VALIDATOR.is_valid(say))
+        self.assertFalse(replay.accept_say(say))
         self.assertTrue(replay.decisions.empty())
         self.assertTrue(replay.said.empty())
 
@@ -88,6 +91,43 @@ class CoachReplayTests(unittest.TestCase):
         with self.assertRaisesRegex(ReplayError, "invalid coach replay event"):
             play_replay(self.path, replay)
         self.assertEqual(replay.frame["state"], "idle")
+
+    def test_negative_first_offset_and_boolean_header_timestamp_are_rejected(self):
+        self.record_sample()
+        original = self.path.read_text().splitlines()
+        first = json.loads(original[1])
+        first["at_ms"] = -1
+        self.path.write_text("\n".join([original[0], json.dumps(first), *original[2:]]) + "\n")
+        with self.assertRaisesRegex(ReplayError, "event 1"):
+            list(replay_events(self.path))
+        header = json.loads(original[0])
+        header["captured_at_ms"] = True
+        self.path.write_text("\n".join([json.dumps(header), *original[1:]]) + "\n")
+        with self.assertRaisesRegex(ReplayError, "header"):
+            list(replay_events(self.path))
+        header["captured_at_ms"] = json.loads(original[0])["captured_at_ms"]
+        header["version"] = True
+        self.path.write_text("\n".join([json.dumps(header), *original[1:]]) + "\n")
+        with self.assertRaisesRegex(ReplayError, "header"):
+            list(replay_events(self.path))
+
+    def test_source_changes_during_playback_do_not_change_validated_snapshot(self):
+        self.record_sample()
+        replay = CoachFeed("replay-test", scripted=True, read_only=True)
+        original_publish = replay.publish
+        published = []
+
+        def publish(**changes):
+            if not published:
+                self.path.write_text("corrupted source after snapshot\n")
+            frame = original_publish(**changes)
+            published.append(frame)
+            return frame
+
+        with patch.object(replay, "publish", side_effect=publish):
+            self.assertEqual(play_replay(self.path, replay), 4)
+        self.assertEqual(len(published), 3)
+        self.assertEqual(replay.frame["cue"], "Keep the arm moving.")
 
     def test_only_outbound_messages_and_read_only_feed_are_accepted(self):
         recorder = CoachReplayRecorder(self.path, input_provenance="synthetic_fixture")
@@ -110,21 +150,22 @@ class CoachReplayTests(unittest.TestCase):
         self.assertEqual(feed.frame["state"], "idle")
         report.assert_called_once()
 
-    def test_replay_cli_never_calls_key_model_or_rig(self):
+    def test_replay_cli_never_imports_key_model_or_rig(self):
+        real_import = builtins.__import__
+        optional = {"agent", "budget", "memory", "rig", "runner", "smoke", "tools"}
+
+        def guarded_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if (level == 1 and name in optional) or name in {f"coach.{part}" for part in optional}:
+                self.fail(f"replay imported optional coach module {name}")
+            return real_import(name, globals, locals, fromlist, level)
+
         with (patch.object(coach_cli, "CoachFeed") as feed_class,
-              patch.object(coach_cli, "play_replay", side_effect=ReplayError("bad file")),
-              patch("coach.smoke.load_key") as load_key,
-              patch("coach.agent.build_agent") as build_agent,
-              patch("coach.rig.RigClient") as rig_client,
-              patch("coach.rig.RigStateReader") as state_reader):
-            self.assertEqual(coach_cli.main(["--replay", str(self.path), "--feed-port", "0"]), 2)
+              patch.object(coach_cli, "play_replay", side_effect=KeyboardInterrupt),
+              patch("builtins.__import__", side_effect=guarded_import)):
+            self.assertEqual(coach_cli.main(["--replay", str(self.path), "--feed-port", "0"]), 0)
         feed_class.assert_called_once()
         self.assertTrue(feed_class.call_args.kwargs["scripted"])
         self.assertTrue(feed_class.call_args.kwargs["read_only"])
-        load_key.assert_not_called()
-        build_agent.assert_not_called()
-        rig_client.assert_not_called()
-        state_reader.assert_not_called()
 
 
 if __name__ == "__main__":

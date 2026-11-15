@@ -20,7 +20,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sim", action="store_true", help="attach to an already running simulator")
     parser.add_argument("--take-dir", type=Path, help="directory of completed WAV+JSON take pairs")
-    parser.add_argument("--record", type=Path, help="privately record outbound coach frames/voice to a NEW JSONL in runs/ or recordings/")
+    parser.add_argument("--record", type=Path, help="record outbound coach frames/voice to a NEW JSONL in runs/ or recordings/ (POSIX mode 0600; verify Windows ACL)")
     parser.add_argument("--replay", type=Path, help="play a saved coach feed without a model, rig, or API key; labeled REPLAY")
     parser.add_argument("--hand-log", type=Path, help="real webcam hand JSONL from vision")
     parser.add_argument("--fixtures", action="store_true", help="replay explicitly synthetic coach takes without engine")
