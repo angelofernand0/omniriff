@@ -11,11 +11,11 @@ Short form for the end: **"Never put the guitar down."**
 
 SM tells the product/AI story; Aditya plays and supplies the guitarist's point of view; John and Angelo get one proof line each. **Aim to finish by 1:50**, leaving ten seconds for a slow screen or handoff. The [official rules](https://hackprinceton-fall-26.devpost.com/rules) cap the in-person presentation at two minutes. Do not add a separate technology introduction before this script.
 
-The demo story: **Aditya can't get his timing right.** Riff remembers him, listens to one take, and names the cause: **on the third phrase he plays straight with uneven attacks, so swing it and hit every strum the same.** It sets up the drill, he approves with a thumbs-up, plays it again, and Riff shows the improvement and remembers it. The session runs on the website's **demo coach** (below): the coaching lines and numbers are scripted for this story and react to what Aditya actually does on stage.
+The demo story: **Aditya can't get his timing right.** Riff remembers him, listens to one take, and names the cause: **on the third phrase he plays straight with uneven attacks, so swing it and hit every strum the same.** It sets up the drill, he approves with a thumbs-up, plays it again, and Riff shows the improvement and remembers it. The session runs on the website's **Dev demo** (below): the coaching lines and numbers are scripted for this story and react to what Aditya actually does on stage.
 
 | Clock | Speaker and live action | Say |
 | --- | --- | --- |
-| 0:00–0:08 | **SM.** Aditya, guitar and camera in view; omniriff.vercel.app with the demo coach on the big screen, already started. | “OmniRiff is a guitar teacher that lives in your signal chain: it hears and sees you play, finds why you slipped, and sets up the fix.” |
+| 0:00–0:08 | **SM.** Aditya, guitar and camera in view; omniriff.vercel.app in the Dev demo on the big screen, already started. | “OmniRiff is a guitar teacher that lives in your signal chain: it hears and sees you play, finds why you slipped, and sets up the fix.” |
 | 0:08–0:16 | **Aditya** plays the riff freely. Riff greets him from memory: *“Welcome back, last time leading with your ring finger fixed those changes. What are we working on today?”* | **SM:** “Riff already knows him. Last session it fixed his chord changes.” |
 | 0:16–0:22 | **Aditya** holds TALK (V) and says it to Riff. Riff: *“Timing, got it… Tap the pedal, play the riff, then tap again.”* | **Aditya:** “Riff, I can't get my timing right.” |
 | 0:22–0:34 | **Aditya** taps Record loop, plays the riff about 10 s, taps again. | **SM:** “He just plays. No menus, no metronome app.” |
@@ -38,22 +38,27 @@ Keep the same guitarist, mistake, drill and retake. Replace SM's 0:34–0:42 lin
 
 Use the same words and speaker assignments for the optional product video. Film a wide shot of Aditya and the rig, a readable screen capture of Riff's actual cue, and short camera/hand/pedal inserts under John and Angelo's lines. Editing may remove waiting time, but caption a stitched run **edited real session** and keep the before/after from that same session. If the take or coach is simulated, keep **SIMULATED** on screen and say it in voiceover. No fabricated reaction, evidence or live-performance claim.
 
-## Demo coach (the scripted session on the website)
+## Dev demo (the scripted session on the website)
 
-**Load:** on omniriff.vercel.app, settings → **Riff, the AI coach** → **Start demo session** (or `?coach=demo`). Press Start. Add `&source=live` to use Aditya's real guitar input and webcam (choose the instrument channel in the settings); without it the simulated guitar plays. Add `&fresh=1` for a first visit with no memory.
+**Open it:** omniriff.vercel.app → settings → **Dev demo** (bottom of the dialog) → enter the **team password** (the same passcode as the hosted coach; SM shares it by DM, never on the board) → pick one:
+- **My guitar + camera:** Aditya's real guitar and webcam (choose the instrument channel in the settings). The pitch plan.
+- **Simulated guitar:** the backup if the physical rig fails. The computer plays the riff continuously and you take it from the keyboard: **L** starts and stops a take, **V** (hold) talks to Riff, **Y** approves. Nothing records by itself, and the simulated hand stays still.
 
-**What reacts to the room:** the goal Aditya says or types to Riff (any words), each finished loop recording (Record loop / L, real guitar or simulator), and the approval (a held thumbs-up on camera, or Y). Riff's voice is pre-rendered in its ElevenLabs voice (`tools/showcase/demo_voice.py`).
+Then press Start. The settings show **DEV DEMO**. **Reset for the pitch** returns Riff's memory to the opening line; **Leave dev demo** returns to the normal site; **Lock** forgets the password in this browser. The `?coach=demo` link only works in a browser that has been unlocked.
+
+**What reacts to the room:** the goal Aditya says or types to Riff (any words), each finished loop recording (pedal / Record loop / **L**), and the approval (a held thumbs-up on camera, or **Y**). Riff's voice is pre-rendered in its ElevenLabs voice (`tools/showcase/demo_voice.py`).
 
 **What is scripted:** every line Riff says, the plan steps, the third-phrase marker (the third quarter of whatever loop he records), the drill, and the numbers (timing drift 118 → 31 ms, stability 0.78 → 0.95). The script is in `dashboard/browser/coach/demo-script.ts` and `demo-coach.ts`. The real coach (settings → Riff, the AI coach, with the passcode) measures the take instead; use it for Q&A or a second run.
 
-**Memory:** the first visit opens with a remembered session (the ring-finger fix). Finishing the demo saves the third phrase, so a reload opens with *“Welcome back, last time swinging the third phrase evened out your timing.”* Use `&fresh=1` to reset before the real pitch.
+**Memory:** Riff opens with a remembered session (the ring-finger fix). Finishing the demo saves the third phrase, so the next run opens with *“Welcome back, last time swinging the third phrase evened out your timing.”* Press **Reset for the pitch** before each run.
 
 **Operator checklist (SM):**
-1. Before judges arrive: open omniriff.vercel.app, choose Source **Live audio + camera**, and in **Riff, the AI coach** press **Start demo session**, then Start (this grants mic and camera). Before each run press **Reset for the pitch** (settings → Riff), so Riff opens with the remembered ring-finger session. **Leave demo** returns to the normal site. The same as URL flags: `?coach=demo&source=live`; `&fresh=1` = a first visit with no memory.
-2. If speech-to-text mishears Aditya, type “I can't get my timing right” in the TALK box. Any words move the script on.
-3. If the thumbs-up doesn't register within two seconds, press **Y**.
-4. Second take: tap once to clear the old loop, then record. Riff answers when the recording finishes.
-5. Click the page once before starting so the browser allows Riff's voice. **M** mutes Riff.
+1. Before judges arrive: unlock the Dev demo, press **My guitar + camera**, then Start once so the browser has mic and camera permission. Keep **Simulated guitar** in mind as the switch if the guitar or interface fails.
+2. Before each run: settings → Dev demo → **Reset for the pitch**, then Start.
+3. If speech-to-text mishears Aditya, type “I can't get my timing right” in the TALK box. Any words move the script on.
+4. If the thumbs-up doesn't register within two seconds, press **Y**.
+5. Second take: tap once to clear the old loop, then record. Riff answers when the recording finishes.
+6. Click the page once before starting so the browser allows Riff's voice. **M** mutes Riff.
 
 ## Sponsor-judge follow-up (Q&A, not extra speech)
 

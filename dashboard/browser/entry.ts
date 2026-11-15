@@ -3,6 +3,7 @@ import type { StateFrame, HandFrame } from './protocol/types';
 import './controls.css';
 import { RemoteCoach, coachConfig, saveCoachConfig } from './coach/remote-coach';
 import { DemoCoach, resetDemoMemory } from './coach/demo-coach';
+import { devDemoUnlocked, lockDevDemo, unlockDevDemo } from './coach/dev-demo-lock';
 
 type BrowserSource = {
   onState(cb: (frame: StateFrame) => void): void;
@@ -55,7 +56,9 @@ for (const file of ['juice.js', 'riff.js', 'stage.js', 'tape.js']) await loadCla
 
 // Riff, the real AI coach, hosted (coach/server.py). The instrument stays in this browser.
 // ?coach=demo: the pitch's scripted session in the browser (coach/demo-coach.ts), no server.
-const demoCoach = params.get('coach') === 'demo' ? new DemoCoach(manager, params.get('fresh') === '1') : null;
+// Dev demo (?coach=demo): only in a browser unlocked with the team password (coach/dev-demo-lock.ts).
+const devUnlocked = await devDemoUnlocked();
+const demoCoach = params.get('coach') === 'demo' && devUnlocked ? new DemoCoach(manager, params.get('fresh') === '1') : null;
 if (params.get('fresh') === '1') {   // applied once; a later reload keeps whatever the demo remembers
   const clean = new URL(location.href); clean.searchParams.delete('fresh'); history.replaceState(null, '', clean);
 }
@@ -96,13 +99,23 @@ dialog.innerHTML = `
     <p>Starting requests microphone and camera access. Camera failure leaves audio and manual controls available.</p>
   </fieldset>
   <details id="browserCoach" open><summary>Riff, the AI coach <span id="coachMode"></span></summary>
-    <div class="browser-actions"><button type="button" id="demoStart">Start demo session</button><button type="button" id="demoReset">Reset for the pitch</button><button type="button" id="demoLeave">Leave demo</button></div>
-    <p id="demoNote">The pitch session: tell Riff you can't get your timing right, record a loop, and follow Riff. Pick the Source above first (your guitar + camera, or the simulator).</p>
     <p>Riff listens to each loop you record (and watches your hand if the camera is on), then picks one thing to practice. Your sound stays in this browser; finished loops go to the coach server.</p>
     <label>Coach server<input id="coachServer" type="url" placeholder="wss://…/coach" autocomplete="off"></label>
     <label>Team passcode<input id="coachKey" type="password" autocomplete="off"></label>
     <div class="browser-actions"><button type="button" id="coachConnect">Connect Riff</button><button type="button" id="coachForget">Disconnect Riff</button></div>
     <p id="coachStatus" role="status" aria-live="polite"></p>
+  </details>
+  <details id="devDemo"><summary>Dev demo <span id="devMode"></span></summary>
+    <div id="devLocked">
+      <label>Password<input id="devPass" type="password" autocomplete="off"></label>
+      <div class="browser-actions"><button type="button" id="devUnlock">Unlock</button></div>
+    </div>
+    <div id="devOpen" hidden>
+      <div class="browser-actions"><button type="button" id="devLive">My guitar + camera</button><button type="button" id="devSim">Simulated guitar</button></div>
+      <div class="browser-actions"><button type="button" id="demoReset">Reset for the pitch</button><button type="button" id="demoLeave">Leave dev demo</button><button type="button" id="devLock">Lock</button></div>
+      <p>The pitch session, scripted. <strong>Simulated guitar</strong> is the backup when the real rig fails: the computer plays the riff and you take it from the keyboard. <strong>L</strong> starts and stops a take, <strong>V</strong> (hold) talks to Riff, <strong>Y</strong> approves.</p>
+    </div>
+    <p id="devStatus" role="status" aria-live="polite"></p>
   </details>
   <p class="browser-footnote">Filter, reverb and looping run in your browser. Riff, the coach, runs on the coach server.</p>`;
 document.body.append(dialog);
@@ -234,7 +247,8 @@ start.addEventListener('click', async () => {
       adapter.controller.rearm();
       adapter.audio.setInputChannel(Number(channel.value));
       if (requested === 'simulator') {
-        manager.simulator.choreography.enabled = true;
+        manager.simulator.choreography.enabled = !demoCoach;   // dev demo: no automatic hand, you drive it
+        if (demoCoach) manager.simulator.hand.present = false;
         adapter.audio.setSynthAuto(true);
         adapter.audio.setSynthBpm(92);
       }
@@ -261,7 +275,7 @@ const coachKey = $<HTMLInputElement>('coachKey');
 coachServer.value = hosted?.url ?? '';
 coachKey.value = hosted?.key ?? '';
 const coachStatus = $('coachStatus');
-coachStatus.textContent = demoCoach ? 'Demo coach: the pitch session, scripted in this browser.' : remoteCoach ? 'Connecting to Riff…' : 'Not connected. Ask your team for the server address and passcode.';
+coachStatus.textContent = demoCoach ? 'Dev demo: the pitch session, scripted in this browser.' : remoteCoach ? 'Connecting to Riff…' : 'Not connected. Ask your team for the server address and passcode.';
 if (remoteCoach) remoteCoach.status = text => { coachStatus.textContent = text; };
 function reloadWithCoach(url: string, key: string) {
   saveCoachConfig(url, key);
@@ -276,21 +290,41 @@ $('coachConnect').addEventListener('click', () => {
 });
 $('coachForget').addEventListener('click', () => reloadWithCoach('', ''));
 
-// Demo session buttons: the same as ?coach=demo (&fresh=1), keeping the chosen source.
-function reloadDemo(demo: boolean, fresh = false) {
+// Dev demo: password, then the two ways to run the pitch session (same as ?coach=demo&source=...).
+function reloadDemo(demo: boolean, source?: 'live' | 'simulator') {
   const next = new URL(location.href);
   for (const key of ['coach', 'fresh', 'coachserver', 'coachkey']) next.searchParams.delete(key);
   if (demo) next.searchParams.set('coach', 'demo');
-  if (fresh) next.searchParams.set('fresh', '1');
-  next.searchParams.set('source', selectedMode() === 'live' ? 'live' : 'simulator');
+  next.searchParams.set('source', source ?? (selectedMode() === 'live' ? 'live' : 'simulator'));
   location.assign(next);
 }
-$('demoStart').addEventListener('click', () => reloadDemo(true));
+const devStatus = $('devStatus');
+function showDev(open: boolean) {
+  $('devLocked').hidden = open;
+  $('devOpen').hidden = !open;
+  $('demoReset').hidden = $('demoLeave').hidden = !demoCoach;
+  $('devMode').textContent = demoCoach ? '· ON' : '';
+}
+showDev(devUnlocked);
+if (demoCoach) ($('devDemo') as HTMLDetailsElement).open = true;
+if (params.get('coach') === 'demo' && !devUnlocked) {
+  ($('devDemo') as HTMLDetailsElement).open = true;
+  devStatus.textContent = 'Enter the password to open the dev demo.';
+}
+async function tryUnlock() {
+  const ok = await unlockDevDemo($<HTMLInputElement>('devPass').value);
+  $<HTMLInputElement>('devPass').value = '';
+  devStatus.textContent = ok ? '' : 'Wrong password.';
+  if (ok) showDev(true);
+}
+$('devUnlock').addEventListener('click', () => { void tryUnlock(); });
+$('devPass').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); void tryUnlock(); } });
+$('devLive').addEventListener('click', () => reloadDemo(true, 'live'));
+$('devSim').addEventListener('click', () => reloadDemo(true, 'simulator'));
 $('demoReset').addEventListener('click', () => { resetDemoMemory(); reloadDemo(true); });   // the pitch opening
 $('demoLeave').addEventListener('click', () => reloadDemo(false));
-$('demoStart').hidden = !!demoCoach;
-$('demoReset').hidden = $('demoLeave').hidden = !demoCoach;
-$('coachMode').textContent = demoCoach ? '· DEMO' : remoteCoach ? '· LIVE' : '';
+$('devLock').addEventListener('click', () => { lockDevDemo(); if (demoCoach) reloadDemo(false); else showDev(false); });
+$('coachMode').textContent = demoCoach ? '· DEV DEMO' : remoteCoach ? '· LIVE' : '';
 for (const id of ['coachServer', 'coachKey', 'coachConnect', 'coachForget']) {
   const el = document.getElementById(id);
   const row = el?.closest('label') ?? el;
