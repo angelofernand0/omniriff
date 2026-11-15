@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OmniRiff promo scenes</title>
+<style>
+  /* Fonts and pixel art are injected by record.py from dashboard/ (one brand source). */
+  @font-face { font-family: 'Silkscreen'; font-weight: 400; src: url('{{FONT_DIR}}/Silkscreen-400.woff2') format('woff2'); }
+  @font-face { font-family: 'Silkscreen'; font-weight: 700; src: url('{{FONT_DIR}}/Silkscreen-700.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 400 700; src: url('{{FONT_DIR}}/JetBrainsMono.woff2') format('woff2'); }
+  :root { --bg:#0B0B10; --pink:#FF5CCB; --shade:#D63FA6; --low:#B4318A; --deep:#4A1A3C; --rec:#FF5340;
+          --warn:#FFB547; --ok:#8FE3A6; --text:#ECE9F5; --muted:#A6A3B6; --dim:#4A4858; --off:#24232E; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+  body { font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--text); }
+  #stage { position: absolute; inset: 0; overflow: hidden; }
+  .px { font-family: 'Silkscreen', monospace; letter-spacing: 0.02em; }
+  .abs { position: absolute; }
+  .pixel svg { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  .bubble { background: var(--text); color: var(--bg); border-radius: 0; padding: 22px 30px;
+            font-family: 'Silkscreen', monospace; font-size: 44px; line-height: 1.15; box-shadow: 8px 8px 0 var(--pink); }
+  .card { background: #15141D; border: 4px solid var(--dim); padding: 36px 40px; }
+  .box { position: absolute; background: #15141D; border: 4px solid var(--dim); padding: 14px 18px;
+         font-family: 'Silkscreen', monospace; font-size: 30px; color: var(--text); white-space: nowrap; }
+  .box small { display: block; font-family: 'JetBrains Mono', monospace; font-size: 19px; color: var(--muted); margin-top: 6px; }
+  .grain { position: absolute; inset: 0; pointer-events: none;
+           background: repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 2px, transparent 2px 4px); }
+  .badge { font-family: 'Silkscreen', monospace; font-size: 22px; color: var(--warn); border: 3px solid var(--warn); padding: 6px 12px; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="grain"></div>
+<script>
+const MARK = `{{MARK_SVG}}`;
+const WORDMARK = `{{WORDMARK_SVG}}`;
+const W = 1920, H = 1080;
+const stage = document.getElementById('stage');
+
+// ---------- helpers: everything is a pure function of t (seconds) ----------
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, t0, t1) => clamp((t - t0) / (t1 - t0));
+const outCubic = x => 1 - Math.pow(1 - x, 3);
+const outBack = x => { const c = 1.70158, c3 = c + 1; return 1 + c3 * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const outElastic = x => x === 0 || x === 1 ? x : Math.pow(2, -10 * x) * Math.sin((x * 10 - 0.75) * (2 * Math.PI) / 3) + 1;
+const lerp = (a, b, x) => a + (b - a) * x;
+// deterministic pseudo-random from the index: identical renders every time
+const rnd = i => { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+const typed = (str, t, t0, cps = 28) => str.slice(0, Math.max(0, Math.floor((t - t0) * cps)));
+function el(html) { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; }
+function put(node, css) { Object.assign(node.style, css); stage.appendChild(node); return node; }
+function riff(x, y, size, opts = {}) {
+  // the pixel mascot; squash/stretch via scale, optional bob
+  const sx = opts.sx ?? 1, sy = opts.sy ?? 1, rot = opts.rot ?? 0, op = opts.op ?? 1;
+  return put(el(`<div class="abs pixel">${MARK}</div>`), {
+    left: `${x - size / 2}px`, top: `${y - size}px`, width: `${size}px`, height: `${size}px`,
+    transformOrigin: '50% 100%', transform: `rotate(${rot}deg) scale(${sx}, ${sy})`, opacity: op,
+  });
+}
+function caption(text, x, y, size, color = 'var(--text)', extra = {}) {
+  return put(el(`<div class="abs px">${text}</div>`), Object.assign({
+    left: `${x}px`, top: `${y}px`, fontSize: `${size}px`, color, whiteSpace: 'nowrap', fontWeight: 700,
+  }, extra));
+}
+function centered(text, y, size, color = 'var(--text)', extra = {}) {
+  return put(el(`<div class="abs px">${text}</div>`), Object.assign({
+    left: '0px', width: `${W}px`, textAlign: 'center', top: `${y}px`, fontSize: `${size}px`, color, fontWeight: 700,
+  }, extra));
+}
+function waveform(x, y, w, h, n, t, opts = {}) {
+  // pink bars like the dashboard loop; optional frozen gap [g0, g1) drawn dim
+  const g = document.createElement('div'); g.className = 'abs';
+  Object.assign(g.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
+  const bw = w / n;
+  for (let i = 0; i < n; i++) {
+    const inGap = opts.gap && i >= opts.gap[0] && i < opts.gap[1];
+    const env = 0.35 + 0.65 * Math.abs(Math.sin(i * 0.37 + (opts.freeze ? 0 : t * 3)) * (0.6 + 0.4 * rnd(i)));
+    const bh = inGap ? h * 0.04 : h * env;
+    const b = document.createElement('div');
+    Object.assign(b.style, { position: 'absolute', left: `${i * bw + bw * 0.18}px`, width: `${bw * 0.64}px`,
+      top: `${(h - bh) / 2}px`, height: `${bh}px`, background: i < (opts.played ?? n) ? 'var(--pink)' : 'var(--dim)' });
+    g.appendChild(b);
+  }
+  stage.appendChild(g); return g;
+}
+
+// ---------- scenes ----------
+const SCENES = {
+  // Beat 1 (3 s): stumble -> freeze -> red marker slam -> "YOU MESSED UP." -> Riff pops: "...but do you know WHY?"
+  hook: { duration: 3.0, render(t) {
+    const freeze = t >= 0.85;
+    const played = Math.floor(clamp(t / 0.85) * 34) + (freeze ? 34 : 0);
+    waveform(160, 330, 1600, 300, 64, freeze ? 0.85 : t, { gap: freeze ? [34, 40] : null, freeze, played: Math.min(64, played) });
+    if (t >= 1.0) { // red marker slams onto the gap
+      const p = outBack(prog(t, 1.0, 1.25));
+      put(el('<div class="abs"></div>'), { left: `${160 + 34 * 25}px`, top: `${lerp(80, 300, p)}px`, width: `${6 * 25}px`,
+        height: '360px', border: '8px solid var(--rec)', boxShadow: '0 0 40px rgba(255,83,64,0.5)' });
+      caption('GAP', 160 + 34 * 25 + 22, lerp(30, 250, p), 40, 'var(--rec)');
+    }
+    if (t >= 1.25) { // title slams with a shake
+      const p = prog(t, 1.25, 1.45), shake = (1 - p) * 14 * Math.sin(t * 90);
+      centered('YOU MESSED UP.', 680 + shake, 112, 'var(--text)', { transform: `scale(${lerp(1.6, 1, outCubic(p))})` });
+    }
+    if (t >= 2.0) { // Riff pops in and asks
+      const p = prog(t, 2.0, 2.3), s = outElastic(p);
+      riff(1760, 1060, 190, { sx: s, sy: s });
+      put(el(`<div class="bubble">${typed('...but do you know WHY?', t, 2.15, 40)}</div>`),
+        { position: 'absolute', right: '310px', bottom: '70px', opacity: clamp(p * 3) });
+    }
+  }},
+
+  // Beat 2 (7 s): three kinetic cards that land on the voice line
+  collage: { duration: 7.0, render(t) {
+    const cards = [
+      { t0: 0.0, title: 'TAP. PAUSE. REWIND.', sub: 'every tool makes you stop playing', icon: '⏸', color: 'var(--warn)' },
+      { t0: 2.3, title: 'APPS GRADE NOTES', sub: 'right or wrong, never why', icon: '✓ ✗', color: 'var(--ok)' },
+      { t0: 3.9, title: 'A TEACHER TELLS YOU WHY', sub: 'every week, for a fee', icon: '$', color: 'var(--pink)' },
+    ];
+    cards.forEach((c, i) => {
+      if (t < c.t0) return;
+      const p = outBack(prog(t, c.t0, c.t0 + 0.45));
+      const x = 140 + i * 560, y = lerp(1180, 300, p), rot = lerp(-8 + i * 8, (i - 1) * 2.5, p);
+      const card = put(el(`<div class="abs card"><div class="px" style="font-size:120px;color:${c.color};height:150px">${c.icon}</div>
+        <div class="px" style="font-size:44px;margin-top:24px;line-height:1.15">${c.title}</div>
+        <div style="font-size:26px;color:var(--muted);margin-top:18px">${c.sub}</div></div>`),
+        { left: `${x}px`, top: `${y}px`, width: '500px', height: '480px', transform: `rotate(${rot}deg)`,
+          borderColor: i === 2 && t > 5.0 ? 'var(--pink)' : 'var(--dim)' });
+      if (i === 2 && t > 4.6) { // the fee: a calendar of weeks ticking up
+        const weeks = Math.min(12, Math.floor((t - 4.6) * 6) + 1);
+        card.appendChild(el(`<div class="px" style="position:absolute;right:36px;top:40px;font-size:34px;color:var(--pink)">WEEK ${weeks}</div>`));
+      }
+    });
+    if (t > 5.6) { // the turn: the problem we solve
+      const p = outBack(prog(t, 5.6, 5.85));
+      centered('THERE HAS TO BE A BETTER WAY', 860, 56, 'var(--text)', { opacity: p, transform: `translateY(${(1 - p) * 30}px)` });
+    }
+  }},
+
+  // Beat 3 (6 s): Riff drops, the wordmark shoves and snaps back, tagline types on
+  logo: { duration: 6.0, render(t) {
+    const drop = prog(t, 0.2, 0.75), land = prog(t, 0.75, 1.1);
+    const y = lerp(-200, 560, outCubic(drop));
+    const squash = t < 0.75 ? { sx: 0.85, sy: 1.15 } : { sx: lerp(1.35, 1, outElastic(land)), sy: lerp(0.65, 1, outElastic(land)) };
+    riff(W / 2, y, 300, squash);
+    if (t >= 0.75) { // shockwave ring
+      const p = prog(t, 0.75, 1.4);
+      put(el('<div class="abs"></div>'), { left: `${W / 2 - 600 * p}px`, top: `${560 - 60 * p}px`, width: `${1200 * p}px`, height: `${120 * p}px`,
+        border: '6px solid var(--pink)', borderRadius: '50%', opacity: 1 - p });
+    }
+    if (t >= 0.8) { // wordmark letters: shoved right by the landing, snap back
+      const p = prog(t, 0.8, 1.6);
+      const shove = Math.sin(p * Math.PI) * 70 * (1 - p * 0.4);
+      put(el(`<div class="abs pixel">${WORDMARK}</div>`), { left: `${W / 2 - 520 + shove}px`, top: '610px', width: '1040px', height: '160px', opacity: clamp(p * 4) });
+    }
+    if (t >= 1.8) {
+      const s = typed('NEVER PUT THE GUITAR DOWN', t, 1.8, 22);
+      centered(s, 830, 64, 'var(--pink)');
+    }
+    if (t >= 3.4) {
+      const p = outCubic(prog(t, 3.4, 3.9));
+      centered('a guitar teacher that lives in your signal chain', 930, 36, 'var(--muted)', { opacity: p, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400 });
+    }
+  }},
+
+  // Beat 11 (8 s): the real architecture assembling box by box (matches docs/media/architecture.svg)
+  architecture: { duration: 8.0, render(t) {
+    const B = [ // id, label, sub, x, y, appear time, accent
+      ['guitar', 'GUITAR', 'your instrument', 90, 150, 0.0],
+      ['scarlett', 'SCARLETT SOLO', 'input 2', 440, 150, 0.3],
+      ['engine', 'AUDIO ENGINE', 'looper · filter · reverb · limiter', 880, 150, 0.6, 'var(--ok)'],
+      ['speakers', 'SPEAKERS', 'what you hear', 1530, 150, 0.9],
+      ['cam', 'CAM', 'hand tracking', 90, 470, 1.4],
+      ['vision', 'VISION', 'pinch = tone', 440, 470, 1.7],
+      ['pedal', 'PEDAL', 'tap = loop · hold = practice / approve', 90, 790, 2.0],
+      ['router', 'ROUTER', 'schema-checked controls', 880, 560, 2.5, 'var(--warn)'],
+      ['riff', 'RIFF · DEEP AGENT', 'ears · eyes · skills · memory · budget', 1290, 790, 3.2, 'var(--pink)'],
+    ];
+    const pos = {};
+    B.forEach(([id, label, sub, x, y, t0, accent]) => {
+      if (t < t0) return;
+      const p = outBack(prog(t, t0, t0 + 0.35));
+      put(el(`<div class="box">${label}<small>${sub}</small></div>`), { left: `${x}px`, top: `${y}px`,
+        transform: `scale(${p})`, transformOrigin: '0 0', borderColor: accent || 'var(--dim)', color: accent || 'var(--text)' });
+      pos[id] = [x, y];
+    });
+    const L = [ // from, to, appear, label, color
+      ['guitar', 'scarlett', 0.35], ['scarlett', 'engine', 0.65], ['engine', 'speakers', 0.95],
+      ['cam', 'vision', 1.75], ['vision', 'router', 2.6, 'gestures'], ['pedal', 'router', 2.7, 'pedal'],
+      ['router', 'engine', 2.9, ''], ['engine', 'riff', 3.6, 'your takes'], ['riff', 'router', 4.3, 'only after you hold the pedal', 'var(--pink)'],
+    ];
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', W); svg.setAttribute('height', H); svg.style.position = 'absolute'; svg.style.left = 0; svg.style.top = 0;
+    // explicit anchors [x1, y1, x2, y2, labelX, labelY] so lines meet box edges and labels sit clear
+    const A = {
+      'guitar>scarlett': [305, 195, 440, 195], 'scarlett>engine': [750, 195, 880, 195], 'engine>speakers': [1312, 195, 1530, 195],
+      'cam>vision': [282, 515, 440, 515], 'vision>router': [621, 545, 880, 600, 700, 555],
+      'pedal>router': [566, 840, 880, 640, 590, 730], 'router>engine': [1030, 560, 1030, 256],
+      'engine>riff': [1250, 256, 1520, 790, 1420, 480], 'riff>router': [1350, 790, 1186, 664, 800, 730],
+    };
+    L.forEach(([a, b, t0, label, color]) => {
+      if (t < t0 || !pos[a] || !pos[b]) return;
+      const p = outCubic(prog(t, t0, t0 + 0.4));
+      const [x1, y1, x2, y2, lx, ly] = A[`${a}>${b}`];
+      const line = document.createElementNS(svg.namespaceURI, 'line');
+      line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+      line.setAttribute('x2', lerp(x1, x2, p)); line.setAttribute('y2', lerp(y1, y2, p));
+      line.setAttribute('stroke', color || '#A6A3B6'); line.setAttribute('stroke-width', color ? 6 : 4);
+      if (color) line.setAttribute('stroke-dasharray', '14 10');
+      svg.appendChild(line);
+      if (label && p > 0.9) {
+        const tx = document.createElementNS(svg.namespaceURI, 'text');
+        tx.setAttribute('x', lx ?? (x1 + x2) / 2 + 12); tx.setAttribute('y', ly ?? (y1 + y2) / 2 - 12);
+        tx.setAttribute('fill', color || '#A6A3B6'); tx.setAttribute('font-size', '22'); tx.setAttribute('font-family', 'JetBrains Mono');
+        tx.textContent = label; svg.appendChild(tx);
+      }
+    });
+    stage.insertBefore(svg, stage.firstChild);
+    if (t >= 5.4) {
+      const p = outCubic(prog(t, 5.4, 6.0));
+      centered('BUILT THIS WEEKEND BY FOUR OF US', 980, 48, 'var(--text)', { opacity: p });
+    }
+  }},
+
+  // Beat 12 (4 s): logo, tagline, repo; Riff hops
+  end: { duration: 4.0, render(t) {
+    const hop = Math.abs(Math.sin(t * 4)); riff(W / 2, 470 - hop * 26, 260, { sx: 1 + (1 - hop) * 0.08, sy: 1 - (1 - hop) * 0.08 });
+    put(el(`<div class="abs pixel">${WORDMARK}</div>`), { left: `${W / 2 - 440}px`, top: '510px', width: '880px', height: '135px' });
+    const p = outCubic(prog(t, 0.3, 0.8));
+    centered('NEVER PUT THE GUITAR DOWN', 700, 60, 'var(--pink)', { opacity: p });
+    const q = outCubic(prog(t, 0.9, 1.4));
+    centered('github.com/angelofernand0/omniriff', 800, 34, 'var(--muted)', { opacity: q, fontFamily: "'JetBrains Mono', monospace", fontWeight: 400 });
+    const r = outCubic(prog(t, 1.4, 1.9));
+    centered('HackPrinceton 2026', 870, 28, 'var(--dim)', { opacity: r });
+  }},
+};
+
+// Public API for record.py: draw one frame of a scene at time t.
+window.SCENES = Object.fromEntries(Object.entries(SCENES).map(([k, v]) => [k, v.duration]));
+window.renderFrame = (name, t) => { stage.innerHTML = ''; SCENES[name].render(t); };
+window.fontsReady = () => document.fonts.ready.then(() => true);
+</script>
+</body>
+</html>
