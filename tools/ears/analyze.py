@@ -67,6 +67,8 @@ class TakeReport:
     strum_rate_per_min: float | None = None
     tempo_stability: float = 0.0       # 1 - coefficient of variation of the even intervals, clipped to [0, 1]
     findings: list = field(default_factory=list)
+    feel: str = "unknown"              # swung / straight / unknown (tools/ears/feel.py)
+    phrases: list = field(default_factory=list)   # per phrase: swing_ratio, attack_spread_db
     summary: str = ""
 
     def to_json(self, indent: int = 2) -> str:
@@ -159,7 +161,14 @@ def analyze_take(wav_path, sidecar_path=None) -> TakeReport:
     side = Path(sidecar_path) if sidecar_path else wav_path.with_suffix(".json")
     if side.exists():
         meta = json.loads(side.read_text())
-    onsets, intervals, median, stability, findings = analyze_timing(detect_onsets(data.mean(axis=1), sr))
+    mono = data.mean(axis=1)
+    onsets, intervals, median, stability, findings = analyze_timing(detect_onsets(mono, sr))
+    from .feel import analyze_feel, attack_levels_db
+    phrases, feel_findings, feel = analyze_feel(onsets, attack_levels_db(mono, sr, onsets))
+    if feel == "swung":
+        # long-short pairs are the groove, not drags and rushes; real hesitations still count
+        findings = [f for f in findings if f["type"] == "hesitation"]
+    findings = findings + feel_findings
     hes = [f for f in findings if f["type"] == "hesitation"]
     if len(onsets) < MIN_STRUMS:
         summary = f"Only {len(onsets)} strums detected: too few to judge timing."
@@ -167,7 +176,9 @@ def analyze_take(wav_path, sidecar_path=None) -> TakeReport:
         rate = 60000.0 / median
         summary = (f"{len(onsets)} strums, about {rate:.0f} per minute, stability {stability:.2f}. "
                    + (f"{len(hes)} hesitation(s), longest {max(f['extra_ms'] for f in hes):.0f} ms extra."
-                      if hes else "No hesitations."))
+                      if hes else "No hesitations.")
+                   + (" " + " ".join(f["message"] for f in feel_findings) if feel_findings
+                      else f" Feel: {feel}." if feel != "unknown" else ""))
     return TakeReport(
         take_id=meta.get("take_id", wav_path.stem), started_unix_ms=meta.get("started_unix_ms"),
         samplerate=sr, duration_s=round(len(data) / sr, 3), strum_count=len(onsets),
@@ -175,5 +186,5 @@ def analyze_take(wav_path, sidecar_path=None) -> TakeReport:
         onsets_ms=onsets, intervals_ms=intervals,
         median_interval_ms=round(median, 1) if median else None,
         strum_rate_per_min=round(60000.0 / median, 1) if median else None,
-        tempo_stability=stability, findings=findings, summary=summary,
+        tempo_stability=stability, findings=findings, feel=feel, phrases=phrases, summary=summary,
     )

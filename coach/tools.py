@@ -16,7 +16,7 @@ from .session import PracticeSession, late_ms
 
 TAKE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 SKILLS = frozenset({"isolate-the-change", "slow-then-speed-up", "dry-check", "keep-the-hand-moving",
-                    "lead-with-the-last-finger", "move-on-the-and", "shortest-path"})
+                    "lead-with-the-last-finger", "move-on-the-and", "shortest-path", "swing-the-phrase"})
 
 
 LOG = logging.getLogger(__name__)
@@ -283,7 +283,8 @@ def build_langchain_tools(service: CoachTools) -> dict:
     def write_drill_card(skill: str, passage: str, reps: int, pass_rule: str, rig: dict) -> str:
         """Save a measurable drill card; proposed rig settings still need approval.
 
-        skill: the cause it fixes. lead-with-the-last-finger (late_finger), move-on-the-and
+        skill: the cause it fixes. swing-the-phrase (straight_phrase / uneven_attacks in the
+        TakeReport), lead-with-the-last-finger (late_finger), move-on-the-and
         (late_start), shortest-path (slow_change / finger_wander), keep-the-hand-moving
         (picking_stop only), isolate-the-change (timing only, no camera cause).
 

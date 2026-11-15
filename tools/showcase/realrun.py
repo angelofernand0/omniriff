@@ -21,13 +21,17 @@ from pathlib import Path
 
 import numpy as np
 
+from .feel_takes import render_feel_take
 from .hands import Faults, render
 
 GOAL = "My chord changes feel clunky. I want the Em to Dsus2 progression to flow."
+FEEL_GOAL = "I can't get my timing right."
 # Each take a little better; the coach's session decides pass / advance / wrap from the measurements.
 SCENARIOS = {
     "late-finger": [Faults(late_finger="ring", lag_s=lag) for lag in (0.28, 0.12, 0.05, 0.0, 0.0, 0.0)],
     "late-start": [Faults(start_delay_s=d) for d in (0.25, 0.12, 0.04, 0.0, 0.0, 0.0)],
+    # the pitch story: phrase 3 straight with uneven attacks, then fixed (audio only, no camera)
+    "feel": [dict(), dict(straight=(), uneven=()), dict(straight=(), uneven=()), dict(straight=(), uneven=())],
 }
 
 
@@ -111,8 +115,12 @@ class Client:
                 return
         print("  (timed out waiting for Riff to settle)")
 
-    def take(self, faults: Faults, index: int) -> None:
-        audio, sr, started, hands, _ = render(faults)
+    def take(self, faults, index: int) -> None:
+        if isinstance(faults, dict):
+            audio, sr, started, _ = render_feel_take(**faults)
+            hands = []
+        else:
+            audio, sr, started, hands, _ = render(faults)
         self.loop = {"state": "recording"}
         self.pump(1.0)
         pcm = (np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes()
@@ -129,10 +137,11 @@ def main(argv=None) -> int:
     parser.add_argument("--key", default="")
     parser.add_argument("--player", default="showcase-" + uuid.uuid4().hex[:12])
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--goal", default=GOAL)
+    parser.add_argument("--goal", default=None)
     parser.add_argument("--scenario", choices=sorted(SCENARIOS), default="late-finger")
     parser.add_argument("--max-takes", type=int, default=6)
     args = parser.parse_args(argv)
+    args.goal = args.goal or (FEEL_GOAL if args.scenario == "feel" else GOAL)
     url = f"{args.server}?player={args.player}"
     client = Client(url, args.out, args.key)
     client.send({"type": "omniriff.hello", "key": args.key})   # the passcode is never in the URL
