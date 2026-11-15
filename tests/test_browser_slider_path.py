@@ -21,7 +21,10 @@ class BrowserSliderPathTests(unittest.IsolatedAsyncioTestCase):
                 y,pinch,confidence=image[0,0,:]/100
                 if confidence==0:return NS(hand_landmarks=[],handedness=[])
                 points=[NS(x=.5,y=.5) for _ in range(21)]
-                points[0]=NS(x=.5,y=float(y))
+                # The wrist may be projected below the camera while the palm
+                # is visible. The play-room controller must follow the palm.
+                points[0]=NS(x=.5,y=float(y)+.25)
+                points[9]=NS(x=.5,y=float(y))
                 points[5]=NS(x=.4,y=.5);points[17]=NS(x=.6,y=.5)
                 points[8]=NS(x=.5+.2*pinch,y=.5)
                 return NS(hand_landmarks=[points],handedness=[[NS(score=float(confidence))]])
@@ -78,6 +81,16 @@ class BrowserSliderPathTests(unittest.IsolatedAsyncioTestCase):
                 await frame(.25,.1,.2)
                 await frame(.25,.1)
                 self.assertAlmostEqual(audio.snapshot()['filter']['target'],value)
+                await frame(.45,.6)
+                await frame(.65,.6)
+                await frame(.8,.6)  # wrist y=1.05, palm y=.8
+                self.assertTrue(camera.snapshot()['hand_present'])
+                self.assertTrue(camera.snapshot()['hand_confident'])
+                self.assertTrue(camera.snapshot()['hand_armed'])
+                await frame(.8,.1)
+                self.assertTrue(camera.snapshot()['hand_engaged'])
+                await frame(.6,.1)
+                self.assertGreater(audio.snapshot()['filter']['target'],value)
                 self.assertEqual(runtime.router.counts['duplicate'],0)
                 metrics=camera.snapshot()['metrics']
                 self.assertEqual(metrics['frames'],camera.frame_count)
