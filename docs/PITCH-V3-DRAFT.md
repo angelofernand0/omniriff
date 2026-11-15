@@ -25,7 +25,7 @@ cap and does not replace the live presentation.
 | 0:36–0:44 | **John** over the visible hand/pinch moment. | “The camera tracks his hand. Pinch to sweep; release to lock the tone while playing.” **John's agent verified this for the `--relative` path; use it only if that is the rehearsal setup. John should still make it his own.** |
 | 0:44–0:52 | **Angelo** over guitar still sounding and engine state moving. | “The guitar stays on this laptop, not in the AI. Our engine keeps playing while Riff thinks.” **Angelo: pick the exact point you can prove live.** |
 | 0:52–1:18 | **SM** takes the center as Riff analyzes. Show plan, Ears/Eyes, marked loop and drill. | “Now Riff listens back. Ears finds where the timing breaks. If the camera caught his hand, Eyes can show what happened there too. The important part isn't a score—it's the next move. Riff points to that moment, chooses one drill, and sets up the practice.” Use the **specific finding actually shown**, not a rehearsed diagnosis. If Eyes has no usable hand evidence, say only what Ears found. |
-| 1:18–1:31 | **SM** narrates approval; a teammate approves on the dashboard, then Aditya clears the old loop and records a fresh correction take. This is the verified software path until a pre-recording pedal approval is rehearsed on hardware. | “Riff asks before changing the rig. We approve, then Aditya records a fresh take with one thing to focus on.” Only say “it changed the sound” when the state confirms it. Do not call this an overdub or claim he recorded over the playing loop. |
+| 1:18–1:31 | **SM** narrates approval; Aditya holds the pedal (or a teammate presses Y on the dashboard) to approve, then he clears the old loop and records a fresh correction take. Pedal-hold approval is merged (#165) but not yet rehearsed on the real rig; use dashboard Y as the fallback. | “Riff asks before changing the rig. We approve, then Aditya records a fresh take with one thing to focus on.” Only say “it changed the sound” when the state confirms it. Do not call this an overdub or claim he recorded over the playing loop. |
 | 1:31–1:41 | **SM** on result or next step. | If a genuine before/after is visible: “The first take had **[read value from screen]**; this one has **[read value]**. There's the next step.” Mention memory only if the final NEXT TIME card has actually appeared. If the comparison hasn't finished: “That's the practice loop: hear it, see it, fix one thing, play again.” Do not invent a result to fill the clock. |
 | 1:41–1:49 | **Aditya** gives the guitarist's meaning. | “For me, that's the difference: it doesn't just say I missed it. It shows me what to fix.” **Aditya: make this genuinely yours; give us the specific frustration you recognize.** |
 | 1:49–1:53 | **SM** closes. | “A teacher in your signal chain. **Never put the guitar down.**” |
@@ -46,9 +46,10 @@ only the goal and one authentic closing line. Do not speed-read to hit 2:00.
   locally while Riff thinks.” Do not narrate a result before it arrives.
 - Current controls are **tap = loop**, **long hold = practice**, and **V / TALK
   = voice**. A long pedal hold does not activate the microphone. From a playing
-  loop, one tap clears it and the next starts a new recording; the live coach
-  currently treats that recording start as approval. Use dashboard approval
-  before the next take unless the team verifies a separate pedal-approval path.
+  loop, one tap clears it and the next starts a new recording. Since #165 a
+  loop tap or new recording no longer approves a pending change; a **pedal hold**
+  (or Y on the dashboard) does. Rehearse the hold on the real rig before relying
+  on it; keep Y as the fallback.
 - The closing should be earned by Aditya still holding/playing the guitar,
   rather than by an isolated logo screen.
 
