@@ -98,8 +98,7 @@ dialog.innerHTML = `
   <p id="browserDescription"></p>
   <p id="browserStatus" role="status" aria-live="polite">Ready. Sound starts when you press Start.</p>
   <div class="browser-actions"><button type="button" id="browserStart">Start simulator</button><button type="button" id="browserMute" disabled>Mute instrument</button><button type="button" id="browserStop" disabled>Stop</button></div>
-  <div class="browser-actions"><button type="button" id="browserShowcase">${showcaseMode ? 'Leave autoplay showcase' : 'Open autoplay showcase'}</button></div>
-  <p class="browser-showcase-note">Autoplay showcase runs a synthetic guitar, hand gestures, real browser loops, and a scripted Riff story on repeat. It is for watching, not live AI or a real performance.</p>
+  ${showcaseMode ? '<div class="browser-actions"><button type="button" id="browserShowcase">Leave autoplay showcase</button></div><p class="browser-showcase-note">Synthetic guitar and hand, real browser loops, scripted Riff story. For watching, not live AI or a real performance.</p>' : ''}
   <fieldset id="browserLive"><legend>Live audio input & output</legend>
     <label>Audio input<select id="browserInput"><option value="">System default</option></select></label>
     <label>Input channel<select id="browserChannel"><option value="0">Channel 1 / mono</option><option value="1">Channel 2 / instrument</option></select></label>
@@ -133,7 +132,7 @@ dialog.innerHTML = `
     </div>
     <p id="devStatus" role="status" aria-live="polite"></p>
   </details>
-  <p class="browser-footnote">Filter, reverb and looping run in your browser. Riff, the coach, runs on the coach server.</p>`;
+  <p class="browser-footnote">${showcaseMode ? 'The looper and effects run locally. Riff’s story here is scripted and makes no coach-server request.' : 'Filter, reverb and looping run in your browser. Riff, the coach, runs on the coach server.'}</p>`;
 document.body.append(dialog);
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const mode = $<HTMLSelectElement>('browserMode');
@@ -154,7 +153,7 @@ function describe() {
   const liveEl = $('browserLive');
   if (liveEl) liveEl.hidden = selected !== 'live';
   $('browserDescription').textContent = {
-    simulator: 'SIMULATED · A generated guitar and hand run entirely in your browser.',
+    simulator: showcaseMode ? 'SIMULATED + SCRIPTED · An unattended visual example; no AI, camera, or pedal.' : 'SIMULATED · A generated guitar and hand run entirely in your browser.',
     live: 'Your audio input, browser effects and webcam hand tracking. Choose the instrument channel for your interface.',
     python: 'Connect to your running local engine and coach. The Python engine owns the sound; this page is its dashboard.',
   }[selected] || '';
@@ -214,7 +213,7 @@ let loopControl: HTMLButtonElement | undefined;
 manager.onConnection(info => {
   connected = info.status === 'connected';
   status.dataset.kind = info.status;
-  status.textContent = !hasStarted && info.status === 'stopped' ? 'Tap Start simulator to play.' : info.message || ({ starting: 'Starting…', connected: 'Connected.', disconnected: 'Disconnected. Waiting for the source.', stopped: 'Stopped. Microphone, camera and browser audio are released.', error: 'Could not start the source.' })[info.status];
+  status.textContent = !hasStarted && info.status === 'stopped' ? (showcaseMode ? 'Tap Start autoplay showcase to watch.' : 'Tap Start simulator to play.') : info.message || ({ starting: 'Starting…', connected: 'Connected.', disconnected: 'Disconnected. Waiting for the source.', stopped: 'Stopped. Microphone, camera and browser audio are released.', error: 'Could not start the source.' })[info.status];
   describe(); label();
 });
 manager.onModeChange(() => label());
@@ -260,7 +259,7 @@ mode.addEventListener('change', () => { describe(); });
 function openSettings() {
   if (!document.getElementById('drawer')!.hidden) document.getElementById('drawerClose')!.click();
   describe(); dialog.showModal();
-  void refreshDevices().catch(() => { /* no media devices */ });
+  if (!showcaseMode) void refreshDevices().catch(() => { /* no media devices */ });
 }
 sourceButton.addEventListener('click', openSettings);
 const rigSettings = document.createElement('button');
@@ -323,7 +322,7 @@ start.addEventListener('click', async () => {
       if (!remoteCoach && !demoCoach && !showcaseCoach) $('coachLine').textContent = 'Play freely. Open settings to connect Riff, the coach.';
     }
     dialog.close();
-    void refreshDevices().catch(() => { /* labels stay generic */ });
+    if (!showcaseMode) void refreshDevices().catch(() => { /* labels stay generic */ });
   } catch (error) {
     if (request !== startupRequest) return;
     status.dataset.kind = 'error';
@@ -340,10 +339,9 @@ stop.addEventListener('click', async () => {
 mute.addEventListener('click', () => { if (manager.activeMode !== 'python') browserAdapter().audio.toggleMute(); label(); });
 const pendingControls = setInterval(() => { if (busy) label(); }, 200);
 window.addEventListener('pagehide', () => { clearInterval(pendingControls); showcaseCoach?.stop(); ++startupRequest; busy = false; void manager.stop(); });
-$("browserShowcase").addEventListener('click', () => {
+$('browserShowcase')?.addEventListener('click', () => {
   const next = new URL(location.href);
-  if (showcaseMode) next.searchParams.delete('showcase');
-  else { next.searchParams.set('showcase', '1'); next.searchParams.set('source', 'simulator'); }
+  next.searchParams.delete('showcase');
   next.searchParams.delete('coach');
   location.assign(next);
 });
@@ -446,6 +444,7 @@ pedalConnect.addEventListener('click', async () => {
 });
 updatePedalUi();
 if (showcaseMode) $('browserPedal').hidden = true;
+if (showcaseMode) voiceMic.closest('label')!.hidden = true;
 
 const pedalLed = document.getElementById('st-arduino');
 if (pedalLed) {
@@ -458,5 +457,5 @@ if (pedalLed) {
   });
 }
 describe();
-void refreshDevices().catch(() => { /* no media devices */ });
+if (!showcaseMode) void refreshDevices().catch(() => { /* no media devices */ });
 dialog.showModal();

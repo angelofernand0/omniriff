@@ -63,6 +63,7 @@
 
   function offline() {
     frame = null; held = null; clearTimeout(waitTimer);
+    if (showcaseTag) showcaseTag.hidden = true;
     window.OmniRiff.coach.set({ state: 'asleep', target: null, cue: '', mood: 'sleepy', stage: false });
     mark(null); type('', 0); setLed('off', 'OFF');
     if (dock) dock.dataset.state = 'asleep';
@@ -81,6 +82,10 @@
   replayTag.textContent = 'REPLAY · a recorded session, not live';
   const coachCol = document.querySelector('.coach-col');
   if (coachCol) coachCol.prepend(replayTag);
+  const showcaseTag = document.createElement('div');
+  showcaseTag.className = 'replay-tag'; showcaseTag.hidden = true; showcaseTag.setAttribute('role', 'status');
+  showcaseTag.textContent = 'SIMULATED · SCRIPTED EXAMPLE · NUMBERS ILLUSTRATIVE';
+  if (coachCol) coachCol.prepend(showcaseTag);
 
   // ---------- Riff: pose, place and bubble, always together with the voice ----------
   let marked = null;
@@ -123,6 +128,7 @@
     frame = f;
     const replay = isReplay(f);
     replayTag.hidden = !replay;
+    showcaseTag.hidden = !isShowcase(f);
     setLed(replay ? 'replay' : f.scripted ? 'scripted' : 'live',
       f.state === 'asleep' ? 'OFF' : replay ? 'REPLAY' : f.scripted ? 'SCRIPTED' : 'LIVE');
     if (isShowcase(f)) {

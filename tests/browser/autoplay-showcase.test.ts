@@ -57,6 +57,10 @@ describe('AutoplayShowcase', () => {
     vi.advanceTimersByTime(6500);
     expect(messages.at(-1).before_after.worst_gap_ms).toEqual([118, 31]);
     expect(messages.every(m => m.scripted === true)).toBe(true);
+    const firstSession = messages[0].session_id;
+    vi.advanceTimersByTime(19500);
+    expect(messages.at(-1).session_id).not.toBe(firstSession); // unattended repeat
+    expect(messages.at(-1).before_after).toBeNull();
   });
 
   it('stops all scheduled controls on disconnect or source change', () => {

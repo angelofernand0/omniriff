@@ -91,6 +91,7 @@ export class AutoplayShowcase {
       metric: history.length ? { name: 'timing drift, phrase 3', unit: 'ms', target: 40,
         lower_is_better: true, history } : null,
       next: done ? null : 'Full riff, even attacks',
+      last_time: this.cycle > 1 ? 'Last time, swinging phrase 3 evened out the timing.' : null,
       summary: done ? 'Scripted example: third-phrase drift improves from 118 to 31 ms.' : null,
       next_time: done ? 'Try the whole riff at full tempo' : null,
     });
@@ -98,7 +99,9 @@ export class AutoplayShowcase {
       version: 1, type: 'coach.frame', timestamp_ms: Date.now(),
       session_id: `showcase-${this.cycle}`, take_id: null, scripted: true,
       state: 'idle', mood: 'encouraging', target: 'player',
-      cue: 'Meet Riff. Play a phrase, find the stumble, practise one fix, and try again.',
+      cue: this.cycle > 1
+        ? 'Welcome back. Last time, swinging the third phrase evened out your timing. Let’s try it again.'
+        : 'Meet Riff. Play a phrase, find the stumble, practise one fix, and try again.',
       todos: [], activity: [], drill_card: null, before_after: null,
       awaiting_approval: null, mark: null, session: session([]),
     };
