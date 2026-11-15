@@ -310,6 +310,11 @@ class SyntheticGuitar {
     this.rngState = (this.rngState * 1664525 + 1013904223) >>> 0;
     return this.rngState / 4294967296;
   }
+  setBpm(bpm) {
+    if (!Number.isFinite(bpm)) return;
+    this.bpm = Math.max(40, Math.min(240, bpm));
+    this.stepFrames = Math.floor((this.samplerate * 60.0) / this.bpm / 2);
+  }
   pluck(freqHz, ampScale = 1.0) {
     const freq = freqHz || PENTATONIC_NOTES[Math.floor(this.random() * PENTATONIC_NOTES.length)];
     const amp = this.level * ampScale;
@@ -378,7 +383,8 @@ class OmniRiffDSPProcessor extends AudioWorkletProcessor {
     super();
     const sr = sampleRate;
     this.sr = sr;
-    this.sourceMode = 'synth'; // 'synth' | 'input'
+    // A live node must never emit a synth pluck before its first port message.
+    this.sourceMode = options?.processorOptions?.sourceMode === 'synth' ? 'synth' : 'input';
     this.inputChannel = 0;
     this.inputGain = 1.0;
     this.ceiling = dbToGain(-1.0); // 0.89125
@@ -415,10 +421,10 @@ class OmniRiffDSPProcessor extends AudioWorkletProcessor {
       if (!msg) return;
       switch (msg.type) {
         case 'set-filter':
-          this.targetFilter = Math.min(1.0, Math.max(0.0, Number(msg.value)));
+          if (Number.isFinite(msg.value)) this.targetFilter = Math.min(1.0, Math.max(0.0, msg.value));
           break;
         case 'set-reverb':
-          this.targetReverb = Math.min(1.0, Math.max(0.0, Number(msg.value)));
+          if (Number.isFinite(msg.value)) this.targetReverb = Math.min(1.0, Math.max(0.0, msg.value));
           break;
         case 'toggle-bypass':
           this.bypass = !this.bypass;
@@ -433,22 +439,24 @@ class OmniRiffDSPProcessor extends AudioWorkletProcessor {
           this.looper.clear();
           break;
         case 'set-trim':
-          this.inputGain = dbToGain(Number(msg.db) || 0.0);
+          if (Number.isFinite(msg.db)) this.inputGain = dbToGain(Math.max(-60.0, Math.min(24.0, msg.db)));
           break;
         case 'set-source-mode':
-          this.sourceMode = msg.mode === 'input' ? 'input' : 'synth';
+          if (msg.mode === 'input' || msg.mode === 'synth') this.sourceMode = msg.mode;
           break;
         case 'set-input-channel':
-          this.inputChannel = Math.max(0, parseInt(msg.channel, 10) || 0);
+          if (Number.isInteger(msg.channel) && msg.channel >= 0 && msg.channel < 32) this.inputChannel = msg.channel;
           break;
         case 'pluck':
-          this.synth.pluck(msg.freqHz, msg.ampScale || 1.0);
+          if (msg.freqHz != null && (!Number.isFinite(msg.freqHz) || msg.freqHz <= 0 || msg.freqHz > this.sr * 0.45)) break;
+          if (msg.ampScale != null && (!Number.isFinite(msg.ampScale) || msg.ampScale < 0)) break;
+          this.synth.pluck(msg.freqHz, Math.min(2.0, msg.ampScale ?? 1.0));
           break;
         case 'set-synth-auto':
           this.synth.autoPluck = !!msg.auto;
           break;
         case 'set-synth-bpm':
-          if (msg.bpm) this.synth.setBpm(Number(msg.bpm));
+          this.synth.setBpm(msg.bpm);
           break;
       }
     };
@@ -462,12 +470,14 @@ class OmniRiffDSPProcessor extends AudioWorkletProcessor {
 
     // 1. Gather dry signal
     let curInPeak = 0.0;
-    if (this.sourceMode === 'input' && inputs[0] && inputs[0].length > 0) {
-      const ch = Math.min(this.inputChannel, inputs[0].length - 1);
-      const inCh = inputs[0][ch];
+    if (this.sourceMode === 'input') {
+      const inCh = inputs[0]?.[this.inputChannel];
       const g = this.inputGain;
       for (let i = 0; i < count; i++) {
-        const s = inCh[i] * g;
+        // Missing/disconnected input or an unavailable selected channel is silence.
+        // Do not substitute another physical channel or the simulator.
+        const raw = inCh ? inCh[i] * g : 0.0;
+        const s = Number.isFinite(raw) ? Math.max(-32.0, Math.min(32.0, raw)) : 0.0;
         this.dryBuf[i] = s;
         const absS = Math.abs(s);
         if (absS > curInPeak) curInPeak = absS;

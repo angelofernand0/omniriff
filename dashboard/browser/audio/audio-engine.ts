@@ -27,6 +27,8 @@ export class AudioEngine {
   private mediaStreamSource: MediaStreamAudioSourceNode | null = null;
   private currentStream: MediaStream | null = null;
   private onStateCallback: StateCallback | null = null;
+  private starting: Promise<void> | null = null;
+  private generation = 0;
 
   public isRunning: boolean = false;
   public isMuted: boolean = false;
@@ -51,88 +53,119 @@ export class AudioEngine {
   }
 
   public async start(mode: 'synth' | 'input' = 'synth', inputStream?: MediaStream): Promise<void> {
+    this.requireInput(mode, inputStream);
+    if (this.starting) await this.starting;
     if (this.isRunning) {
       await this.setSourceMode(mode, inputStream);
       return;
     }
 
+    const task = this.initialize(mode, inputStream);
+    this.starting = task;
+    try {
+      await task;
+    } finally {
+      if (this.starting === task) this.starting = null;
+    }
+  }
+
+  private requireInput(mode: 'synth' | 'input', stream?: MediaStream): void {
+    if (mode !== 'synth' && mode !== 'input') throw new Error('Unknown audio source mode.');
+    if (mode === 'input' && (!stream || !stream.getAudioTracks().some((track) => track.readyState === 'live'))) {
+      throw new Error('Live audio input requires an active audio stream.');
+    }
+  }
+
+  private async initialize(mode: 'synth' | 'input', inputStream?: MediaStream): Promise<void> {
     // Explicit user action context creation
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContextClass) {
-      throw new Error('Web Audio API is not supported in this browser.');
-    }
-
-    this.ctx = new AudioContextClass({ latencyHint: 'interactive' });
-    if (this.ctx.state === 'suspended') {
-      await this.ctx.resume();
-    }
-
-    // Load worklet from self-contained Blob URL
-    const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
-    const blobUrl = URL.createObjectURL(blob);
+    let ctx: AudioContext;
     try {
-      await this.ctx.audioWorklet.addModule(blobUrl);
-    } finally {
-      URL.revokeObjectURL(blobUrl);
+      if (!AudioContextClass) throw new Error('Web Audio API is not supported in this browser.');
+      ctx = new AudioContextClass({ latencyHint: 'interactive' });
+    } catch (error) {
+      if (mode === 'input') inputStream?.getTracks().forEach((track) => track.stop());
+      throw error;
     }
-
-    // Master gain for safety & instant mute
-    this.masterGain = this.ctx.createGain();
-    this.masterGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
-    this.masterGain.connect(this.ctx.destination);
-
-    // Create Worklet Node with 1 input (stereo/mono) and 1 output (stereo)
-    this.workletNode = new AudioWorkletNode(this.ctx, WORKLET_PROCESSOR_NAME, {
-      numberOfInputs: 1,
-      numberOfOutputs: 1,
-      outputChannelCount: [2],
-    });
-
-    this.workletNode.connect(this.masterGain);
-
-    this.workletNode.port.onmessage = (e) => {
-      const msg = e.data;
-      if (msg && msg.type === 'state' && this.onStateCallback) {
-        this.onStateCallback(msg);
-      }
+    const generation = ++this.generation;
+    this.ctx = ctx;
+    this.currentStream = mode === 'input' ? inputStream! : null;
+    const checkCurrent = () => {
+      if (this.ctx !== ctx || generation !== this.generation) throw new Error('Audio startup was stopped.');
     };
+    try {
+      if (ctx.state === 'suspended') await ctx.resume();
+      checkCurrent();
 
-    this.isRunning = true;
-    this.mode = mode;
+      // Load worklet from self-contained Blob URL, including cleanup on failure.
+      const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
+      const blobUrl = URL.createObjectURL(blob);
+      try {
+        await ctx.audioWorklet.addModule(blobUrl);
+      } finally {
+        URL.revokeObjectURL(blobUrl);
+      }
+      checkCurrent();
 
-    await this.setSourceMode(mode, inputStream);
+      // Preserve the user's mute preference across mode restarts.
+      this.masterGain = ctx.createGain();
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0.0 : 1.0, ctx.currentTime);
+
+      // Configure the source before the node can produce its first output block.
+      this.workletNode = new AudioWorkletNode(ctx, WORKLET_PROCESSOR_NAME, {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [2],
+        processorOptions: { sourceMode: mode },
+      });
+
+      this.workletNode.port.onmessage = (e) => {
+        const msg = e.data;
+        if (msg && msg.type === 'state' && this.onStateCallback) this.onStateCallback(msg);
+      };
+
+      await this.setSourceMode(mode, inputStream);
+      checkCurrent();
+      this.workletNode.connect(this.masterGain);
+      this.masterGain.connect(ctx.destination);
+      this.isRunning = true;
+    } catch (error) {
+      if (this.ctx === ctx) await this.stop();
+      throw error;
+    }
   }
 
   public async setSourceMode(mode: 'synth' | 'input', stream?: MediaStream): Promise<void> {
-    this.mode = mode;
+    this.requireInput(mode, stream);
     if (!this.workletNode) return;
 
-    if (mode === 'input' && stream) {
-      this.currentStream = stream;
-      if (this.ctx) {
-        if (this.mediaStreamSource) {
-          this.mediaStreamSource.disconnect();
-        }
-        this.mediaStreamSource = this.ctx.createMediaStreamSource(stream);
-        this.mediaStreamSource.connect(this.workletNode);
-      }
-      this.workletNode.port.postMessage({ type: 'set-source-mode', mode: 'input' });
-    } else {
-      if (this.mediaStreamSource) {
-        this.mediaStreamSource.disconnect();
-        this.mediaStreamSource = null;
-      }
-      this.workletNode.port.postMessage({ type: 'set-source-mode', mode: 'synth' });
+    const nextSource = mode === 'input' ? this.ctx!.createMediaStreamSource(stream!) : null;
+    try {
+      nextSource?.connect(this.workletNode);
+    } catch (error) {
+      nextSource?.disconnect();
+      throw error;
     }
+    this.mediaStreamSource?.disconnect();
+    const nextStream = mode === 'input' ? stream! : null;
+    if (this.currentStream && this.currentStream !== nextStream) this.currentStream.getTracks().forEach((track) => track.stop());
+    this.mediaStreamSource = nextSource;
+    this.currentStream = nextStream;
+    this.mode = mode;
+    this.workletNode.port.postMessage({ type: 'set-source-mode', mode });
   }
 
   public setFilter(value: number): void {
+    if (!Number.isFinite(value)) return;
+    value = Math.max(0, Math.min(1, value));
     if (this.workletNode) {
       this.workletNode.port.postMessage({ type: 'set-filter', value });
     }
   }
 
   public setReverb(value: number): void {
+    if (!Number.isFinite(value)) return;
+    value = Math.max(0, Math.min(1, value));
     if (this.workletNode) {
       this.workletNode.port.postMessage({ type: 'set-reverb', value });
     }
@@ -163,18 +196,24 @@ export class AudioEngine {
   }
 
   public setInputTrim(db: number): void {
+    if (!Number.isFinite(db)) return;
+    db = Math.max(-60, Math.min(24, db));
     if (this.workletNode) {
       this.workletNode.port.postMessage({ type: 'set-trim', db });
     }
   }
 
   public setInputChannel(channel: number): void {
+    if (!Number.isInteger(channel) || channel < 0 || channel >= 32) return;
     if (this.workletNode) {
       this.workletNode.port.postMessage({ type: 'set-input-channel', channel });
     }
   }
 
   public pluck(freqHz?: number, ampScale: number = 1.0): void {
+    if (freqHz !== undefined && (!Number.isFinite(freqHz) || freqHz <= 0 || freqHz > this.sampleRate * 0.45)) return;
+    if (!Number.isFinite(ampScale) || ampScale < 0) return;
+    ampScale = Math.min(2, ampScale);
     if (this.workletNode) {
       this.workletNode.port.postMessage({ type: 'pluck', freqHz, ampScale });
     }
@@ -187,6 +226,8 @@ export class AudioEngine {
   }
 
   public setSynthBpm(bpm: number): void {
+    if (!Number.isFinite(bpm)) return;
+    bpm = Math.max(40, Math.min(240, bpm));
     if (this.workletNode) {
       this.workletNode.port.postMessage({ type: 'set-synth-bpm', bpm });
     }
@@ -204,6 +245,7 @@ export class AudioEngine {
   }
 
   public async stop(): Promise<void> {
+    this.generation++;
     this.isRunning = false;
     if (this.mediaStreamSource) {
       this.mediaStreamSource.disconnect();
@@ -214,6 +256,8 @@ export class AudioEngine {
       this.currentStream = null;
     }
     if (this.workletNode) {
+      this.workletNode.port.onmessage = null;
+      this.workletNode.port.close();
       this.workletNode.disconnect();
       this.workletNode = null;
     }
@@ -221,13 +265,14 @@ export class AudioEngine {
       this.masterGain.disconnect();
       this.masterGain = null;
     }
-    if (this.ctx) {
+    const closingContext = this.ctx;
+    this.ctx = null;
+    if (closingContext) {
       try {
-        await this.ctx.close();
+        await closingContext.close();
       } catch (e) {
         // ignore close error
       }
-      this.ctx = null;
     }
   }
 }
