@@ -63,7 +63,7 @@ only the goal and one authentic closing line. Do not speed-read to hit 2:00.
 
 ## Openers by track (≈20–30 s, added for sponsor judges)
 Use after the identity line when the judge is there for a special track. Full angles are in [DEVPOST.md](DEVPOST.md#track-angles-20-seconds-each-on-top-of-the-shared-demo).
-- **LangChain deepagents:** "Riff is a deep agent. That's its plan on screen. It hands the take to two subagents, Ears for timing and Eyes for the hand, drills are skills, the journal and player memory live on its filesystem, and holding the pedal is the human-in-the-loop approval before it touches the rig." Point at the live trace.
+- **LangChain deepagents:** "Riff is a deep agent. That's its plan on screen, live. It reads the timing and the hand report together, drills are skills it opens, a memory-keeper subagent owns what it remembers about you, the journal lives on its filesystem, and holding the pedal is the human-in-the-loop approval before it touches the rig." Point at the live trace. Full track pitch, proof table and limits: [PITCH-LANGCHAIN.md](PITCH-LANGCHAIN.md).
 - **Amazon Practical AI:** "Who it's for: guitarists practising alone between lessons, and players with limited dexterity, for whom knobs and precise stomps are a barrier. It's agentic (acts on the rig), adaptive (remembers you), and needs no typing."
 - **Best Physical AI:** "It perceives through a camera and the guitar cable, then *acts* on a physical rig: looper, effects, recording. It always waits for the player to hold the pedal (or press Y)."
 - **Best Hardware:** "Footswitch, webcam, audio interface and guitar on one real-time engine. Unplug anything mid-song and the music keeps playing." Do it.
