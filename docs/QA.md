@@ -144,7 +144,7 @@ The "Midas Touch" problem (where every hand movement unintentionally moves an ef
 Spatial and kinematic bounding via `StrumGuard` (`vision/zones.py`). Opted in via `--strum-guard`, it splits the camera frame: the lower zone ($y \ge 0.55$ in normalized coordinates) covers the guitar body and strings, where parameter emission is suppressed (`STRUM GUARD: MUTED`). In addition, rapid direction reversals exceeding `velocity_threshold=2.5` normalized image coordinates per second are flagged by motion history and suppressed.
 
 **5. How does the AI physically act on the guitar signal chain?**
-The AI commands `engine/router.py` through schema-validated control envelopes. The engine actuates DSP modules in real time: engaging the looper buffer to capture or repeat a phrase, commanding the biquad low-pass filter to attenuate highs, injecting simulated room reverberation, or commanding bypass relays.
+The AI commands `engine/router.py` through schema-validated control envelopes. The engine actuates DSP modules in real time: engaging the looper buffer to capture or repeat a phrase, commanding the biquad low-pass filter to attenuate highs, injecting simulated room reverberation, or switching to a click-free dry bypass (a digital crossfade; there are no relays).
 
 **6. What is the round-trip latency from physical gesture to acoustic output?**
 Total gesture-to-audio latency is not measured end-to-end as a single number yet. The individual stages are: MediaPipe hand landmark processing measured 9.3 ms mean per frame (p95 10.1 ms) on a dev Mac M1; the gesture controller in `vision/control.py` rate-limits output to 20 Hz; and the audio buffer duration at 128 samples (48 kHz) is 2.67 ms. Live webcam numbers will be measured during rehearsal.
