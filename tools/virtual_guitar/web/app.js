@@ -10,6 +10,20 @@
   const percent = value => `${Math.round(value * 100)}%`;
   const clock = seconds => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
   const text = (id, value) => { if ($(id).textContent !== value) $(id).textContent = value; };
+  function cameraLabel(camera) {
+    if (!camera.model_ready) return 'Hand model missing · see setup';
+    if (cameraOpening) return 'Waiting for webcam permission…';
+    if (camera.error) return camera.error;
+    if (!webcamStream) return 'Camera off';
+    if (camera.status === 'starting') return 'Starting hand tracker…';
+    if (camera.status === 'waiting') return 'Waiting for camera frames…';
+    if (camera.status === 'stopping') return 'Stopping camera…';
+    if (!camera.hand_present) return 'NO HAND · keep your palm in view';
+    if (!camera.hand_confident) return 'HAND UNCERTAIN · face the camera and add light';
+    if (camera.hand_engaged) return `${camera.control === 'scene' ? 'SCENE' : 'FILTER'} GRABBED · drag up or down`;
+    if (camera.hand_armed) return 'HAND SEEN · pinch thumb and index to grab';
+    return 'HAND SEEN · open your hand, then pinch';
+  }
   function enabled(value) {
     if (ready === value) return;
     ready = value;
@@ -49,12 +63,10 @@
       text('mute', state.volume > 0 ? 'Mute' : 'Unmute');
       $('position').textContent = `${clock(state.position)} / ${clock(state.seconds)}`;
       const camera = state.camera;
-      text('cameraHint', camera.control === 'scene' ? 'Advanced Scene Morph: open hand, then pinch and move vertically to blend filter and reverb. Release holds the sound. Light the hand from the front.' : 'Open hand, then pinch to grab the current filter. Drag up for brighter, down for darker; release holds. At 100%, move down first. Light the hand from the front.');
+      text('cameraHint', camera.control === 'scene' ? 'Advanced Scene Morph: open hand, then pinch and move vertically to blend filter and reverb. Release holds the sound. Keep your palm in view.' : 'Open hand, then pinch to grab the current filter. Drag up for brighter, down for darker; release holds. At 100%, move down first. Keep your palm in view.');
       text('cameraButton', webcamStream ? 'Stop webcam' : 'Start webcam');
       $('cameraButton').disabled = cameraOpening || !camera.model_ready || camera.status === 'stopping';
-      text('cameraStatus', !camera.model_ready ? 'Hand model missing · see setup' : cameraOpening ? 'Waiting for webcam permission…' :
-        camera.error ? camera.error : webcamStream ?
-          `${camera.status === 'running' ? 'Tracking' : 'Waiting for hand'} · ${camera.frames} frames · ${camera.events} gesture controls` : 'Camera off');
+      text('cameraStatus', cameraLabel(camera));
       for (const name of ['volume', 'filter', 'reverb']) {
         const value = name === 'volume' ? state.volume : engine[name].target;
         if (document.activeElement !== $(name) && !pending.has(name) && !commandCount) {
