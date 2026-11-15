@@ -231,18 +231,20 @@ export class LiveHandTracker {
     const centerCurl = (d(8, 9) + d(12, 9) + d(16, 9) + d(20, 9)) / (4 * palmWidth);
     const curl = (fingerCurl + centerCurl) / 2;
 
-    // Closed fist swaps between Filter and Reverb with 2.2-second anti-flicker cooldown and latching
-    const SWAP_COOLDOWN_MS = 2200;
+    // Closed fist swaps between Filter and Reverb with anti-flicker cooldown and reliable unlatching
+    const SWAP_COOLDOWN_MS = 1400;
     const isFist = curl <= 0.60;
-    const isOpenHand = curl >= 0.78;
 
-    if (nowMs - this.lastSwapTimeMs >= SWAP_COOLDOWN_MS && isOpenHand) {
+    // Unlatch cleanly as soon as fingers relax / uncurl past fist threshold
+    if (curl >= 0.68) {
       this.fistLatched = false;
     }
 
+    let swapTriggered = false;
     if (isFist && !this.fistLatched && (nowMs - this.lastSwapTimeMs >= SWAP_COOLDOWN_MS)) {
       this.fistLatched = true;
       this.lastSwapTimeMs = nowMs;
+      swapTriggered = true;
       this.onFistSwap?.();
     }
 
@@ -272,6 +274,7 @@ export class LiveHandTracker {
       value,
       landmarks,
       isFist,
+      swapTriggered,
     } as any;
   }
 

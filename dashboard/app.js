@@ -412,16 +412,15 @@
     if (!fresh) hand.frame = null;  // stale or disconnected: never keep an old hand on screen
     const f = hand.frame;
     if (f && f.control) {
-      if (lastHandControl !== null && f.control !== lastHandControl) {
+      if (f.swapTriggered || (lastHandControl !== null && f.control !== lastHandControl)) {
         swapBanner = { control: f.control, start: now, until: now + 1400 };
         triggerSwapToast(f.control);
       }
       lastHandControl = f.control;
     }
 
-    const isFist = !!(f && f.isFist);
     const inSwap = !!(swapBanner && now < swapBanner.until);
-    const fistActive = isFist || inSwap;
+    const fistActive = inSwap;
 
     let mode = 'off', label = HAND_URL ? 'NO CAMERA' : 'OFF';
     if (f && !f.present) { mode = 'none'; label = 'NO HAND'; }
