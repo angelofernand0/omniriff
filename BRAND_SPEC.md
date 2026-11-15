@@ -252,6 +252,7 @@ Fits 1920x1080, 1280x720 and the play room's iframe without scrolling; stacks to
 4. **Header columns match the deck.** The meters are flush with the loop panel's right edge; the status pill and RIG button sit over the coach column. Nothing moves when the status pill changes.
 5. **Sub-labels sit under their number, on the left** (`Low-pass 9662 Hz`, `Wet mix`), the same in every card.
 6. **The record box is exactly as wide as READY plus equal padding**; its dot, length and hint share one left edge.
+7. **The loop is a tape machine** (`tape.js`, pixel art on a 32x20 grid in the record box). Every motion is caused by the real loop: READY is two still reels with a full spool of blank tape on the left; REC feeds it past a record head to the right spool, which grows with the recorded seconds, and the tape that has passed the head turns pink; closing the loop splices it into a ring (the top belt draws in, one clunk); PLAY turns the reels in step with the playhead, a whole number of turns per loop so they land on the same spot every wrap, and the head clunks on the downbeat; CLEAR runs the tape backwards until the spools are home. It moves in steps (80 ms), runs only while something is moving, and holds still with reduced motion. Nothing here animates to look busy.
 
 ### The session checklist (coach column)
 

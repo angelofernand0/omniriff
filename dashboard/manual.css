@@ -1,0 +1,14 @@
+/* Manual test strip (?manual=1). It lives in the page's bottom margin (--edge), so it covers nothing. */
+.manual-strip { position: fixed; z-index: 60; left: var(--edge, 24px); bottom: 2px; height: 20px; display: flex; align-items: center; gap: 8px;
+  font: 400 11px/1 var(--font-pixel); color: var(--muted); white-space: nowrap; }
+.m-tag { font-weight: 400; color: var(--warn); border: var(--stroke) solid var(--warn); padding: 3px 6px 2px; }
+.m-tag[data-bad="true"] { color: var(--rec); border-color: var(--rec); }
+.m-btn { font: inherit; color: var(--muted); background: var(--bg); border: var(--stroke) solid var(--line-2); padding: 3px 6px 2px; cursor: pointer; }
+.m-btn[data-on="true"] { color: var(--text); border-color: var(--muted); }
+.m-btn:hover { border-color: var(--text); }
+.m-sep { color: var(--faint); margin-left: 4px; }
+.m-pad { position: relative; width: 160px; height: 16px; background: var(--off); border: var(--stroke) solid var(--line-2); box-sizing: border-box; cursor: ew-resize; touch-action: none; }
+.m-pad i { position: absolute; top: -2px; bottom: -2px; width: 6px; margin-left: -3px; left: 50%; background: var(--accent); pointer-events: none; }
+.m-pad[data-down="true"] { border-color: var(--accent); }
+.m-keys { color: var(--faint); margin-left: 8px; }
+@media (max-width: 1100px) { .m-keys { display: none; } }
