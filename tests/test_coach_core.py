@@ -210,6 +210,14 @@ class CoachRunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate toggle"):
             _pending_actions(result)
 
+    def test_toggle_with_a_value_is_proposed_not_a_lost_take(self):
+        """Live on Railway: the model asked for bypass with value=true and the whole take failed."""
+        result = {"__interrupt__": [SimpleNamespace(value={"action_requests": [
+            {"name": "rig_control", "args": {"control": "bypass", "value": 1}},
+            {"name": "rig_control", "args": {"control": "reverb", "value": 0.2}},
+        ]})]}
+        self.assertEqual(_pending_actions(result), [{"control": "bypass"}, {"control": "reverb", "value": 0.2}])
+
     def test_unjudgeable_take_skips_agent_and_preserves_valid_baseline(self):
         from tools.ears.analyze import TakeReport
 

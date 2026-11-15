@@ -99,7 +99,9 @@ def _pending_actions(result: dict) -> list[dict]:
         if control in {"bypass", "loop"} and any(item["control"] == control for item in actions):
             raise ValueError("duplicate toggle action in one approval batch")
         action = {"control": control}
-        if "value" in args and args["value"] is not None:
+        # bypass/loop only ever switch ON (dry bypass, start recording): a value the model attaches
+        # (e.g. bypass=true) means nothing, and must not throw away the whole take.
+        if control not in {"bypass", "loop"} and "value" in args and args["value"] is not None:
             action["value"] = args["value"]
         control_message(control, action.get("value"), 0, 0)
         actions.append(action)
