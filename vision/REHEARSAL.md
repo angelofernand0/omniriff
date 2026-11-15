@@ -53,9 +53,18 @@ and Right. Use the label the human actually confirmed, not this example.
 For coach wrist evidence, the full `engine.demo` command also needs top-level
 `--hand-log runs/hands.jsonl`, so the launcher gives **both** vision and coach
 the same path. Putting the flag only inside `--vision-args` does not configure
-the coach. See [engine launcher usage](../engine/README.md). If using a wrapper
-such as `start-demo.ps1`, confirm it supplies that shared flag; otherwise use
-the explicit `engine.demo` command when verifying Eyes.
+the coach. See [engine launcher usage](../engine/README.md).
+
+The Windows [start-demo helper](../scripts/windows/start-demo.ps1) now exposes
+`-StrumHand Left|Right` and `-Camera N`. Carry the verified values into that
+helper too; its defaults are Right and the native default camera. With `-Coach`
+and the hand model present, it creates a fresh `runs/hand-<time>.jsonl` and gives
+both processes the same log. Without the model it warns and starts timing-only
+coaching, with no Eyes evidence. For example, append `-StrumHand Left -Camera 1`
+to the [documented helper launch](../docs/DEMO.md) only if those are the values
+this rehearsal verified. A created log still needs usable wrist tracking for
+take-window evidence.
+
 These are source-checked instructions; Windows execution and hardware acceptance
 remain manual.
 
