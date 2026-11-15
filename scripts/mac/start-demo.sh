@@ -29,10 +29,19 @@ while [ $# -gt 0 ]; do
 done
 
 # 1. Python with the project's packages (3.12 is what CI tests; mediapipe may lack wheels for newer).
+# Other checkouts of this repo (main clone, other worktrees, Codex worktrees) often hold the venv + model already.
+MAIN="$(cd "$(git rev-parse --git-common-dir 2>/dev/null)/.." 2>/dev/null && pwd)"
+SIBLINGS=()
+for d in "$MAIN" "$MAIN"/.claude/worktrees/* "$HOME"/.codex/worktrees/*/omniriff; do
+  [ -d "$d" ] && [ "$d" != "$ROOT" ] && SIBLINGS+=("$d")
+done
 if [ -z "$PYBIN" ]; then
-  for c in "$ROOT/.venv/bin/python" python3.12 python3; do
+  CANDS=("$ROOT/.venv/bin/python")
+  for d in "${SIBLINGS[@]}"; do CANDS+=("$d/.venv/bin/python"); done
+  CANDS+=(python3.12 python3)
+  for c in "${CANDS[@]}"; do
     p="$(command -v "$c" 2>/dev/null || true)"
-    [ -n "$p" ] && "$p" -c 'import websockets' 2>/dev/null && PYBIN="$p" && break
+    [ -n "$p" ] && "$p" -c 'import websockets, anthropic' 2>/dev/null && PYBIN="$p" && break
   done
 fi
 [ -n "$PYBIN" ] || { echo "No Python with the engine requirements found. Run: python3.12 -m venv .venv && .venv/bin/python -m pip install -r engine/requirements.txt -r vision/requirements.txt -r coach/requirements.txt  (or pass --python PATH)" >&2; exit 1; }
@@ -40,6 +49,11 @@ echo "python: $PYBIN"
 
 # 2. Hand model.
 MODEL="models/hand_landmarker.task"
+if [ ! -f "$MODEL" ]; then
+  for d in "${SIBLINGS[@]}"; do
+    if [ -f "$d/$MODEL" ]; then mkdir -p models && cp "$d/$MODEL" "$MODEL" && echo "hand model: copied from $d"; break; fi
+  done
+fi
 if [ "$VISION" = 1 ] && [ ! -f "$MODEL" ]; then
   echo "WARNING: $MODEL missing, starting without vision. Download it (see vision/README.md#setup)." >&2
   VISION=0

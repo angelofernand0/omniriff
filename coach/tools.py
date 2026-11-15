@@ -211,7 +211,22 @@ class CoachTools:
 
 def build_langchain_tools(service: CoachTools) -> dict:
     """Wrap the plain methods as named LangChain tools without importing them in CI."""
-    from langchain_core.tools import tool
+    from langchain_core.tools import tool as _lc_tool
+    import functools
+
+    def tool(fn):
+        """Return a rejected call to the model as text so it can fix and retry.
+
+        A ValueError from validation (goal too long, bad rig value...) used to
+        propagate and abort the whole coach run for that take.
+        """
+        @functools.wraps(fn)
+        def guarded(*args, **kwargs):
+            try:
+                return fn(*args, **kwargs)
+            except ValueError as exc:
+                return f"Rejected: {exc}. Fix the arguments and call the tool again."
+        return _lc_tool(guarded)
 
     @tool
     def get_rig_state() -> dict:
@@ -235,7 +250,7 @@ def build_langchain_tools(service: CoachTools) -> dict:
 
     @tool
     def set_practice_goal(goal: str) -> str:
-        """Set one short goal grounded in the measured first take; do not guess a chord name."""
+        """Set one short goal (at most 80 characters) grounded in the measured first take; do not guess a chord name."""
         return service.set_practice_goal(goal)
 
     @tool

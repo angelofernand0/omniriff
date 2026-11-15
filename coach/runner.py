@@ -465,8 +465,9 @@ class CoachRunner:
                                           cue="Coach is out of credit.")
                         return
                     LOG.exception("coach could not process %s", sidecar.name)
-                    self.feed.publish(state="asleep", mood="sleepy", target=None,
-                                      cue="Coach hit a problem; the rig is fine.")
+                    # Plain-words reason; the full traceback is in the terminal log above.
+                    self.feed.publish(state="idle", mood="neutral", target="player",
+                                      cue="I couldn't finish that take. Your rig is fine, play another take.")
             if once:
                 return
             time.sleep(0.5)
