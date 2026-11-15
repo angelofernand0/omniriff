@@ -200,6 +200,9 @@ class TestEffectSwitcher(unittest.TestCase):
         # When combined with scene, should error
         with self.assertRaises(SystemExit):
             main(['--model', 'dummy.task', '--gesture-switch', '--scene', 'bloom'])
+        # When combined with rehearsal, should error
+        with self.assertRaises(SystemExit):
+            main(['--model', 'dummy.task', '--gesture-switch', '--rehearsal'])
 
 
 if __name__ == '__main__':

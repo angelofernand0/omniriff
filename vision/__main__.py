@@ -50,8 +50,8 @@ def main(argv=None):
     args = p.parse_args(argv)
     if args.metrics_json and args.metrics_json.exists():
         p.error('metrics file exists; choose a new file')
-    if args.rehearsal and (args.no_overlay or not args.relative or not args.strum_guard or not args.metrics_json or args.calibrate or args.scene or args.scene_file or args.setlist or args.control!='filter'):
-        p.error('rehearsal needs --relative --strum-guard --metrics-json and the overlay; omit calibration/scenes/setlist/reverb control')
+    if args.rehearsal and (args.no_overlay or not args.relative or not args.strum_guard or not args.metrics_json or args.calibrate or args.scene or args.scene_file or args.setlist or args.control!='filter' or args.gesture_switch):
+        p.error('rehearsal needs --relative --strum-guard --metrics-json and the overlay; omit calibration/scenes/setlist/reverb control/gesture-switch')
     if args.rehearsal and not args.metrics_json.parent.is_dir():
         p.error('create the metrics output folder before starting rehearsal')
     if args.calibrate and args.no_overlay:
