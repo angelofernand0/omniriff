@@ -30,6 +30,17 @@ function worklet(mode?: 'synth' | 'input', samplerate = 48000) {
 const peak = (samples: Float32Array) => Math.max(...Array.from(samples, Math.abs));
 
 describe('deployed AudioWorklet payload', () => {
+  it('resumes the automatic riff without a backlog after thirty seconds off', () => {
+    const sim = worklet('synth');
+    sim.process();
+    sim.send({ type: 'set-synth-auto', auto: false });
+    for (let i = 0; i < 11250; i++) sim.process();
+    const before = sim.processor.synth.beat;
+    sim.send({ type: 'set-synth-auto', auto: true });
+    expect(peak(sim.process())).toBeGreaterThan(0.01);
+    expect(sim.processor.synth.beat - before).toBe(1);
+  });
+
   it('starts silently unless synth mode is explicitly configured', () => {
     expect(peak(worklet().process())).toBe(0);
     expect(peak(worklet('input').process())).toBe(0);

@@ -294,7 +294,7 @@ class SyntheticGuitar {
     this.level = level;
     this.stepFrames = Math.floor((samplerate * 60.0) / bpm / 2);
     this.rngState = seed;
-    this.autoPluck = true;
+    this.autoPluckEnabled = true;
     this.pos = 0;
     this.nextPluck = 0;
     this.beat = 0;
@@ -305,6 +305,14 @@ class SyntheticGuitar {
       decay: 0.999,
       active: false,
     }));
+  }
+  get autoPluck() { return this.autoPluckEnabled; }
+  set autoPluck(enabled) {
+    if (enabled && !this.autoPluckEnabled) {
+      // Resume from the current audio clock, never replay paused note slots.
+      this.nextPluck = Math.max(this.nextPluck, this.pos);
+    }
+    this.autoPluckEnabled = enabled;
   }
   random() {
     this.rngState = (this.rngState * 1664525 + 1013904223) >>> 0;

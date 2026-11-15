@@ -1,7 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { SyntheticGuitar, PENTATONIC_NOTES } from '../../dashboard/browser/audio/guitar-synth';
 
 describe('SyntheticGuitar tests', () => {
+  it('resumes after a long pause without replaying missed notes', () => {
+    const synth = new SyntheticGuitar();
+    const block = new Float32Array(128);
+    synth.autoPluck = false;
+    for (let i = 0; i < 11250; i++) synth.process(block, 0, block.length);
+    const pluck = vi.spyOn(synth, 'pluck');
+    synth.autoPluck = true;
+    synth.process(block, 0, block.length);
+    expect(pluck).toHaveBeenCalledOnce();
+    expect(block.some(sample => sample !== 0)).toBe(true);
+  });
+
   it('generates audible, finite guitar samples within [-0.98, 0.98]', () => {
     const sr = 48000;
     const synth = new SyntheticGuitar(sr, 92.0, 42, 0.3);

@@ -18,7 +18,16 @@ export class SyntheticGuitar {
   public readonly samplerate: number;
   public bpm: number;
   public level: number;
-  public autoPluck: boolean = true;
+  private autoPluckEnabled: boolean = true;
+
+  public get autoPluck(): boolean { return this.autoPluckEnabled; }
+  public set autoPluck(enabled: boolean) {
+    if (enabled && !this.autoPluckEnabled) {
+      // Resume from the current audio clock, never replay paused note slots.
+      this.nextPluck = Math.max(this.nextPluck, this.pos);
+    }
+    this.autoPluckEnabled = enabled;
+  }
 
   private stepFrames: number;
   private pos: number = 0;
