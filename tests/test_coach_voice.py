@@ -76,7 +76,7 @@ class VoiceTests(unittest.TestCase):
                     yield await q.get()
             port = asyncio.get_running_loop().create_future()
             task = asyncio.create_task(run_scripted_coach(0, udp_port=None, pace=0, states=states(),
-                                                          ready=port.set_result, voice=v))
+                                                          ready=port.set_result, voice=v, start_round=True))
             audio = []
             async with connect(f'ws://127.0.0.1:{await port}') as ws:
                 for s in ('idle', 'recording', 'playing'):
