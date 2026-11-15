@@ -527,14 +527,16 @@ class CoachRunner:
                           session=self.service.session.snapshot())
         self._speak(cue or "What are you working on? Hold TALK or type it, then play.")
 
-    def run_directory(self, take_dir: Path, *, once: bool = False) -> None:
-        """Poll completed sidecars; a coach failure never stops the instrument."""
+    def run_directory(self, take_dir: Path, *, once: bool = False, stop: threading.Event | None = None) -> None:
+        """Poll completed sidecars; a coach failure never stops the instrument.
+
+        `stop` ends the loop (the hosted coach ends a session when its browser disconnects)."""
         take_dir = Path(take_dir)
         self.open_session()
         if not once:
             # Do not silently coach old takes left in --take-dir from a prior run.
             self.seen.update(take_dir.glob("*.json"))
-        while True:
+        while stop is None or not stop.is_set():
             self._poll_practice_action()
             self._poll_player_input()
             recording_count = self.state.recording_counter()

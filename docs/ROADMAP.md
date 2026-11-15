@@ -92,7 +92,7 @@ The product is now a teacher. "Interactive, accessible, personalized" is our pit
 
 ## 3. What's done, and what's missing
 
-**Done on `main` (sim-verified, 180 tests):** audio engine, looper, filter/reverb, bypass, limiter; engine with validated control path + `coach` source (#51); launcher `engine.demo`; take capture `--take-dir` (#47); **Ears** TakeReport v1 (#64); **Eyes** HandReport (#40); dashboard + brand + **Riff** drawn, with `OmniRiff.coach.set()` (#56); simulator, virtual guitar, play room, backup video (#62); preflight check, session log, Windows serial fixes. A static dashboard is live at omniriff-dashboard.vercel.app (offline view only).
+**Done on `main` (sim-verified, 180 tests):** audio engine, looper, filter/reverb, bypass, limiter; engine with validated control path + `coach` source (#51); launcher `engine.demo`; take capture `--take-dir` (#47); **Ears** TakeReport v1 (#64); **Eyes** HandReport (#40); dashboard + brand + **Riff** drawn, with `OmniRiff.coach.set()` (#56); simulator, virtual guitar, play room, backup video (#62); preflight check, session log, Windows serial fixes. The browser instrument is live at omniriff.vercel.app; the hosted coach is coach/server.py.
 
 **Not done, and it's the whole product:**
 

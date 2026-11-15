@@ -56,7 +56,7 @@ python, numpy, scipy, sounddevice, portaudio, mediapipe, opencv, websockets, pys
 
 - **Demo / Try It Out (Offline UI Preview):**
   ```text
-  https://omniriff-dashboard.vercel.app
+  https://omniriff.vercel.app
   ```
   *(Devpost label note: Offline UI preview / simulated dashboard)*
 

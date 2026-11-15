@@ -27,6 +27,7 @@ export class AudioEngine {
   private mediaStreamSource: MediaStreamAudioSourceNode | null = null;
   private currentStream: MediaStream | null = null;
   private onStateCallback: StateCallback | null = null;
+  private onTakeCallback: ((samples: Float32Array, samplerate: number) => void) | null = null;
   private starting: Promise<void> | null = null;
   private generation = 0;
 
@@ -125,6 +126,7 @@ export class AudioEngine {
       this.workletNode.port.onmessage = (e) => {
         const msg = e.data;
         if (msg && msg.type === 'state' && this.onStateCallback) this.onStateCallback(msg);
+        else if (msg && msg.type === 'take' && msg.samples instanceof Float32Array && this.onTakeCallback) this.onTakeCallback(msg.samples, msg.samplerate);
       };
 
       await this.setSourceMode(mode, inputStream);
@@ -241,6 +243,11 @@ export class AudioEngine {
     this.isMuted = !this.isMuted;
     this.masterGain.gain.setValueAtTime(this.isMuted ? 0.0 : 1.0, this.ctx.currentTime);
     return this.isMuted;
+  }
+
+  /** A finished loop recording (dry input), for the hosted coach. */
+  public onTake(callback: (samples: Float32Array, samplerate: number) => void): void {
+    this.onTakeCallback = callback;
   }
 
   public onState(callback: StateCallback): void {

@@ -44,7 +44,8 @@
   }
   function connect() {
     if (REPLAY_URL) { startReplay(); return; }
-    try { ws = new WebSocket(URL_); } catch (e) { later(); return; }
+    // On the website, OmniCoachSocket opens the hosted coach (browser/coach/remote-coach.ts).
+    try { ws = window.OmniCoachSocket ? window.OmniCoachSocket() : new WebSocket(URL_); } catch (e) { later(); return; }
     ws.onopen = () => { retry = 0; joined = true; };
     ws.onmessage = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
