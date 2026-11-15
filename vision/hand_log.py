@@ -19,7 +19,11 @@ def hand_record(result, timestamp_ms, strum_hand='Right'):
         x,y,confidence = float(wrist.x),float(wrist.y),float(label.score)
         if label.category_name not in ('Left','Right') or not all(math.isfinite(v) and 0<=v<=1 for v in (x,y,confidence)):
             continue
-        hands.append(dict(handedness=label.category_name,wrist=[x,y],confidence=confidence))
+        hand=dict(handedness=label.category_name,wrist=[x,y],confidence=confidence)
+        # All 21 points (2-D, image-normalized) so vision/technique.py can see the fingers, not just the wrist.
+        if len(points)==21 and all(math.isfinite(p.x) and math.isfinite(p.y) for p in points):
+            hand['landmarks']=[[round(float(p.x),4),round(float(p.y),4)] for p in points]
+        hands.append(hand)
     return dict(timestamp_ms=timestamp_ms,hands=hands,strum_hand=strum_hand)
 
 

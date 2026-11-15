@@ -5,11 +5,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1] / "coach" / "workspace" / "skills"
-EXPECTED = {"isolate-the-change", "slow-then-speed-up", "dry-check", "keep-the-hand-moving"}
+from coach.tools import SKILLS as EXPECTED  # every allowed drill has a skill folder, and no extras
 
 
 class CoachSkillTests(unittest.TestCase):
-    def test_four_drills_have_discoverable_frontmatter(self):
+    def test_every_drill_has_discoverable_frontmatter(self):
         self.assertEqual({p.name for p in ROOT.iterdir() if p.is_dir()}, EXPECTED)
         for name in EXPECTED:
             text = (ROOT / name / "SKILL.md").read_text()

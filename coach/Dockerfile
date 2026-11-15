@@ -13,7 +13,7 @@ COPY protocol/ protocol/
 COPY coach/ coach/
 COPY tools/ears/ tools/ears/
 COPY audio/__init__.py audio/fileio.py audio/takes.py audio/engine.py audio/dsp.py audio/looper.py audio/reverb.py audio/
-COPY vision/__init__.py vision/eyes.py vision/hand_window.py vision/hand_log.py vision/
+COPY vision/__init__.py vision/eyes.py vision/hand_window.py vision/hand_log.py vision/technique.py vision/
 
 ENV HOST=0.0.0.0 PORT=8787 OMNIRIFF_COACH_DATA=/data PYTHONUNBUFFERED=1
 VOLUME /data

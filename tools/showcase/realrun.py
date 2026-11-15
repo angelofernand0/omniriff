@@ -21,16 +21,20 @@ from pathlib import Path
 
 import numpy as np
 
-from .takes import render_take
+from .hands import Faults, render
 
 GOAL = "My chord changes feel clunky. I want the Em to Dsus2 progression to flow."
-GAPS_MS = (400, 160, 90, 60, 40, 30)   # each take a little cleaner; the session decides pass/advance
+# Each take a little better; the coach's session decides pass / advance / wrap from the measurements.
+SCENARIOS = {
+    "late-finger": [Faults(late_finger="ring", lag_s=lag) for lag in (0.28, 0.12, 0.05, 0.0, 0.0, 0.0)],
+    "late-start": [Faults(start_delay_s=d) for d in (0.25, 0.12, 0.04, 0.0, 0.0, 0.0)],
+}
 
 
 class Client:
     def __init__(self, url: str, out: Path):
         from websockets.sync.client import connect
-        self.ws = connect(url, max_size=8 * 1024 * 1024, open_timeout=10,
+        self.ws = connect(url,  # noqa: long-lived client, closed at exit max_size=8 * 1024 * 1024, open_timeout=10,
                           additional_headers={"Origin": "http://127.0.0.1:5173"})
         self.out = out
         out.mkdir(parents=True, exist_ok=True)
@@ -106,14 +110,14 @@ class Client:
                 return
         print("  (timed out waiting for Riff to settle)")
 
-    def take(self, gap_ms: int, index: int) -> None:
-        audio, sr, started, hands = render_take(gap_ms)
+    def take(self, faults: Faults, index: int) -> None:
+        audio, sr, started, hands, _ = render(faults)
         self.loop = {"state": "recording"}
         self.pump(1.0)
         pcm = (np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes()
         self.loop = {"state": "playing"}
         self.state()
-        print(f"take {index}: chord-change stall {gap_ms} ms, {len(audio) / sr:.1f} s")
+        print(f"take {index}: {faults}, {len(audio) / sr:.1f} s")
         self.send({"type": "omniriff.take", "samplerate": sr, "started_unix_ms": started,
                    "pcm16_b64": base64.b64encode(pcm).decode(), "hands": hands})
 
@@ -125,7 +129,8 @@ def main(argv=None) -> int:
     parser.add_argument("--player", default="showcase-" + uuid.uuid4().hex[:12])
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--goal", default=GOAL)
-    parser.add_argument("--max-takes", type=int, default=len(GAPS_MS))
+    parser.add_argument("--scenario", choices=sorted(SCENARIOS), default="late-finger")
+    parser.add_argument("--max-takes", type=int, default=6)
     args = parser.parse_args(argv)
     url = f"{args.server}?key={args.key}&player={args.player}"
     client = Client(url, args.out)
@@ -135,8 +140,8 @@ def main(argv=None) -> int:
     client.send({"version": 1, "type": "coach.say", "timestamp_ms": int(time.time() * 1000),
                  "text": args.goal, "via": "typed"})
     client.pump(6)
-    for index, gap in enumerate(GAPS_MS[: args.max_takes], 1):
-        client.take(gap, index)
+    for index, faults in enumerate(SCENARIOS[args.scenario][: args.max_takes], 1):
+        client.take(faults, index)
         client.settled(timeout=180)
         session = client.frame.get("session") or {}
         if session.get("mode") == "play":

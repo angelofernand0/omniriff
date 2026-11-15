@@ -100,7 +100,7 @@ class CoachMemoryTests(unittest.TestCase):
             (live / "memories" / "player.md").write_text("Real-player history stays private.\n")
             prepare_fixture_workspace(live, fixture)
             self.assertNotIn("Real-player", (fixture / "memories" / "player.md").read_text())
-            comparison = {"worst_gap_ms": [900, 620], "hesitations": [3, 0]}
+            comparison = {"worst_gap_ms": [400, 120], "hesitations": [3, 0]}
             remember_comparison(fixture, comparison, synthetic=True)
             self.assertIn("synthetic replay", last_time_cue(fixture))
             prepare_fixture_workspace(live, fixture)
@@ -139,7 +139,7 @@ class CoachToolTests(unittest.TestCase):
             self.assertEqual(tools.get_take_report("before")["take_id"], "before")
             result = tools.compare_takes("before", "after")
             self.assertEqual(result["hesitations"], [3, 0])
-            self.assertEqual(result["worst_gap_ms"], [900, 620])
+            self.assertEqual(result["worst_gap_ms"], [400, 120])
             self.assertTrue(result["improved"])
             self.assertTrue(VALIDATOR.is_valid(feed.frame))
             tools.current_take_id = "after"
@@ -147,7 +147,7 @@ class CoachToolTests(unittest.TestCase):
                                          "worst gap under 700 ms", {"bypass": True})
             self.assertTrue((workspace / path.lstrip("/")).is_file())
             self.assertEqual(feed.frame["drill_card"]["skill"], "keep-the-hand-moving")
-            self.assertEqual(feed.frame["session"]["metric"]["history"], [900.0, 620.0])
+            self.assertEqual(feed.frame["session"]["metric"]["history"], [400.0, 120.0])
             self.assertEqual(feed.frame["session"]["metric"]["target"], 700.0)
             with patch("coach.voice.Voice.from_env") as make_voice:
                 audio = {"version": 1, "type": "coach.audio", "timestamp_ms": 123,
@@ -241,7 +241,7 @@ class CoachRunnerTests(unittest.TestCase):
                         self.assertEqual(runner.previous_take_id, "before")
                         self.assertIsNone(feed.frame["before_after"])
             self.assertEqual(invoke.call_count, 2)
-            self.assertEqual(feed.frame["before_after"]["worst_gap_ms"], [900.0, 620.0])
+            self.assertEqual(feed.frame["before_after"]["worst_gap_ms"], [400.0, 120.0])
             self.assertEqual(runner.previous_take_id, "after")
             self.assertNotIn("short", (root / "workspace" / "memories" / "player.md").read_text())
 
@@ -280,7 +280,7 @@ class CoachRunnerTests(unittest.TestCase):
             runner.process_take(takes / "coach-before.wav")
             runner.process_take(takes / "coach-after.wav")
             self.assertEqual(len(rig.sent), 1)
-            self.assertEqual(feed.frame["before_after"]["worst_gap_ms"], [900.0, 620.0])
+            self.assertEqual(feed.frame["before_after"]["worst_gap_ms"], [400.0, 120.0])
             self.assertTrue(feed.frame["before_after"]["improved"])
             self.assertEqual(feed.frame["state"], "pleased")
             self.assertEqual(feed.frame["mood"], "proud")

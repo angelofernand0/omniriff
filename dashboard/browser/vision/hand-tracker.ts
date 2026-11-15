@@ -9,6 +9,9 @@ import type { GestureObservation } from '../simulation/simulated-hand';
 import type { HandFrame } from '../protocol/types';
 import { absentHand } from '../adapters/connection';
 
+
+export interface TrackedHand { handedness: 'Left' | 'Right'; confidence: number; landmarks: Array<[number, number]>; }
+
 export class LiveHandTracker {
   private generation = 0;
   private cancelMetadata: (() => void) | null = null;
@@ -17,6 +20,8 @@ export class LiveHandTracker {
   private stream: MediaStream | null = null;
 
   public isRunning: boolean = false;
+  /** Called with every visible hand on each processed frame (hosted coach technique analysis). */
+  public onAllHands: ((hands: TrackedHand[]) => void) | null = null;
   private isProcessing: boolean = false;
   private lastInferenceTimeMs: number = 0;
 
@@ -164,6 +169,21 @@ export class LiveHandTracker {
     if (!rawHands || rawHands.length === 0) {
       this.onMissedFrame(nowMs);
       return;
+    }
+
+    // Every visible hand, all 21 points, for the coach's technique analysis (fingers + picking hand).
+    if (this.onAllHands) {
+      const all: TrackedHand[] = [];
+      for (let i = 0; i < rawHands.length; i++) {
+        const pts = rawHands[i];
+        const label = scores?.[i]?.[0];
+        if (!Array.isArray(pts) || pts.length !== 21 || !label) continue;
+        if (pts.some((p: any) => !Number.isFinite(p.x) || !Number.isFinite(p.y))) continue;
+        const handedness = label.categoryName === 'Left' ? 'Left' : label.categoryName === 'Right' ? 'Right' : null;
+        if (!handedness || !Number.isFinite(label.score)) continue;
+        all.push({ handedness, confidence: label.score, landmarks: pts.map((p: any) => [p.x, p.y] as [number, number]) });
+      }
+      if (all.length) this.onAllHands(all);
     }
 
     // Pick closest hand if multiple hands are visible

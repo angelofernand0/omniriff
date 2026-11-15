@@ -9,6 +9,8 @@
  */
 import type { SourceManager } from '../source-manager';
 import type { StateFrame, HandFrame } from '../protocol/types';
+import type { TrackedHand } from '../vision/hand-tracker';
+import { isThumbsUp, ThumbsUpHold } from '../vision/thumbs-up';
 
 export interface CoachServerConfig { url: string; key: string; }
 
@@ -67,12 +69,17 @@ function base64(bytes: Uint8Array): string {
   return btoa(text);
 }
 
-interface WristSample { timestamp_ms: number; wrist: [number, number]; confidence: number; handedness: 'Right'; }
+interface HandSample { handedness: 'Left' | 'Right'; confidence: number; wrist: [number, number]; landmarks?: Array<[number, number]>; }
+/** One camera frame in vision's hand-log shape: every visible hand, all 21 points when the webcam is on. */
+interface HandRecord { timestamp_ms: number; hands: HandSample[]; }
+const r4 = (v: number) => Math.round(v * 10000) / 10000;
 
 export class RemoteCoach {
   private ws: WebSocket | null = null;
   private state: StateFrame | null = null;
-  private hands: WristSample[] = [];
+  private hands: HandRecord[] = [];
+  private lastFull = 0;
+  private thumb = new ThumbsUpHold(600);
   private pump: number | undefined;
   private lastStatus = '';
   private statusCb: (text: string) => void = () => {};
@@ -83,6 +90,7 @@ export class RemoteCoach {
   constructor(private readonly config: CoachServerConfig, private readonly manager: SourceManager) {
     manager.onState(frame => { this.state = frame; });
     manager.onHand(frame => this.hand(frame));
+    manager.live.tracker.onAllHands = hands => this.allHands(hands);
     for (const adapter of [manager.simulator, manager.live]) {
       adapter.audio.onTake((samples, rate) => this.take(samples, rate));
     }
@@ -137,14 +145,43 @@ export class RemoteCoach {
 
   public practice(): void { this.send({ type: 'omniriff.practice' }); }
 
+  /** Webcam: both hands, every point. */
+  private allHands(hands: TrackedHand[]): void {
+    const now = Date.now();
+    this.lastFull = now;
+    this.gesture(now, hands);
+    this.hands.push({ timestamp_ms: now, hands: hands.map(h => ({
+      handedness: h.handedness, confidence: r4(Math.min(1, Math.max(0, h.confidence))),
+      wrist: [r4(h.landmarks[0][0]), r4(h.landmarks[0][1])],
+      landmarks: h.landmarks.map(([x, y]) => [r4(x), r4(y)] as [number, number]) })) });
+    this.trim(now);
+  }
+
+  /** Hands-free yes: a held thumbs-up approves Riff's pending rig change (only while one is pending). */
+  private gesture(now: number, hands: TrackedHand[]): void {
+    const pending = (window as any).OmniRiff?.coachFeed?.get?.()?.awaiting_approval;
+    if (!pending) { this.thumb.reset(); return; }
+    if (this.thumb.update(now, hands.some(h => isThumbsUp(h.landmarks)))) {
+      if (this.send({ version: 1, type: 'coach.approve', timestamp_ms: now, approval_id: pending.id })) {
+        this.status('Thumbs-up: drill approved.');
+      }
+    }
+  }
+
+  /** Simulator (or no full-hand data): the one gesture hand's wrist, as before. */
   private hand(frame: HandFrame): void {
     const now = Date.now();
+    if (now - this.lastFull < 500) return;   // the webcam path is already recording this frame in full
     if (frame.present && frame.landmarks.length) {
       const [x, y] = frame.landmarks[0];
       if (Number.isFinite(x) && Number.isFinite(y) && x >= 0 && x <= 1 && y >= 0 && y <= 1) {
-        this.hands.push({ timestamp_ms: now, wrist: [x, y], confidence: Math.min(1, Math.max(0, frame.confidence || 0.9)), handedness: 'Right' });
+        this.hands.push({ timestamp_ms: now, hands: [{ handedness: 'Right', wrist: [x, y], confidence: Math.min(1, Math.max(0, frame.confidence || 0.9)) }] });
       }
     }
+    this.trim(now);
+  }
+
+  private trim(now: number): void {
     while (this.hands.length && now - this.hands[0].timestamp_ms > HAND_KEEP_MS) this.hands.shift();
   }
 
@@ -155,6 +192,8 @@ export class RemoteCoach {
     const hands = this.hands.filter(h => h.timestamp_ms >= started - 200 && h.timestamp_ms <= ended + 200);
     const sent = this.send({ type: 'omniriff.take', samplerate: TAKE_RATE, started_unix_ms: started,
       pcm16_b64: base64(new Uint8Array(pcm.buffer)), hands });
-    this.status(sent ? `Sent your ${(samples.length / rate).toFixed(1)} s take to Riff${hands.length ? ' with your hand track' : ''}.` : 'Riff is not connected; the take stays local.');
+    const both = hands.some(h => h.hands.length === 2 && h.hands.every(x => x.landmarks));
+    this.status(!sent ? 'Riff is not connected; the take stays local.'
+      : `Sent your ${(samples.length / rate).toFixed(1)} s take to Riff${both ? ' with both hands on camera' : hands.length ? ' with one hand on camera' : ''}.`);
   }
 }

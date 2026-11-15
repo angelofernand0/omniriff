@@ -434,7 +434,7 @@
       acts = [['TAP', loop === 'recording' ? 'close the loop' : loop === 'playing' ? 'clear the loop' : 'record a loop']];
       if (awake && loop !== 'recording') acts.push(['HOLD', 'practice with Riff', 'Y']);
     } else if (loop === 'recording') acts = [['TAP', 'stop, Riff listens']];
-    else if (f && f.awaiting_approval) acts = [['HOLD', 'approve the drill', 'Y'], ['', 'no', 'N']];
+    else if (f && f.awaiting_approval) acts = [['HOLD', 'approve the drill', window.OmniCoachSocket ? 'Y \u00b7 THUMB UP' : 'Y'], ['', 'no', 'N']];   // website: a held thumbs-up approves too
     else if (f && f.state === 'thinking') acts = [['WAIT', 'Riff is working on it']];
     else if (f && (busy() || (held && held === f && held.cue))) acts = [['WAIT', 'Riff is talking']];   // the real voice, not the frame's state: when Riff is done, you can tap
     else if (step === 4) acts = [['WAIT', 'Riff is wrapping up']];

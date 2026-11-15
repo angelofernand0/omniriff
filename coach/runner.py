@@ -138,6 +138,29 @@ def hand_report(log_path: Path | None, sidecar: dict, *, fixture_mode: bool) -> 
         return {"available": False}
 
 
+def technique_report(log_path: Path | None, sidecar: dict, ear: dict, *, fixture_mode: bool) -> dict | None:
+    """What each hand did at every chord change (vision/technique.py); None without a camera log."""
+    if fixture_mode or log_path is None or not log_path.is_file():
+        return None
+    try:
+        from vision.technique import report_for_take
+        return report_for_take(log_path, sidecar, ear)
+    except Exception as exc:   # never lose the take over the camera analysis
+        LOG.warning("technique report unavailable: %s", exc)
+        return {"available": False, "reason": "analysis failed"}
+
+
+# The diagnose step's choice of drill: the measured cause decides it, not habit.
+SKILL_MAP = (
+    "Pick the drill skill from the top technique finding in get_hand_report: late_finger or pattern "
+    "-> lead-with-the-last-finger, late_start -> move-on-the-and, slow_change or finger_wander -> "
+    "shortest-path, picking_stop -> keep-the-hand-moving; no camera cause -> isolate-the-change. "
+    "Call a change by its time; name chords only if the player said which change it is. "
+    "Write pass_rule as 'worst gap under N ms' (the session judges that number); put the finger or "
+    "timing cue in the passage. "
+)
+
+
 class CoachRunner:
     """Owns take processing; injected agent/feed/state permit no-network tests."""
 
@@ -205,7 +228,7 @@ class CoachRunner:
             self.service.session.plan(
                 goal=goal, next_step="Isolate the measured trouble spot",
                 drill_count=2, attempt_count=3,
-                drill_titles=["Isolate the trouble spot", "Full pattern over your loop"],
+                drill_titles=["Fix the measured cause", "Full pattern over your loop"],
             )
             (journal / "goal.md").write_text(f"# Player's practice goal\n\n{goal}\n")
             self.feed.publish(session=self.service.session.snapshot(), state="speaking",
@@ -436,6 +459,11 @@ class CoachRunner:
         if self.fixture_mode:
             log_path = wav.with_name(f"{take_id}.hands.jsonl")
         hand = hand_report(log_path, sidecar, fixture_mode=self.fixture_mode)
+        technique = technique_report(log_path, sidecar, json.loads(ear.to_json()), fixture_mode=self.fixture_mode)
+        if technique is not None:
+            hand = {**hand, "technique": technique}
+            self.feed.publish_activity("eyes", "technique: fingers + picking hand",
+                                       "done" if technique.get("available") else "failed")
         self.feed.publish_activity("eyes", "report_for_window", "done" if hand.get("available", True) else "failed")
         folder = self.service.workspace / "takes" / take_id
         folder.mkdir(parents=True, exist_ok=True)
@@ -485,7 +513,7 @@ class CoachRunner:
                   "Read measured reports before naming numbers. ")
         if action["action"] == "diagnose":
             prompt += ("Diagnose with Ears and Eyes, set_practice_goal only if the player has not "
-                       "provided a goal, then write a measured first drill card and cue. ")
+                       "provided a goal, then write a measured first drill card and cue. " + SKILL_MAP)
         elif action["action"] == "retry":
             prompt += "Assess the measured attempt and give one brief adjustment; keep the current drill card. "
         elif action["action"] == "advance":

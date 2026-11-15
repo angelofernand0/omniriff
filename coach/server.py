@@ -97,18 +97,54 @@ def _seed_workspace(workspace: Path) -> Path:
     return workspace
 
 
-def _hand_line(sample: dict) -> str | None:
+def _clean_hand(hand: dict) -> dict | None:
     try:
-        ts = int(sample["timestamp_ms"])
-        x, y = (float(v) for v in sample["wrist"])
-        conf = float(sample.get("confidence", 0.9))
+        x, y = (float(v) for v in hand["wrist"])
+        conf = float(hand.get("confidence", 0.9))
     except (KeyError, TypeError, ValueError):
         return None
-    if not (0 <= x <= 1 and 0 <= y <= 1 and 0 <= conf <= 1 and ts > 0):
+    if not (0 <= x <= 1 and 0 <= y <= 1 and 0 <= conf <= 1):
         return None
-    hand = "Left" if sample.get("handedness") == "Left" else "Right"
-    return json.dumps({"timestamp_ms": ts, "hands": [{"handedness": hand, "wrist": [x, y], "confidence": conf}],
-                       "strum_hand": hand}, separators=(",", ":"))
+    clean = {"handedness": "Left" if hand.get("handedness") == "Left" else "Right",
+             "wrist": [x, y], "confidence": conf}
+    points = hand.get("landmarks")
+    if isinstance(points, list) and len(points) == 21:
+        try:
+            pts = [[round(float(a), 4), round(float(b), 4)] for a, b in points]
+        except (TypeError, ValueError):
+            pts = None
+        if pts and all(-0.5 <= v <= 1.5 for pt in pts for v in pt):
+            clean["landmarks"] = pts
+    return clean
+
+
+def hand_records(samples: list) -> list[dict]:
+    """Browser camera frames -> vision hand-log records (old flat wrist samples are accepted too).
+
+    strum_hand is the hand whose wrist swings most up and down over the take: camera mirroring
+    makes MediaPipe's Left/Right label unreliable, the picking motion is not."""
+    records = []
+    for sample in samples[:MAX_HAND_SAMPLES]:
+        if not isinstance(sample, dict):
+            continue
+        try:
+            ts = int(sample["timestamp_ms"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        raw = sample.get("hands") if isinstance(sample.get("hands"), list) else [sample]
+        hands = [h for h in (_clean_hand(r) for r in raw[:2] if isinstance(r, dict)) if h]
+        if ts > 0 and hands:
+            records.append({"timestamp_ms": ts, "hands": hands})
+    swing = {}
+    for label in ("Left", "Right"):
+        ys = [h["wrist"][1] for r in records for h in r["hands"] if h["handedness"] == label]
+        if len(ys) > 5:
+            mean = sum(ys) / len(ys)
+            swing[label] = sum((y - mean) ** 2 for y in ys) / len(ys)
+    strum = max(swing, key=swing.get) if swing else "Right"
+    for record in records:
+        record["strum_hand"] = strum
+    return records
 
 
 class Session:
@@ -182,11 +218,12 @@ class Session:
         audio = np.frombuffer(raw[: len(raw) // 2 * 2], dtype="<i2").astype(np.float32) / 32768.0
         if not 0.5 <= len(audio) / sr <= MAX_TAKE_SECONDS:
             return "take length out of range"
-        lines = [line for s in (message.get("hands") or [])[:MAX_HAND_SAMPLES]
-                 if isinstance(s, dict) and (line := _hand_line(s))]
-        if lines:
+        hands = message.get("hands")
+        records = hand_records(hands if isinstance(hands, list) else [])
+        if records:
             with self.hand_log.open("a", encoding="utf-8") as stream:
-                stream.write("\n".join(lines) + "\n")
+                for record in records:
+                    stream.write(json.dumps(record, separators=(",", ":")) + "\n")
         self.take_n += 1
         write_take(self.takes / f"take-{int(started)}-{self.take_n}.wav", audio, sr, started, source="loop")
         return "ok"

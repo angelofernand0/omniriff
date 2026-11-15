@@ -11,11 +11,12 @@ from pathlib import Path
 from .feed import CoachFeed
 from .memory import last_time_cue
 from .rig import RigClient, RigStateReader
-from .session import PracticeSession
+from .session import PracticeSession, late_ms
 
 
 TAKE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
-SKILLS = frozenset({"isolate-the-change", "slow-then-speed-up", "dry-check", "keep-the-hand-moving"})
+SKILLS = frozenset({"isolate-the-change", "slow-then-speed-up", "dry-check", "keep-the-hand-moving",
+                    "lead-with-the-last-finger", "move-on-the-and", "shortest-path"})
 
 
 LOG = logging.getLogger(__name__)
@@ -29,8 +30,7 @@ def _safe_take_id(take_id: str) -> str:
 
 def _numbers(report: dict) -> tuple[int, float, float]:
     hes = [item for item in report.get("findings", []) if item.get("type") == "hesitation"]
-    intervals = report.get("intervals_ms", [])
-    worst = max((float(x) for x in intervals), default=0.0)
+    worst = late_ms(report)   # late against the player's own beat, not the raw interval
     return len(hes), worst, float(report.get("tempo_stability") or 0.0)
 
 
@@ -87,7 +87,7 @@ class CoachTools:
         self.session.plan(
             goal=goal, next_step="Isolate the measured trouble spot",
             drill_count=2, attempt_count=3,
-            drill_titles=["Isolate the trouble spot", "Full pattern over your loop"],
+            drill_titles=["Fix the measured cause", "Full pattern over your loop"],
         )
         self.feed.publish(session=self.session.snapshot())
         self.feed.publish_activity("coach", "set_practice_goal", "done")
@@ -156,6 +156,13 @@ class CoachTools:
         self.feed.publish_activity("coach", "write_drill_card", "done")
         return journal_path
 
+    def _cue_mood(self, naming_a_mistake: bool) -> str:
+        """Riff's face follows the measurement, not a fixed expression."""
+        result = self.feed.frame.get("before_after")
+        if result and result.get("after_take_id") == self.current_take_id:
+            return "proud" if result.get("improved") else "encouraging"
+        return "concerned" if naming_a_mistake else "encouraging"
+
     def say(self, text: str) -> str:
         """Speak one short cause-and-fix cue grounded in the reports."""
         if not isinstance(text, str) or not 1 <= len(text) <= 240:
@@ -168,7 +175,8 @@ class CoachTools:
         if pending:  # live rig: the gap marker appears with the explanation
             extra = {"mark": pending}
             self.pending_mark = None
-        self.feed.publish(state="speaking", mood="concerned", target="loop" if extra else "player", cue=text, **extra)
+        self.feed.publish(state="speaking", mood=self._cue_mood(bool(extra)),
+                          target="loop" if extra else "player", cue=text, **extra)
         self.feed.publish_activity("coach", "say", "done")
         try:
             from .voice import Voice  # supplied by R4; browser speech is the fallback until then
@@ -256,7 +264,9 @@ def build_langchain_tools(service: CoachTools) -> dict:
 
     @tool
     def get_hand_report(take_id: str) -> dict:
-        """Read the measured strumming-hand report; unavailable means no hand claim."""
+        """Read the camera report: strumming-hand stalls, and under 'technique' each chord change
+        (which fretting finger landed last and by how much, when the change started vs the last
+        strum, whether the picking hand stopped) with ranked findings. Unavailable = no hand claim."""
         return service.get_hand_report(take_id)
 
     @tool
@@ -272,6 +282,10 @@ def build_langchain_tools(service: CoachTools) -> dict:
     @tool
     def write_drill_card(skill: str, passage: str, reps: int, pass_rule: str, rig: dict) -> str:
         """Save a measurable drill card; proposed rig settings still need approval.
+
+        skill: the cause it fixes. lead-with-the-last-finger (late_finger), move-on-the-and
+        (late_start), shortest-path (slow_change / finger_wander), keep-the-hand-moving
+        (picking_stop only), isolate-the-change (timing only, no camera cause).
 
         Limits (a call that breaks one is rejected): passage at most 80 characters; reps 1 to 20;
         pass_rule at most 120 characters; rig is {} or only the keys bypass (true/false), filter (0 to 1)
