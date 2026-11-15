@@ -108,7 +108,7 @@
       "fallback_asset": "runs/promo/raw/dashboard_simulated_beat07.mp4",
       "source_start_s": 0.0,
       "shot_number": 3,
-      "description": "Riff plays back take, goes dry, and pauses. Prompt shows HOLD TO APPROVE. Close-up of foot pressing pedal."
+      "description": "Riff plays back take, goes dry, and pauses. Prompt shows APPROVE (press Y or tap pedal). Close-up of player approving."
     },
     {
       "id": "seg_08_result",
@@ -224,9 +224,9 @@
       "asset": "runs/promo/audio/vo-02-1.m4a",
       "start_s": 3.2,
       "source_start_s": 0.0,
-      "duration_s": 6.5,
+      "duration_s": 6.8,
       "gain": 1.0,
-      "line": "Practising alone, every tool stops your playing. Apps grade notes; a teacher tells you the cause, for weekly money."
+      "line": "Practising alone, every tool makes you stop. Apps grade notes. A teacher tells you why, but every week, for a fee."
     },
     {
       "id": "vo_beat03",
@@ -360,7 +360,7 @@
     {
       "start_s": 3.0,
       "end_s": 10.0,
-      "text": "Practising alone, every tool stops your playing.\nApps grade notes; a teacher tells you the cause, for weekly money.",
+      "text": "Practising alone, every tool makes you stop.\nApps grade notes. A teacher tells you why, but every week, for a fee.",
       "speaker": "SM"
     },
     {
@@ -390,7 +390,7 @@
     {
       "start_s": 44.0,
       "end_s": 56.0,
-      "text": "It sets up the drill, plays your take back,\nbut never touches your sound until you approve. [HOLD TO APPROVE]",
+      "text": "It sets up the drill, plays your take back,\nbut never touches your sound until you approve. [APPROVE: press Y]",
       "speaker": "SM"
     },
     {
