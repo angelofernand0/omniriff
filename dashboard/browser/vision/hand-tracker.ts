@@ -36,6 +36,8 @@ export class LiveHandTracker {
   private lastStrumTimeMs: number = 0;
   private lastVelocitySign: number = 0;
   private reversalTimes: number[] = [];
+  private strumAnchorY: number | null = null;
+  private fistSinceMs: number | null = null;
 
   public onFistSwap: (() => void) | null = null;
   private fistLatched: boolean = false;
@@ -148,7 +150,7 @@ export class LiveHandTracker {
     this.lastInferenceTimeMs = 0;
   }
 
-  public update(nowMs: number, engaged: boolean, control: 'filter' | 'reverb' | null, value: number | null): void {
+  public update(nowMs: number, engaged: boolean, control: 'filter' | 'reverb' | null, value: number | null, gestureArmed = false): void {
     if (!this.isRunning || !this.videoEl || !this.landmarker || this.videoEl.readyState < 2) {
       return;
     }
@@ -164,7 +166,7 @@ export class LiveHandTracker {
     try {
       const result = this.landmarker.detectForVideo(this.videoEl, nowMs);
       if (performance.now() - nowMs > 250) this.onMissedFrame(nowMs);
-      else this.processResult(result, nowMs, engaged, control, value);
+      else this.processResult(result, nowMs, engaged, control, value, gestureArmed);
     } catch (e) {
       console.warn('Inference error:', e);
       this.onMissedFrame(nowMs);
@@ -178,7 +180,8 @@ export class LiveHandTracker {
     nowMs: number,
     engaged: boolean,
     control: 'filter' | 'reverb' | null,
-    value: number | null
+    value: number | null,
+    gestureArmed = false
   ): void {
     const rawHands = result.landmarks;
     const scores = result.handedness;
@@ -205,18 +208,15 @@ export class LiveHandTracker {
 
     // 1. Right-hand filtering: ignore left hand (holding guitar neck) and focus exclusively on right hand.
     const rightCandidates: number[] = [];
-    const fallbackCandidates: number[] = [];
     for (let i = 0; i < rawHands.length; i++) {
       const label = scores?.[i]?.[0];
       const cat = (label?.categoryName || label?.displayName || '').toLowerCase();
-      if (cat === 'right') {
+      if (cat === 'right' && Number.isFinite(label?.score) && label.score >= 0.6 && label.score <= 1) {
         rightCandidates.push(i);
-      } else if (cat !== 'left') {
-        fallbackCandidates.push(i);
       }
     }
 
-    const candidateIndices = rightCandidates.length > 0 ? rightCandidates : fallbackCandidates;
+    const candidateIndices = rightCandidates;
     if (candidateIndices.length === 0) {
       // Only left hand present in frame, or no valid hands: fail closed and ignore
       this.onMissedFrame(nowMs);
@@ -302,19 +302,25 @@ export class LiveHandTracker {
     const pDist = Math.hypot(px, py);
     const kDist = Math.hypot(kx, ky);
 
-    // Cross product P x K in image coordinates (y downwards):
-    // For a Right hand:
-    // When palm faces camera (gesture mode), knuckles from index to pinky go viewer-right, so cross product > 0.
-    // When back of hand faces camera (dorsal side, playing guitar with pick/fingers hidden), cross product < 0!
+    // Detection consumes the unmirrored camera video; mirroring is display-only.
+    // A right palm facing this camera has index MCP to viewer-right of pinky MCP,
+    // so P x K is negative. The old positive-only gate rejected that palm.
     const crossProduct = px * ky - py * kx;
     const sinPhi = (pDist > 1e-4 && kDist > 1e-4) ? crossProduct / (pDist * kDist) : 0;
+    const isPalmFacing = sinPhi < -0.08;
 
-    // Palm facing camera requires positive sinPhi (> 0.08).
-    // Back of hand or edge-on playing orientation has sinPhi <= 0.08.
-    const isPalmFacing = sinPhi > 0.08;
+    // Background-tab/inference gaps do not count toward a confirmed pose.
+    if (nowMs - this.lastStrumTimeMs >= 250) {
+      this.lastStrumY = null;
+      this.strumAnchorY = null;
+      this.lastVelocitySign = 0;
+      this.reversalTimes = [];
+      this.fistSinceMs = null;
+    }
 
     // Strumming motion detection (rapid velocity reversals across strings)
     let isStrumMotion = false;
+    if (this.strumAnchorY === null) this.strumAnchorY = landmarks[9][1];
     if (this.lastStrumY !== null && nowMs > this.lastStrumTimeMs) {
       const dt = (nowMs - this.lastStrumTimeMs) / 1000;
       if (dt > 0 && dt < 0.25) {
@@ -322,7 +328,12 @@ export class LiveHandTracker {
         if (Math.abs(velY) > 0.35) {
           const sign = velY > 0 ? 1 : -1;
           if (this.lastVelocitySign !== 0 && sign !== this.lastVelocitySign) {
-            this.reversalTimes.push(nowMs);
+            // Velocity alone counts tiny landmark jitter as strumming. Require
+            // an actual stroke before counting a reversal.
+            if (Math.abs(this.lastStrumY - this.strumAnchorY) >= 0.035) {
+              this.reversalTimes.push(nowMs);
+              this.strumAnchorY = this.lastStrumY;
+            }
           }
           this.lastVelocitySign = sign;
         }
@@ -336,39 +347,35 @@ export class LiveHandTracker {
       isStrumMotion = true;
     }
 
-    // Strumming / Guitar Playing Guard:
-    // Suppress if:
-    // 1. Back of hand is facing camera (fingers tucked/hidden, picking guitar)
-    // 2. Active strumming oscillation is detected (velocity reversals)
-    // 3. Hand is in guitar strum zone (y >= 0.52) while fingers are close (holding pick: pinch < 0.35)
+    // A pick-shaped hand entering the guitar zone stays suppressed. An explicit
+    // open-hand arm / active clutch may traverse the full slider range; position
+    // alone must not disarm it. Back-facing hands and real strumming still win.
     const isStrumZone = landmarks[9][1] >= 0.52;
-    const isStrumming = !isPalmFacing || isStrumMotion || (isStrumZone && pinch < 0.35);
+    const closedFist = curl <= 0.55;
+    const deliberateGesture = gestureArmed || engaged || this.fistLatched || (closedFist && this.fistSinceMs !== null);
+    const isStrumming = !isPalmFacing || isStrumMotion || (isStrumZone && pinch < 0.35 && !deliberateGesture);
+    const isFist = !isStrumming && closedFist;
 
-    // Closed fist swaps between Filter and Reverb with anti-flicker cooldown and reliable unlatching.
-    // STRICT GUARD: Must NOT be strumming, MUST have palm facing camera, MUST NOT be in guitar strum zone!
-    const SWAP_COOLDOWN_MS = 1400;
-    const isFist = !isStrumming && isPalmFacing && !isStrumZone && curl <= 0.55;
-
-    // Unlatch cleanly as soon as fingers relax / uncurl past fist threshold, or if strumming resumes
-    if (curl >= 0.68 || isStrumming) {
-      this.fistLatched = false;
-    }
-
+    // Brief pose confirmation rejects transient curls. A held fist is consumed
+    // once; suppression/occlusion cannot unlatch it without an actual open hand.
+    if (curl >= 0.68) this.fistLatched = false;
+    if (!isFist) this.fistSinceMs = null;
+    else if (this.fistSinceMs === null) this.fistSinceMs = nowMs;
     let swapTriggered = false;
-    if (isFist && !this.fistLatched && (nowMs - this.lastSwapTimeMs >= SWAP_COOLDOWN_MS)) {
+    if (isFist && !this.fistLatched && this.fistSinceMs !== null &&
+        nowMs - this.fistSinceMs >= 140 && nowMs - this.lastSwapTimeMs >= 1400) {
       this.fistLatched = true;
       this.lastSwapTimeMs = nowMs;
       swapTriggered = true;
       this.onFistSwap?.();
     }
-
-    const conf = scores && scores[bestHandIdx] && scores[bestHandIdx][0] ? scores[bestHandIdx][0].score : 0;
-    if (!Number.isFinite(conf) || conf < 0 || conf > 1) { this.onMissedFrame(nowMs); return; }
+    // Confidence was validated before selection and before any gesture callback.
+    const conf = scores[bestHandIdx][0].score;
 
     const yCoord = landmarks[9][1];
 
-    if (isStrumming) {
-      // Guitar playing / strumming: suppress gesture observation so controller disengages and locks DSP parameters
+    if (isStrumming || isFist) {
+      // Fists never drag a slider while swapping. Guitar playing / strumming: suppress gesture observation so controller disengages and locks DSP parameters
       this.latestObservation = {
         present: false,
         y: null,
@@ -391,7 +398,7 @@ export class LiveHandTracker {
       type: 'hand',
       timestamp_ms: Date.now(),
       present: true,
-      engaged: !isStrumming && engaged,
+      engaged: !isStrumming && !isFist && engaged,
       confidence: conf,
       control,
       value,
@@ -409,6 +416,8 @@ export class LiveHandTracker {
       this.lastWrist = null;
     }
     this.lastStrumY = null;
+    this.strumAnchorY = null;
+    this.fistSinceMs = null;
     this.lastVelocitySign = 0;
     this.reversalTimes = [];
 
@@ -445,6 +454,8 @@ export class LiveHandTracker {
     this.fistLatched = false;
     this.lastSwapTimeMs = -Infinity;
     this.lastStrumY = null;
+    this.strumAnchorY = null;
+    this.fistSinceMs = null;
     this.lastStrumTimeMs = 0;
     this.lastVelocitySign = 0;
     this.reversalTimes = [];
@@ -460,6 +471,8 @@ export class LiveHandTracker {
     this.resetObservation();
     this.isProcessing = false;
     this.lastStrumY = null;
+    this.strumAnchorY = null;
+    this.fistSinceMs = null;
     this.lastStrumTimeMs = 0;
     this.lastVelocitySign = 0;
     this.reversalTimes = [];
