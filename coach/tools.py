@@ -163,7 +163,12 @@ class CoachTools:
         # A simple punctuation guard; models can use decimal numbers in reports.
         if len(re.findall(r"[.!?](?:\s|$)", text)) > 2:
             raise ValueError("cue must be at most two sentences")
-        self.feed.publish(state="speaking", mood="concerned", target="player", cue=text)
+        extra = {}
+        pending = getattr(self, "pending_mark", None)
+        if pending:  # live rig: the gap marker appears with the explanation
+            extra = {"mark": pending}
+            self.pending_mark = None
+        self.feed.publish(state="speaking", mood="concerned", target="loop" if extra else "player", cue=text, **extra)
         self.feed.publish_activity("coach", "say", "done")
         try:
             from .voice import Voice  # supplied by R4; browser speech is the fallback until then

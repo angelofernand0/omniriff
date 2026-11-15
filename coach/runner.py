@@ -410,9 +410,16 @@ class CoachRunner:
         if ear.judgeable:
             self.service.session.record_take(report)
         mark = _hesitation_mark(report) if ear.judgeable else None
-        self.feed.publish(state="thinking", mood="aha" if ear.findings else "curious",
-                          target="loop" if mark else "coach", mark=mark,
-                          session=self.service.session.snapshot())
+        if self.quiet_until_asked:
+            # Live rig: show the gap marker together with Riff's explanation (when it speaks), not before it
+            # has said anything, so the marker never appears unexplained.
+            self.service.pending_mark = mark
+            self.feed.publish(state="thinking", mood="aha" if ear.findings else "curious",
+                              target="coach", session=self.service.session.snapshot())
+        else:
+            self.feed.publish(state="thinking", mood="aha" if ear.findings else "curious",
+                              target="loop" if mark else "coach", mark=mark,
+                              session=self.service.session.snapshot())
         print(f"Take {take_id}: {ear.summary}; hand: {hand.get('summary', 'unavailable')}")
         if not ear.judgeable:
             self.feed.publish(state="idle", mood="neutral", target="player",
