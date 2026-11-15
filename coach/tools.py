@@ -200,6 +200,8 @@ class CoachTools:
         """After approval, set a parameter or safely start dry bypass/recording."""
         from .rig import control_message
 
+        if control in {"bypass", "loop"}:
+            value = None   # on/off toggles: they only switch on, a value means nothing (see runner)
         control_message(control, value, 0, 0)
         if control in {"bypass", "loop"}:
             snapshot = self.state.snapshot()
@@ -303,7 +305,8 @@ def build_langchain_tools(service: CoachTools) -> dict:
 
     @tool
     def rig_control(control: str, value: float | None = None) -> str:
-        """Request an approved change: filter/reverb value, dry bypass on, or loop start from idle."""
+        """Request an approved change: filter/reverb with a value 0-1; bypass (effects off) or loop
+        (start recording from idle) take no value."""
         return service.rig_control(control, value)
 
     return {item.name: item for item in (
