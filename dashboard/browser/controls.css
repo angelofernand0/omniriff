@@ -74,3 +74,7 @@ body[data-browser] #pedalNext[hidden] { display: none !important; }
   body[data-browser] .card { overflow: hidden; gap: 6px; padding: 10px; }
   body[data-browser] .wave { min-height: 0; }
 }
+@media (max-width: 900px) {
+  body[data-browser] .hand-inset { min-width: 0; overflow: hidden; }
+  body[data-browser] .hand-inset .hand { min-width: 0; width: 100%; max-width: 100%; flex: 1 1 0; aspect-ratio: auto; overflow: hidden; }
+}

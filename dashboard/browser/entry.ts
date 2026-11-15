@@ -155,7 +155,7 @@ manager.onConnection(info => {
   connected = info.status === 'connected';
   status.dataset.kind = info.status;
   status.textContent = !hasStarted && info.status === 'stopped' ? 'Tap Start simulator to play.' : info.message || ({ starting: 'Starting…', connected: 'Connected.', disconnected: 'Disconnected. Waiting for the source.', stopped: 'Stopped. Microphone, camera and browser audio are released.', error: 'Could not start the source.' })[info.status];
-  label();
+  describe(); label();
 });
 manager.onModeChange(() => label());
 loopControl = document.createElement('button');
