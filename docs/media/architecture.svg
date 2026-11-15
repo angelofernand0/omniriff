@@ -1,0 +1,371 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 880" width="100%" height="100%" style="background:#ffffff; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <!-- Markers -->
+    <marker id="arr-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#059669" />
+    </marker>
+    <marker id="arr-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#0284c7" />
+    </marker>
+    <marker id="arr-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#7c3aed" />
+    </marker>
+    <marker id="arr-amber" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#d97706" />
+    </marker>
+    <marker id="arr-rose" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#e11d48" />
+    </marker>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="100%" height="100%" fill="#ffffff" />
+  <rect x="15" y="15" width="1250" height="850" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" />
+
+  <!-- Header -->
+  <g transform="translate(45, 50)">
+    <text x="0" y="0" font-size="24" font-weight="800" fill="#0f172a" letter-spacing="-0.5">OmniRiff Rig Architecture</text>
+    <text x="0" y="22" font-size="13" font-weight="500" fill="#475569">Real-time cyber-physical instrument rig, fail-safe audio DSP signal chain, and LangGraph deep agent coach</text>
+
+    <!-- Protocol Badges -->
+    <rect x="670" y="-12" width="95" height="24" rx="6" fill="#ecfdf5" stroke="#059669" stroke-width="1"/>
+    <text x="717" y="4" font-size="10" font-weight="700" fill="#047857" text-anchor="middle">WASAPI 48kHz</text>
+
+    <rect x="775" y="-12" width="80" height="24" rx="6" fill="#f0f9ff" stroke="#0284c7" stroke-width="1"/>
+    <text x="815" y="4" font-size="10" font-weight="700" fill="#0369a1" text-anchor="middle">UDP 47800</text>
+
+    <rect x="865" y="-12" width="75" height="24" rx="6" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1"/>
+    <text x="902" y="4" font-size="10" font-weight="700" fill="#6d28d9" text-anchor="middle">WS 47801</text>
+
+    <rect x="950" y="-12" width="75" height="24" rx="6" fill="#faf5ff" stroke="#9333ea" stroke-width="1"/>
+    <text x="987" y="4" font-size="10" font-weight="700" fill="#7e22ce" text-anchor="middle">WS 47802</text>
+
+    <rect x="1035" y="-12" width="75" height="24" rx="6" fill="#fdf4ff" stroke="#c026d3" stroke-width="1"/>
+    <text x="1072" y="4" font-size="10" font-weight="700" fill="#a21caf" text-anchor="middle">WS 47803</text>
+
+    <rect x="1120" y="-12" width="85" height="24" rx="6" fill="#fffbeb" stroke="#d97706" stroke-width="1"/>
+    <text x="1162" y="4" font-size="10" font-weight="700" fill="#b45309" text-anchor="middle">Serial 115200</text>
+  </g>
+
+  <!-- ================= ZONE 1: PHYSICAL HARDWARE (LEFT) ================= -->
+  <g transform="translate(45, 95)">
+    <rect width="250" height="730" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2" />
+    <text x="16" y="28" font-size="12" font-weight="800" fill="#334155" letter-spacing="1">1. PHYSICAL RIG</text>
+
+    <!-- Guitar -->
+    <g transform="translate(14, 45)">
+      <rect width="222" height="105" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+      <text x="12" y="24" font-size="13" font-weight="700" fill="#0f172a">🎸 Electric Guitar</text>
+      <text x="12" y="40" font-size="10.5" fill="#475569">Magnetic Pickups (High-Z)</text>
+      <line x1="12" y1="48" x2="210" y2="48" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="12" y="65" font-size="10.5" fill="#334155">• 1/4" analog instrument cable</text>
+      <text x="12" y="81" font-size="10.5" fill="#334155">• Continuous play, zero stopping</text>
+      <text x="12" y="97" font-size="10" font-family="monospace" fill="#059669">&#8594; Solo Instrument Input 2</text>
+    </g>
+
+    <!-- Camera -->
+    <g transform="translate(14, 165)">
+      <rect width="222" height="115" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+      <text x="12" y="24" font-size="13" font-weight="700" fill="#0f172a">📷 Webcam (60 FPS)</text>
+      <text x="12" y="40" font-size="10.5" fill="#475569">Laptop internal / USB camera</text>
+      <line x1="12" y1="48" x2="210" y2="48" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="12" y="65" font-size="10.5" fill="#334155">• Live optical hand video frames</text>
+      <text x="12" y="81" font-size="10.5" fill="#334155">• Frontal strum &amp; pick framing</text>
+      <text x="12" y="97" font-size="10.5" fill="#334155">• Zero frames recorded/stored</text>
+      <text x="12" y="109" font-size="9.5" font-family="monospace" fill="#0284c7">&#8594; vision/ process</text>
+    </g>
+
+    <!-- Footswitch -->
+    <g transform="translate(14, 295)">
+      <rect width="222" height="145" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+      <text x="12" y="24" font-size="13" font-weight="700" fill="#0f172a">🦶 Arduino Footswitch</text>
+      <text x="12" y="40" font-size="10.5" fill="#475569">firmware/arduino/Footswitch.ino</text>
+      <line x1="12" y1="48" x2="210" y2="48" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="12" y="65" font-size="10.5" fill="#334155">• Pins 2 &amp; 3 (INPUT_PULLUP)</text>
+      <text x="12" y="81" font-size="10.5" fill="#334155">• 25 ms debounce lockout</text>
+      <text x="12" y="97" font-size="10.5" font-weight="600" fill="#b45309">• Tap: Loop toggle on release</text>
+      <text x="12" y="113" font-size="10.5" font-weight="600" fill="#b45309">• Hold &#8805;0.7s: Practice action</text>
+      <text x="12" y="129" font-size="10.5" font-weight="600" fill="#b45309">• Press: Instant Bypass</text>
+      <text x="12" y="141" font-size="9.5" font-family="monospace" fill="#d97706">&#8594; USB Serial 115200 NDJSON</text>
+    </g>
+
+    <!-- Scarlett Solo -->
+    <g transform="translate(14, 455)">
+      <rect width="222" height="120" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+      <text x="12" y="24" font-size="13" font-weight="700" fill="#0f172a">🎛️ Focusrite Scarlett Solo</text>
+      <text x="12" y="40" font-size="10.5" fill="#475569">3rd Gen USB Audio Interface</text>
+      <line x1="12" y1="48" x2="210" y2="48" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="12" y="65" font-size="10.5" fill="#334155">• Input 2: INST ON, Gain set</text>
+      <text x="12" y="81" font-size="10.5" fill="#334155">• Direct Monitor: OFF (no doubling)</text>
+      <text x="12" y="97" font-size="10.5" fill="#334155">• WASAPI Exclusive stream</text>
+      <text x="12" y="113" font-size="9.5" font-family="monospace" fill="#059669">Buffer: 64-128 smp (1.3-2.7ms)</text>
+    </g>
+
+    <!-- Output Amp -->
+    <g transform="translate(14, 590)">
+      <rect width="222" height="110" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+      <text x="12" y="24" font-size="13" font-weight="700" fill="#0f172a">🔊 Monitors / Headphones</text>
+      <text x="12" y="40" font-size="10.5" fill="#475569">Balanced Line Output</text>
+      <line x1="12" y1="48" x2="210" y2="48" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="12" y="65" font-size="10.5" fill="#334155">• Processed guitar audio</text>
+      <text x="12" y="81" font-size="10.5" fill="#334155">• Loopback latency measured</text>
+      <text x="12" y="97" font-size="9.5" font-family="monospace" fill="#059669">&lt;0.999 PeakLimiter Protected</text>
+    </g>
+  </g>
+
+  <!-- ================= ZONE 2: PERCEPTION & ROUTER (MIDDLE LEFT) ================= -->
+  <g transform="translate(325, 95)">
+    <rect width="265" height="730" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2" />
+    <text x="16" y="28" font-size="12" font-weight="800" fill="#334155" letter-spacing="1">2. SENSING &amp; ROUTER</text>
+
+    <!-- Vision Card -->
+    <g transform="translate(14, 45)">
+      <rect width="237" height="260" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="1.2"/>
+      <text x="12" y="22" font-size="13" font-weight="700" fill="#0369a1">vision/ (Gesture Engine)</text>
+      <text x="12" y="38" font-size="10.5" fill="#475569">Independent Child Process</text>
+      <line x1="12" y1="45" x2="225" y2="45" stroke="#e2e8f0" stroke-width="1"/>
+
+      <text x="12" y="63" font-size="10.5" font-weight="600" fill="#0f172a">MediaPipe Hand Landmarker</text>
+      <text x="12" y="78" font-size="10" fill="#334155">• 21 3D Points (~9.3 ms/frame)</text>
+      <text x="12" y="92" font-size="10" fill="#334155">• Handedness Gate (&gt;0.60 score)</text>
+
+      <text x="12" y="112" font-size="10.5" font-weight="600" fill="#0f172a">Pinch Clutch (vision/control.py)</text>
+      <text x="12" y="127" font-size="10" fill="#334155">• Arm: Open hand (dist &gt; 0.45)</text>
+      <text x="12" y="141" font-size="10" fill="#334155">• Engage: Pinch (dist &lt; 0.25)</text>
+      <text x="12" y="155" font-size="10" fill="#334155">• Disengage: Release (&gt; 0.45)</text>
+
+      <text x="12" y="175" font-size="10.5" font-weight="600" fill="#0f172a">StrumGuard (vision/zones.py)</text>
+      <text x="12" y="190" font-size="10" font-weight="700" fill="#dc2626">[OPT-IN: --strum-guard]</text>
+      <text x="12" y="204" font-size="10" fill="#334155">• Zone: y &#8805; 0.55 muted</text>
+      <text x="12" y="218" font-size="10" fill="#334155">• Velocity threshold: 2.5 norm/s</text>
+
+      <line x1="12" y1="228" x2="225" y2="228" stroke="#e2e8f0" stroke-width="0.8"/>
+      <text x="12" y="242" font-size="9.5" font-family="monospace" fill="#0369a1">&#8594; UDP 47800 (20 Hz rate limit)</text>
+      <text x="12" y="254" font-size="9.5" font-family="monospace" fill="#7e22ce">&#8594; WS 47802 (Hand View Stream)</text>
+    </g>
+
+    <!-- Serial Worker Card -->
+    <g transform="translate(14, 320)">
+      <rect width="237" height="155" rx="8" fill="#ffffff" stroke="#d97706" stroke-width="1.2"/>
+      <text x="12" y="22" font-size="13" font-weight="700" fill="#b45309">SerialDecoder (engine/runtime.py)</text>
+      <text x="12" y="38" font-size="10.5" fill="#475569">USB Serial Receiver Task</text>
+      <line x1="12" y1="45" x2="225" y2="45" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="12" y="65" font-size="10.5" fill="#334155">• Non-blocking line buffer drain</text>
+      <text x="12" y="81" font-size="10.5" fill="#334155">• Validates seq IDs &amp; NDJSON format</text>
+      <text x="12" y="97" font-size="10.5" fill="#334155">• Auto-reconnect on USB drop</text>
+      <text x="12" y="113" font-size="10.5" fill="#334155">• Never drops audio callback</text>
+      <text x="12" y="131" font-size="10" font-weight="600" fill="#b45309">Tap &#8594; loop | Hold &#8594; practice</text>
+      <text x="12" y="147" font-size="9.5" font-family="monospace" fill="#b45309">Dispatches to Router Mailbox</text>
+    </g>
+
+    <!-- Router Card -->
+    <g transform="translate(14, 490)">
+      <rect width="237" height="225" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="1.5"/>
+      <text x="12" y="22" font-size="13" font-weight="700" fill="#0369a1">Router (engine/router.py)</text>
+      <text x="12" y="38" font-size="10.5" fill="#475569">Single Control Gatekeeper</text>
+      <line x1="12" y1="45" x2="225" y2="45" stroke="#e2e8f0" stroke-width="1"/>
+
+      <text x="12" y="65" font-size="10.5" font-weight="600" fill="#0f172a">JSON Schema Validation</text>
+      <text x="12" y="80" font-size="10" fill="#334155">• protocol/control.schema.json</text>
+      <text x="12" y="94" font-size="10" fill="#334155">• Values bounded to [0, 1]</text>
+      <text x="12" y="108" font-size="10" fill="#334155">• Drops malformed, stale, duplicate</text>
+
+      <text x="12" y="128" font-size="10.5" font-weight="600" fill="#0f172a">Safety Bounds Enforcement</text>
+      <text x="12" y="143" font-size="10" fill="#334155">• Cutoff clamped: 120–18000 Hz</text>
+      <text x="12" y="157" font-size="10" fill="#334155">• Looper max: 30.0 sec buffer</text>
+
+      <text x="12" y="177" font-size="10.5" font-weight="600" fill="#0f172a">Control Sources Ingested</text>
+      <text x="12" y="192" font-size="10" fill="#334155">• vision (UDP 47800)</text>
+      <text x="12" y="206" font-size="10" fill="#334155">• serial (Arduino 115200)</text>
+      <text x="12" y="220" font-size="10" fill="#334155">• coach (UDP 47800, source: coach)</text>
+    </g>
+  </g>
+
+  <!-- ================= ZONE 3: AUDIO ENGINE & STATE (MIDDLE RIGHT) ================= -->
+  <g transform="translate(620, 95)">
+    <rect width="280" height="730" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2" />
+    <text x="16" y="28" font-size="12" font-weight="800" fill="#334155" letter-spacing="1">3. AUDIO ENGINE &amp; STATE</text>
+
+    <!-- Audio Engine Core Card -->
+    <g transform="translate(14, 45)">
+      <rect width="252" height="375" rx="8" fill="#ffffff" stroke="#059669" stroke-width="1.5"/>
+      <text x="12" y="22" font-size="13" font-weight="700" fill="#047857">Audio Engine (audio/engine.py)</text>
+      <text x="12" y="38" font-size="10.5" fill="#475569">Real-Time Lock-Free Audio Callback</text>
+      <line x1="12" y1="45" x2="240" y2="45" stroke="#e2e8f0" stroke-width="1"/>
+
+      <text x="12" y="63" font-size="10.5" font-weight="600" fill="#0f172a">Deterministic Real-Time Rules</text>
+      <text x="12" y="78" font-size="10" fill="#334155">• Preallocated NumPy ring buffers</text>
+      <text x="12" y="92" font-size="10" fill="#334155">• Zero OS malloc / locks / file I/O</text>
+      <text x="12" y="106" font-size="10" fill="#334155">• CPU load: ~0.14 ms/128-smp (~5.2%)</text>
+
+      <text x="12" y="126" font-size="10.5" font-weight="600" fill="#0f172a">DSP Signal Chain (audio/dsp.py)</text>
+      <text x="12" y="141" font-size="10" fill="#334155">• Biquad LPF (120–18000 Hz sweep)</text>
+      <text x="12" y="155" font-size="10" fill="#334155">• Freeverb Stereo Reverb Unit</text>
+      <text x="12" y="169" font-size="10" fill="#334155">• 30s Looper (max_loop_seconds=30)</text>
+      <text x="12" y="183" font-size="10" fill="#334155">• 5 ms Linear Crossfade Bypass</text>
+      <text x="12" y="197" font-size="10" font-weight="600" fill="#047857">• PeakLimiter: Sub-block gain scale</text>
+      <text x="22" y="211" font-size="9.5" font-family="monospace" fill="#047857">Ceiling: 0.999 true peak</text>
+
+      <text x="12" y="233" font-size="10.5" font-weight="600" fill="#0f172a">Non-Blocking Command Mailbox</text>
+      <text x="12" y="248" font-size="10" fill="#334155">• submit() from Router</text>
+      <text x="12" y="262" font-size="10" fill="#334155">• Atomic swap on block boundary</text>
+
+      <text x="12" y="284" font-size="10.5" font-weight="600" fill="#0f172a">Take Writer (audio/takes.py)</text>
+      <text x="12" y="299" font-size="10" fill="#334155">• Background thread writes loops</text>
+      <text x="12" y="313" font-size="10" fill="#334155">• Completed WAV + JSON metadata</text>
+      <text x="12" y="327" font-size="9.5" font-family="monospace" fill="#047857">&#8594; takes/*.wav, takes/*.json</text>
+      <text x="12" y="343" font-size="9.5" font-family="monospace" fill="#047857">Watched asynchronously by coach/</text>
+      <line x1="12" y1="352" x2="240" y2="352" stroke="#e2e8f0" stroke-width="0.8"/>
+      <text x="12" y="367" font-size="9.5" font-family="monospace" fill="#059669">&#8594; Output to Scarlett Solo DAC</text>
+    </g>
+
+    <!-- State Publisher Card -->
+    <g transform="translate(14, 435)">
+      <rect width="252" height="135" rx="8" fill="#ffffff" stroke="#7c3aed" stroke-width="1.2"/>
+      <text x="12" y="22" font-size="13" font-weight="700" fill="#6d28d9">State Publisher (engine/state.py)</text>
+      <text x="12" y="38" font-size="10.5" fill="#475569">WebSocket Broadcast Server</text>
+      <line x1="12" y1="45" x2="240" y2="45" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="12" y="65" font-size="10.5" fill="#334155">• 20–30 Hz ticker (protocol/state.schema.json)</text>
+      <text x="12" y="81" font-size="10.5" fill="#334155">• RMS VU levels, CPU load, xrun counters</text>
+      <text x="12" y="97" font-size="10.5" fill="#334155">• Active loop mode, FX values, pedal status</text>
+      <text x="12" y="117" font-size="10" font-family="monospace" fill="#6d28d9">&#8594; WS 47801 (Feeds Dashboard &amp; Coach)</text>
+    </g>
+
+    <!-- Next.js Dashboard Card -->
+    <g transform="translate(14, 585)">
+      <rect width="252" height="130" rx="8" fill="#ffffff" stroke="#0284c7" stroke-width="1.2"/>
+      <text x="12" y="22" font-size="13" font-weight="700" fill="#0369a1">dashboard/ (Next.js UI)</text>
+      <text x="12" y="38" font-size="10.5" fill="#475569">Single Webpage Performance View</text>
+      <line x1="12" y1="45" x2="240" y2="45" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="12" y="65" font-size="10.5" fill="#334155">• 01 VU / RMS &amp; Output Spectrum</text>
+      <text x="12" y="81" font-size="10.5" fill="#334155">• 02 LOOPER &amp; Parameter Sliders</text>
+      <text x="12" y="97" font-size="10.5" fill="#7e22ce">• 03 HAND Skeleton &#8592; WS 47802</text>
+      <text x="12" y="113" font-size="10.5" fill="#a21caf">• 04 COACH Plan &amp; Drill &#8592; WS 47803</text>
+    </g>
+  </g>
+
+  <!-- ================= ZONE 4: AI COACH DEEP AGENT (RIGHT) ================= -->
+  <g transform="translate(930, 95)">
+    <rect width="305" height="730" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2" />
+    <text x="16" y="28" font-size="12" font-weight="800" fill="#334155" letter-spacing="1">4. AI COACH (DEEP AGENTS)</text>
+
+    <!-- Coach Card -->
+    <g transform="translate(14, 45)">
+      <rect width="277" height="525" rx="8" fill="#ffffff" stroke="#9333ea" stroke-width="1.5"/>
+      <text x="12" y="22" font-size="13" font-weight="700" fill="#7e22ce">Riff Practice Coach (coach/)</text>
+      <text x="12" y="38" font-size="10.5" fill="#475569">deepagents / LangGraph Checkpointer</text>
+      <line x1="12" y1="45" x2="265" y2="45" stroke="#e2e8f0" stroke-width="1"/>
+
+      <text x="12" y="65" font-size="10.5" font-weight="600" fill="#0f172a">Orchestrator: claude-sonnet-5-5</text>
+      <text x="12" y="80" font-size="10" fill="#334155">• TodoListMiddleware (active task plan)</text>
+      <text x="12" y="94" font-size="10" fill="#334155">• MemorySaver checkpointer graph state</text>
+      <text x="12" y="108" font-size="10" fill="#334155">• FilesystemBackend (virtual sandbox)</text>
+
+      <text x="12" y="130" font-size="10.5" font-weight="600" fill="#0f172a">Longitudinal Memory Filesystem</text>
+      <text x="12" y="145" font-size="10" fill="#334155">• /journal/ (ephemeral session logs)</text>
+      <text x="12" y="159" font-size="10" fill="#334155">• /memories/player.md (distilled profile)</text>
+      <text x="12" y="173" font-size="10" fill="#334155">• /skills/ (drill definitions &amp; practice goals)</text>
+
+      <text x="12" y="195" font-size="10.5" font-weight="600" fill="#0f172a">Specialized Subagents (claude-haiku-5-5)</text>
+      <text x="12" y="210" font-size="10" font-weight="600" fill="#7e22ce">• Ears Subagent (tools/ears/analyze.py)</text>
+      <text x="22" y="225" font-size="9.5" fill="#475569">- 3kHz HPF pick onset detection</text>
+      <text x="22" y="239" font-size="9.5" fill="#475569">- Hesitation gap &amp; BPM recall (&#8804;5 lines)</text>
+      <text x="12" y="257" font-size="10" font-weight="600" fill="#7e22ce">• Eyes Subagent (vision/evidence.py)</text>
+      <text x="22" y="272" font-size="9.5" fill="#475569">- Wrist freeze &amp; transition stall</text>
+      <text x="22" y="286" font-size="9.5" fill="#475569">- Handedness score corroboration</text>
+
+      <text x="12" y="310" font-size="10.5" font-weight="600" fill="#0f172a">Durable Budget Gate (coach/budget.py)</text>
+      <text x="12" y="325" font-size="10" fill="#334155">• ModelCallGate reserves spend locks</text>
+      <text x="12" y="339" font-size="10" fill="#334155">• $8.00 hard session ceiling</text>
+      <text x="12" y="353" font-size="9.5" font-family="monospace" fill="#7e22ce">coach/workspace/usage.jsonl</text>
+
+      <text x="12" y="377" font-size="10.5" font-weight="700" fill="#e11d48">HITL Pedal Approval Gate</text>
+      <text x="12" y="392" font-size="10" font-weight="600" fill="#be123c">interrupt_on: {"rig_control"}</text>
+      <text x="12" y="407" font-size="10" fill="#334155">• Proposes drill: loop bar &amp; go dry</text>
+      <text x="12" y="421" font-size="10" font-weight="600" fill="#be123c">• Player MUST tap footswitch to confirm</text>
+      <text x="12" y="435" font-size="10" fill="#334155">• Agent cannot act without approval</text>
+
+      <text x="12" y="457" font-size="10.5" font-weight="600" fill="#0f172a">rig_control Tool Actuation</text>
+      <text x="12" y="472" font-size="9.5" font-family="monospace" fill="#0284c7">&#8594; UDP 47800 (source: coach)</text>
+
+      <line x1="12" y1="485" x2="265" y2="485" stroke="#e2e8f0" stroke-width="0.8"/>
+      <text x="12" y="502" font-size="10" font-weight="600" fill="#a21caf">coach/feed.py WebSocket Server</text>
+      <text x="12" y="516" font-size="9.5" font-family="monospace" fill="#a21caf">&#8594; WS 47803 (protocol/coach.schema.json)</text>
+    </g>
+
+    <!-- Coach Take Runner -->
+    <g transform="translate(14, 585)">
+      <rect width="277" height="130" rx="8" fill="#ffffff" stroke="#9333ea" stroke-width="1.2"/>
+      <text x="12" y="22" font-size="13" font-weight="700" fill="#7e22ce">Take Ingestion Runner (coach/runner.py)</text>
+      <text x="12" y="38" font-size="10.5" fill="#475569">Async Background Take Watcher</text>
+      <line x1="12" y1="45" x2="265" y2="45" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="12" y="65" font-size="10.5" fill="#334155">• Watches takes/ folder for new takes</text>
+      <text x="12" y="81" font-size="10.5" fill="#334155">• Ingests WAV audio &amp; JSON metadata</text>
+      <text x="12" y="97" font-size="10.5" fill="#334155">• Reads runs/hand.jsonl wrist traces</text>
+      <text x="12" y="115" font-size="9.5" font-family="monospace" fill="#047857">100% Out-of-band: 0ms audio xruns</text>
+    </g>
+  </g>
+
+  <!-- ================= SIGNAL PATH ARROWS ================= -->
+
+  <!-- 1. Guitar -> Scarlett Solo (analog) -->
+  <path d="M 236 195 L 280 195 L 280 550 L 236 550" fill="none" stroke="#059669" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arr-green)" />
+  <text x="284" y="370" font-size="10" fill="#047857" transform="rotate(90, 284, 370)" font-weight="600">1/4" Instrument Cable</text>
+
+  <!-- 2. Scarlett Solo -> Audio Engine (WASAPI) -->
+  <path d="M 236 575 L 634 575 L 634 260" fill="none" stroke="#059669" stroke-width="2.5" marker-end="url(#arr-green)" />
+  <text x="430" y="567" font-size="11" font-weight="700" fill="#047857">WASAPI Exclusive 48kHz (64-128 samples)</text>
+
+  <!-- 3. Audio Engine -> Output Amp -->
+  <path d="M 634 310 L 480 310 L 480 705 L 236 705" fill="none" stroke="#10b981" stroke-width="2" marker-end="url(#arr-green)" />
+  <text x="490" y="698" font-size="10" font-weight="600" fill="#047857">Audio Output (&lt;0.999 PeakLimiter Protected)</text>
+
+  <!-- 4. Camera -> Vision Process -->
+  <path d="M 236 320 L 339 320" fill="none" stroke="#0284c7" stroke-width="2" marker-end="url(#arr-blue)" />
+  <text x="250" y="312" font-size="10" font-weight="600" fill="#0369a1">60 FPS Video</text>
+
+  <!-- 5. Vision -> Router (UDP 47800) -->
+  <path d="M 450 400 L 450 585" fill="none" stroke="#0284c7" stroke-width="2" marker-end="url(#arr-blue)" />
+  <text x="455" y="460" font-size="10" font-weight="700" fill="#0369a1">UDP 47800 (20 Hz)</text>
+
+  <!-- 6. Vision -> Dashboard (WS 47802) -->
+  <path d="M 562 300 L 600 300 L 600 700 L 634 700" fill="none" stroke="#9333ea" stroke-width="1.8" marker-end="url(#arr-purple)" />
+  <text x="565" y="430" font-size="10" fill="#7e22ce" transform="rotate(90, 565, 430)" font-weight="700">WS 47802 (Hand)</text>
+
+  <!-- 7. Arduino -> Serial Decoder -->
+  <path d="M 236 440 L 339 440" fill="none" stroke="#d97706" stroke-width="2" marker-end="url(#arr-amber)" />
+  <text x="245" y="432" font-size="10" font-weight="600" fill="#b45309">115200 Baud</text>
+
+  <!-- 8. Serial Decoder -> Router -->
+  <path d="M 450 520 L 450 585" fill="none" stroke="#d97706" stroke-width="2" marker-end="url(#arr-amber)" />
+
+  <!-- 9. Router -> Audio Engine Mailbox -->
+  <path d="M 562 650 L 634 650 L 634 350" fill="none" stroke="#0284c7" stroke-width="2.5" marker-end="url(#arr-blue)" />
+  <text x="575" y="642" font-size="10" font-weight="700" fill="#0369a1">submit() Mailbox</text>
+
+  <!-- 10. Audio Engine -> Take Writer -> takes/ -->
+  <path d="M 872 380 L 944 380 L 944 695" fill="none" stroke="#059669" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arr-green)" />
+  <text x="948" y="520" font-size="10" font-weight="600" fill="#047857">Async Take WAV/JSON</text>
+
+  <!-- 11. State Publisher -> Dashboard (WS 47801) -->
+  <path d="M 760 615 L 760 680" fill="none" stroke="#7c3aed" stroke-width="2" marker-end="url(#arr-purple)" />
+  <text x="765" y="650" font-size="10" font-weight="700" fill="#6d28d9">WS 47801</text>
+
+  <!-- 12. State Publisher -> Coach (WS 47801) -->
+  <path d="M 872 560 L 944 560" fill="none" stroke="#7c3aed" stroke-width="1.8" marker-end="url(#arr-purple)" />
+  <text x="880" y="552" font-size="10" font-weight="700" fill="#6d28d9">WS 47801</text>
+
+  <!-- 13. Coach -> Dashboard (WS 47803) -->
+  <path d="M 944 610 L 890 610 L 890 710 L 872 710" fill="none" stroke="#c026d3" stroke-width="1.8" marker-end="url(#arr-purple)" />
+  <text x="895" y="660" font-size="10" fill="#a21caf" transform="rotate(90, 895, 660)" font-weight="700">WS 47803</text>
+
+  <!-- 14. Coach rig_control -> Router (UDP 47800, source: coach) -->
+  <path d="M 944 530 L 590 530 L 590 585" fill="none" stroke="#e11d48" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arr-rose)" />
+  <text x="650" y="522" font-size="10" font-weight="700" fill="#be123c">Approved rig_control (UDP 47800, source: coach)</text>
+
+  <!-- Footer -->
+  <g transform="translate(45, 850)">
+    <text x="0" y="0" font-size="11" fill="#64748b">OmniRiff Architecture • Strictly reflects production code on main (audio/, engine/, vision/, firmware/, coach/) • HackPrinceton 2026</text>
+    <text x="1190" y="0" font-size="11" font-weight="600" fill="#64748b" text-anchor="end">Clean Light Background for Devpost</text>
+  </g>
+</svg>
