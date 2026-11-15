@@ -386,9 +386,13 @@ class CoachRunner:
         if self.service.session.mode == "play":
             return {"skipped": "free_play", "take_id": take_id}
         self._session_active = True
+        # Live rig: answer at once (text + cached voice) so the ~20 s of model work isn't dead silence.
+        ack = "Okay, let me listen back to that." if self.quiet_until_asked else None
         self.feed.publish(take_id=take_id, state="listening", mood="concentrating",
-                          target="loop", cue=None, todos=[],
+                          target="loop", cue=ack, todos=[],
                           before_after=None, awaiting_approval=None, activity=[], mark=None)
+        if ack:
+            self._speak(ack)
         self.feed.publish_activity("ears", "analyze_take", "running")
         ear = analyze_take(wav, sidecar_path)
         self.feed.publish_activity("ears", "analyze_take", "done")
