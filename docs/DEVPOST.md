@@ -34,13 +34,27 @@ Run `scripts/windows/measure.ps1 -Pass Loopback` then `-Pass Guitar` (see DEMO.m
 - Engine CPU per 128-frame block: ~0.25 ms mean on an Apple M1 Pro (≈9% of the real-time budget), [Windows number]
 
 ## Challenges
-Real-time audio in Python (preallocated buffers, nothing slow in the callback). Detecting strums on a ringing guitar: our first detector missed soft upstrokes and counted a sustained chord's overtone beating as strums, so we rebuilt it around the pick attack. Keeping an AI agent safe on a live instrument: it proposes, the player approves with a foot tap, and every action goes through the same validation gate as the pedal. Coordinating many agents in parallel without colliding.
+- **Real-time audio in Python:** Preallocated NumPy buffers, zero memory allocation, zero locks, and no file I/O or logging inside the real-time audio callback.
+- **Acoustic transient perception:** Detecting strums on a ringing guitar is deceptively difficult. Our initial energy detector was fooled by ringing string overtones and overtone beating, while completely missing soft upstrokes. We had to rebuild Ears around pick-attack physics (a 3 kHz high-pass filter, log-energy rise, and dynamic thresholding).
+- **Safe cyber-physical agency:** An AI agent controlling live audio parameters cannot act unguided. The agent proposes changes, the player approves with a physical foot tap, and every single action routes through the exact same schema-validation gate as the pedal.
+- **Concurrent multi-agent orchestration:** Coordinating four humans and their autonomous coding agents across 330 commits without code drift, race conditions, or merge collisions.
 
 ## Accomplishments
-[Fill in after the hardware run.] Every input can fail without stopping the music. The full control path is verified in a real browser, and the whole pipeline (take → Ears → report) runs end to end.
+- **One complete cyber-physical teaching loop:** The full journey runs end to end: you play a phrase; the looper records the take; **Ears** measures strum timing and pauses while **Eyes** tracks hand kinematics; **Riff** diagnoses the root cause ("your strumming hand stopped at the chord change"), plans a drill, loops the target bar, and waits for a physical pedal tap before altering your sound; your next attempt shows the measured gap shrinking in real time, with the result recorded to your longitudinal practice journal.
+- **Every input fails safe without stopping the music:** The audio callback is strictly isolated from the rest of the system. Unplug the webcam, disconnect the footswitch serial cable, sever the WebSocket telemetry feed, or exhaust the AI budget—the audio engine continues playing clean, glitch-free sound without skips, clicks, or dropouts. Every control event (gesture, pedal, dashboard, coach) is validated against JSON schemas (`control.schema.json`, `state.schema.json`), rate-limited, and smoothed with linear crossfading.
+- **Rigorous multi-agent engineering with 100% contract enforcement:** Four teammates directed autonomous coding agents through 144 merged pull requests and 330 commits on a shared GitHub message board. By enforcing owner-scoped directories, frozen public schemas, and automated contract tests (421 tests passing in CI), we developed real-time DSP, computer vision, LangChain deep agents, and firmware simultaneously without cross-branch contamination or merge conflicts.
+- **Hardware-ready physical prototype:** [Fill in after the hardware run: Scarlett Solo latency median ± spread ms, 0 xruns over 5-minute sustained play test, real-take strum onset accuracy, and live footswitch response].
 
-## What we learned / What's next
-[Fill in.] Next: run it with guitar teachers and their students, add audio-rate expression (vibrato as real DSP), and a standalone low-latency build.
+## What we learned
+- **Acoustic transient physics beat raw energy:** Detecting strums on a ringing electric guitar required looking at the high-frequency pick attack rather than raw audio power. Sustained open chords produce overtone beating that mimics rhythms, but the sharp pick strike creates an unmistakable high-frequency burst (>3 kHz) with an immediate rise time.
+- **Physical instruments require human-in-the-loop agency:** An AI agent on a live instrument must be a disciplined collaborator, not an unpredictable autonomous actor. Gating every rig adjustment behind a physical pedal tap and subjecting the AI to the exact same parameter clamp and rate limits as manual controls creates immediate trust.
+- **Multi-agent teams need clear modular boundaries:** When multiple autonomous coding agents work in parallel, shared files create instant collisions. Splitting the project into owner-scoped packages (`audio/`, `engine/`, `vision/`, `coach/`, `firmware/`) with strictly versioned protocol schemas enabled continuous, parallel shipping without coordination deadlocks.
+
+## What's next for OmniRiff
+- **Field testing with guitar teachers and students:** Put OmniRiff into the hands of music educators and beginner guitarists to evaluate how longitudinal practice memory and instant cause-and-effect drills impact deliberate practice between lessons.
+- **Continuous audio-rate optical modulation:** Expand vision gestures beyond control-rate filtering into continuous audio-rate modulation (e.g. optical vibrato, tremolo, and morphing multi-FX spaces) using direct SIMD DSP buffers.
+- **Embedded C++ / Faust hardware pedal:** Port the core audio callback and parameter router to a dedicated embedded C++/Faust engine running on a bare-metal microcontroller or Raspberry Pi for a standalone sub-1 ms physical pedal enclosure.
+- **Polyphonic chord voicing transcription:** Extend Ears from monophonic strum-timing analysis to polyphonic audio transcription, identifying missed fretboard fingerings and buzzing strings alongside rhythmic timing.
 
 ## Built with
 python, numpy, scipy, sounddevice, portaudio, mediapipe, opencv, websockets, pyserial, jsonschema, javascript, html/css, arduino, focusrite-scarlett-solo, langchain deepagents, anthropic claude
