@@ -383,7 +383,7 @@
     } else if (loop === 'recording') acts = [['TAP', 'stop, Riff listens']];
     else if (f && f.awaiting_approval) acts = [['TAP', 'yes, start the drill', 'Y'], ['', 'no', 'N']];
     else if (f && f.state === 'thinking') acts = [['WAIT', 'Riff is working on it']];
-    else if (f && ['speaking', 'pointing'].includes(f.state)) acts = [['WAIT', 'Riff is talking']];
+    else if (f && (busy() || (held && held === f && held.cue))) acts = [['WAIT', 'Riff is talking']];   // the real voice, not the frame's state: when Riff is done, you can tap
     else if (step === 4) acts = [['WAIT', 'Riff is wrapping up']];
     else if (step === 1) acts = [['TAP', 'play what you\u2019re working on']];
     else acts = [['TAP', 'record the drill take']];
@@ -492,6 +492,7 @@
   // syllable rhythm is generated for as long as the voice is actually playing.
   function talking(on, browser) {
     cancelAnimationFrame(talkRaf);
+    renderMap();                              // the pedal hint follows the voice: WAIT while talking, TAP when done
     if (!on) { window.dispatchEvent(new CustomEvent('omniriff:voice', { detail: { level: 0 } })); return; }
     const measured = !browser && analyser && routed;
     let t0 = performance.now(), quietFor = 0, sylAt = t0, sylLen = 190, amp = 0.8, n = 0;
