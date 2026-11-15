@@ -31,8 +31,10 @@
       <span class="meter-label">OUT</span>
       <div class="segs" id="outSegs" aria-label="Output level"></div>
     </div>
-    <span class="pill" id="statusPill" role="status">OFFLINE</span>
-    <button type="button" class="gear" id="drawerBtn" aria-controls="drawer" aria-expanded="false" title="Rig details (D)"><kbd>D</kbd>RIG</button>
+    <div class="bar-end">
+      <span class="pill" id="statusPill" role="status">OFFLINE</span>
+      <button type="button" class="gear" id="drawerBtn" aria-controls="drawer" aria-expanded="false" title="Rig details (D)"><kbd>D</kbd>RIG</button>
+    </div>
   </header>
 
   <main class="deck">
@@ -98,9 +100,6 @@
 
     <!-- COACH COLUMN. One reading order: where you are, what Riff says, the session, the pedal. -->
     <aside class="coach-col" id="coachDock" data-state="asleep" aria-label="Coach">
-      <ol class="map" id="steps" data-step="1" data-mode="practice" aria-label="Session">
-        <li data-n="1">GOAL</li><li data-n="2">DRILL 1</li><li data-n="3">DRILL 2</li><li data-n="4">DONE</li>
-      </ol>
       <div class="talk">
         <div class="riff-socket riff-stage" aria-hidden="true"></div>
         <p class="bubble" id="coachLine" aria-live="polite"></p>
@@ -110,18 +109,10 @@
         <b>YOU</b><span id="youText" aria-live="polite"></span>
         <input id="youInput" type="text" maxlength="240" autocomplete="off" placeholder="Type it, Enter to send" hidden>
       </div>
-      <!-- Riff at work (the deep agent): its plan as dots, then its steps and helpers in plain words -->
-      <section class="agent" id="agent" hidden aria-label="What Riff is doing">
-        <header><b>RIFF IS WORKING</b><span class="plan-dots" id="agentPlan" aria-label="Riff's plan"></span></header>
-        <ol id="agentSteps"></ol>
-      </section>
-      <dl class="rows">
-        <div class="row" id="pGoalRow" hidden><dt>GOAL</dt><dd id="pGoal"></dd></div>
-        <div class="row" id="pNow" hidden><dt>NOW</dt><dd><span id="pDrill"></span><small id="pAttempt"></small></dd></div>
-        <div class="row gap" id="pMetric" hidden><dt id="pMetricName">GAP</dt><dd><span class="val"><b id="pMetricNow"></b><small id="pTarget"></small></span><span class="gap-bar" id="pChart"><i class="zone"></i><i class="trail"></i><i class="was"></i><i class="now"></i></span></dd></div>
-        <div class="row" id="pNextRow" hidden><dt>NEXT</dt><dd id="pNext"></dd></div>
-      </dl>
-      <p class="last" id="pLast" hidden></p>
+      <!-- ONE checklist: where you are (goal, drills, done) and what Riff is doing about it, in the same rows.
+           Every row is: mark | label | what | result. The row you are on opens to show detail:
+           your number against its target, or Riff's live steps. coach.js builds it from the feed. -->
+      <ol class="list" id="sessionList" aria-label="Your session" hidden></ol>
       <div class="coach-foot">
         <button type="button" class="talk-btn" id="talkBtn" hidden title="Hold to talk to Riff (V)"><i aria-hidden="true"></i><b>HOLD V</b><span>talk to Riff</span></button>
         <div class="pedal" id="pedalNext"><b>PEDAL</b><span class="acts"></span></div>

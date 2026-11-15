@@ -244,6 +244,32 @@ One page, `dashboard/index.html`. A faceplate, five numbered modules, a footer.
 
 Fits 1920x1080, 1280x720 and the play room's iframe without scrolling; stacks to one column under 1080 px wide. `dashboard/brand.html` is the brand sheet.
 
+### Layout rules (measured, SM review 5)
+
+1. **One gutter.** Every gap between two boxes is `--gutter`: 16 px, 12 px when the window is under 700 px tall. A label sits 8 px above its own box. Edges are `--edge` (24 px, 16 px short). Boxes in a row share a top and a bottom edge.
+2. **One stroke.** Every panel is a 2 px `--line-2` stroke on `--panel`. Active is the same stroke in pink. No glow rings, no drop shadows, no outline that spills into the gutter. The FX button is the one chunky control (4 px stroke, its key travel drawn inside the box).
+3. **One slot.** The right end of the tone row is one fixed slot. It holds the FX button, or the hand view while you adjust an effect. The effect panel never shrinks to make room.
+4. **Header columns match the deck.** The meters are flush with the loop panel's right edge; the status pill and RIG button sit over the coach column. Nothing moves when the status pill changes.
+5. **Sub-labels sit under their number, on the left** (`Low-pass 9662 Hz`, `Wet mix`), the same in every card.
+6. **The record box is exactly as wide as READY plus equal padding**; its dot, length and hint share one left edge.
+
+### The session checklist (coach column)
+
+One list, one row shape for everything Riff plans: **mark · LABEL · what**, with an optional result line under *what*. Marks: green check = done, pink square = you are here, hollow = ahead, dot = context (last time, next time).
+
+| Row | Label | What it says | Result line |
+|---|---|---|---|
+| Last session | LAST TIME | one line from memory (before the first drill) | |
+| Goal | GOAL | what you told Riff, or `Tell Riff what you're working on` | |
+| Reading a take | RIFF | `Reading your take`, while the agent works | |
+| Each drill, any number | DRILL n | the drill's title | `take 1 of 3` (now) |
+| Wrap-up | DONE | `2 drills · 3 takes` | `430 → 110 ms` |
+| After the session | NEXT TIME | what to work on next | |
+
+- **Rows ahead sit back**, darker, until you reach them. The row you are on opens: your number against its target with where you started, and **Riff's checks**, the agent's live steps in plain words (Ears, Eyes, Riff), a dot per step in its own plan, newest last.
+- **The bubble is only what Riff says.** While Riff works it shows `…`; what it is doing is in the checklist, once. No step appears in both.
+- **Built only from the feed** (`session.plan`, `metric`, `last_time`, `next_time`, `activity`, `todos`). It scales with the plan (up to 5 drills) and the agent's activity; a long list scrolls to keep your row in view. Green means done, only.
+
 ## 10. Scope
 
 ### On the label (what we show and pitch)

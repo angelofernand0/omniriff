@@ -20,23 +20,12 @@
   const app = $('app'), dock = $('coachDock'), led = $('led-coach');
   const ui = {
     you: $('youLine'), youText: $('youText'), youInput: $('youInput'), talkBtn: $('talkBtn'),
-    map: $('steps'), line: $('coachLine'), pedal: $('pedalNext'), pedalActs: document.querySelector('#pedalNext .acts'),
-    goalRow: $('pGoalRow'), goal: $('pGoal'), nowRow: $('pNow'), drill: $('pDrill'), attempt: $('pAttempt'),
-    gapRow: $('pMetric'), gapName: $('pMetricName'), gap: $('pMetricNow'), target: $('pTarget'), bar: $('pChart'),
-    nextRow: $('pNextRow'), next: $('pNext'), last: $('pLast'),
-    agent: $('agent'), agentPlan: $('agentPlan'), agentSteps: $('agentSteps'),
+    line: $('coachLine'), pedal: $('pedalNext'), pedalActs: document.querySelector('#pedalNext .acts'),
+    list: $('sessionList'),
     mark: $('waveMark'),
   };
   const TARGET = { loop: '.wave', filter: '#card-filter', reverb: '#card-reverb', bypass: '#fxPower', input: '.loop-state', hand: '#handPanel' };
   const targetOf = (f) => (f.target === 'loop' && markOn ? '#waveMark' : f.target ? TARGET[f.target] || null : null);
-  // what each tool is, said by Riff while it works (the raw names are in the coach's LangSmith trace)
-  const DOING = [
-    [/^get_take_report/, 'Listening back to your timing'], [/^get_hand_report/, 'Watching your strumming hand'],
-    [/^open skill/, 'Picking a drill'], [/^write_drill_card/, 'Setting up the drill'], [/^compare_takes/, 'Comparing with your last take'],
-    [/^read.*memories/, 'Checking your last session'], [/memories/, 'Remembering this for next time'], [/^rig_control/, 'Getting the rig ready'],
-  ];
-  const doing = (w) => { for (const [re, s] of DOING) if (re.test(w)) return s; return 'Thinking'; };
-
   let ws = null, retry = 0, frame = null, joined = false, muted = false;
   try { muted = localStorage.getItem('omniriff.voiceMuted') === '1'; } catch (e) { /* storage blocked */ }
 
@@ -64,7 +53,7 @@
     window.OmniRiff.coach.set({ state: 'asleep', target: null, cue: '', mood: 'sleepy', stage: false });
     mark(null); type('', 0); setLed('off', 'OFF');
     if (dock) dock.dataset.state = 'asleep';
-    renderRows(null); renderAgent(null); renderMark(null); renderMap();
+    renderList(null); renderMark(null); renderMap();
   }
   function setLed(kind, word) {
     if (led) { led.classList.toggle('online', kind === 'live'); led.classList.toggle('warn', kind === 'scripted'); led.querySelector('span').textContent = word; }
@@ -84,15 +73,14 @@
     const hearingYou = ['listening', 'stopping', 'typing'].includes(talk.mode);   // Riff keeps listening to you
     if (!hearingYou) window.OmniRiff.coach.set({ state: f.state, target, cue: f.cue || '', mood: f.mood, stage: false });
     mark(target);
-    renderRows(f); renderAgent(f); toasts(f, !!quiet); renderMap();
+    renderList(f); toasts(f, !!quiet); renderMap();
     if (dock) dock.dataset.state = f.state;
     if (f.cue && f.cue !== lineShown) { lineShown = f.cue; type(f.cue, secs); }
     else if (!f.cue) thinkingText(f);
   }
-  function thinkingText(f) {                 // no line: the bubble says what Riff is doing, quietly
-    const now = [...(f.activity || [])].reverse().find((x) => x.status === 'running');
-    if (f.state === 'thinking') { lineShown = ''; type(`${now ? doing(now.what) : 'Thinking'}…`, 0, true); }
-    else if (f.state === 'listening') { lineShown = ''; type('Listening…', 0, true); }
+  function thinkingText(f) {                 // no line: Riff is not saying anything; the checklist shows what it is doing
+    if (f.state === 'thinking') { lineShown = ''; type('\u2026', 0, true); }
+    else if (f.state === 'listening') { lineShown = ''; type('Listening\u2026', 0, true); }
   }
 
   // typewriter: reveal the line over the time it takes to say it
@@ -114,7 +102,7 @@
     setLed(f.scripted ? 'scripted' : 'live', f.state === 'asleep' ? 'OFF' : f.scripted ? 'SCRIPTED' : 'LIVE');
     const newLine = !!f.cue && f.cue !== prevCue;
     renderMark(f); renderMap();
-    if (!newLine || joined) { renderRows(f); renderAgent(f); }   // a new line changes the rows and steps when it starts (show)
+    if (!newLine || joined) renderList(f);   // a new line changes the rows and steps when it starts (show)
     if (joined) { joined = false; spoken = f.cue || ''; show(f, 0, true); return; }   // joined mid-line: no voice, no typing
     if (newLine && talk.mode === 'sent') { clearTimeout(talk.hide); talk.hide = setTimeout(hideYou, 6000); talk.mode = 'idle'; }
     if (newLine) {
@@ -136,71 +124,14 @@
     if (f) show(f, f.cue === textStarting ? secs : 0);
   }
 
-  // ---------- the rows: GOAL / NOW / GAP / NEXT (or DONE) ----------
-  let gapKey = null;
-  function renderRows(f) {
-    const ses = f && f.session, card = f && f.drill_card;
-    const goal = (ses && ses.goal) || (card && card.passage) || null;
-    ui.goalRow.hidden = !goal;
-    if (goal) ui.goal.textContent = goal;
-    const drill = ses ? ses.drill : card ? { title: card.title } : null;
-    ui.nowRow.hidden = !drill;
-    if (drill) {
-      ui.drill.textContent = drill.title;
-      const at = ses && ses.attempt;
-      ui.attempt.textContent = at ? `take ${Math.max(at.n, 1)} of ${at.of}` : '';
-    }
-    const m = ses && ses.metric, last = m && m.history.length ? m.history[m.history.length - 1] : null;
-    ui.gapRow.hidden = last === null;
-    if (last !== null) {
-      const pass = m.lower_is_better ? last <= m.target : last >= m.target;
-      ui.gapName.textContent = m.name === 'longest gap' ? 'GAP' : m.name.toUpperCase();
-      ui.gap.textContent = `${Math.round(last)} ${m.unit}`;
-      ui.gapRow.dataset.pass = String(pass);
-      const word = m.lower_is_better ? 'under' : 'over';
-      ui.target.textContent = pass ? `\u2713 ${word} ${Math.round(m.target)}` : `target ${word} ${Math.round(m.target)}`;
-      ui.target.dataset.pass = String(pass);
-      const first = m.history[0], top = Math.max(first, last, m.target) * 1.15;
-      const pc = (v) => `${Math.min(100, (v / top) * 100).toFixed(1)}%`;
-      ui.bar.style.setProperty('--now', pc(last));
-      ui.bar.style.setProperty('--goal', pc(m.target));
-      ui.bar.style.setProperty('--was', pc(first));
-      ui.bar.dataset.moved = String(m.history.length > 1);
-      // a new take that lands in the zone: the row itself lights up (feedback on the thing that changed)
-      const key = `${m.history.length}|${pass}`;
-      if (pass && gapKey !== null && key !== gapKey) { ui.gapRow.dataset.flash = 'false'; void ui.gapRow.offsetWidth; ui.gapRow.dataset.flash = 'true'; }
-      gapKey = key;
-    } else gapKey = null;
-    // DONE uses the same rows (SM: the rows were clearer than a card): DONE replaces NOW, the GAP
-    // row keeps its bar with where you started, NEXT TIME replaces NEXT
-    const summary = ses && ses.summary;
-    const done = !!summary;
-    ui.nowRow.querySelector('dt').textContent = done ? 'DONE' : 'NOW';
-    if (done) {
-      const drills = (ses.plan || []).filter((d) => d.status === 'done').length;
-      const takes = m ? m.history.length : 0;
-      ui.nowRow.hidden = !(drills || takes);
-      ui.drill.textContent = `✓ ${drills} drill${drills === 1 ? '' : 's'}`;
-      ui.attempt.textContent = takes ? `${takes} takes` : '';
-      if (last !== null && m.history.length > 1) ui.target.textContent = `was ${Math.round(m.history[0])}`;
-    }
-    ui.nowRow.dataset.done = String(done);
-    let next = ses && ses.next;
-    if (done) { next = ses.next_time || null; if (!next) { const mm = /next(?: time)?:\s*(.+)$/i.exec(summary); next = mm ? mm[1] : null; } }
-    ui.nextRow.querySelector('dt').textContent = done ? 'NEXT TIME' : 'NEXT';
-    ui.nextRow.hidden = !next;
-    if (next) ui.next.textContent = next.replace(/\.$/, '');
-    // last time: only before the first drill, where it sets the scene
-    ui.last.hidden = !(ses && ses.last_time) || done || !!(ses && ses.drill);
-    if (ses && ses.last_time) ui.last.textContent = `Last time: ${ses.last_time}`;
-  }
-
-  // ---------- Riff at work: the deep agent's steps in plain words, while it works ----------
-  // Only what the brain reports (todos = its plan, activity = its tool calls and its helpers Ears
-  // and Eyes). Nothing invented. Shown while Riff is thinking; the moments worth saying out loud
-  // (goal noted, drill card ready, saved to memory) also pop up beside Riff.
+  // ---------- the checklist: one list, one row structure ----------
+  // Every row is  mark | LABEL | what | result.  Done rows say what happened, the row you are on says how far
+  // along you are and opens to show detail (your number against its target, or what Riff is doing right now),
+  // rows ahead sit back, darker. Same thing, same place, same kind of words, for every step Riff can plan.
+  // Built only from the feed: session (goal, plan of drills, metric, summary, next_time, last_time) and the
+  // agent's activity and todos. No session yet = the road ahead, nothing measured.
   const human = (slug) => slug.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
-  function stepOf(a) {
+  function stepOf(a) {                          // one agent tool call, in plain words
     const w = a.what; let m;
     if (a.who === 'ears') return ['EARS', 'Listening back to your take'];
     if (a.who === 'eyes') return ['EYES', 'Watching your strumming hand'];
@@ -217,28 +148,128 @@
     if (/^(write|edit)/.test(w)) return ['RIFF', 'Writing it down'];
     return ['RIFF', 'Working'];
   }
-  let shownSteps = new Set();
-  function renderAgent(f) {
-    const acts = (f && f.activity) || [], todos = (f && f.todos) || [];
-    const working = !!f && f.state === 'thinking' && !(f.session && f.session.mode === 'play');
-    ui.agent.hidden = !working || (!acts.length && !todos.length);
-    if (ui.agent.hidden) { shownSteps = new Set(); return; }
-    // the plan as pixel dots: done, now, to do
-    ui.agentPlan.replaceChildren(...todos.map((t) => { const i = document.createElement('i'); i.dataset.s = t.status; i.title = t.text; return i; }));
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  let seenRows = new Set(), seenSteps = new Set(), doneKeys = new Set(), justUntil = new Map(), gapKey = null;
+
+  function listModel(f) {
+    const ses = f && f.session, rows = [];
+    const play = ses && ses.mode === 'play';
+    const working = !!f && f.state === 'thinking' && !play;
+    const plan = ses && ses.plan && ses.plan.length ? ses.plan : ses && ses.drill ? [{ title: ses.drill.title, status: 'now' }] : [];
+    const m = ses && ses.metric, hist = m && m.history ? m.history : [];
+    const summary = !!(ses && ses.summary);
+    const goal = ses && ses.goal;
+    const nowIdx = plan.findIndex((d) => d.status === 'now');
+    if (ses && ses.last_time && !summary && !plan.length) rows.push({ k: 'last', s: 'ctx', label: 'LAST TIME', text: ses.last_time });
+    rows.push(goal ? { k: 'goal', s: 'done', label: 'GOAL', text: goal }
+      : working || plan.length ? { k: 'goal', s: 'ctx', label: 'GOAL', text: 'Not set' }
+      : { k: 'goal', s: 'now', label: 'GOAL', text: 'Tell Riff what you’re working on' });
+    if (!plan.length) {
+      rows.push(working ? { k: 'read', s: 'now', label: 'RIFF', text: 'Reading your take', work: true }
+        : { k: 'drills', s: 'next', label: 'DRILLS', text: 'Riff picks these after your first take' });
+    }
+    plan.forEach((d, i) => {
+      const now = d.status === 'now';
+      const at = ses && ses.attempt;
+      rows.push({
+        k: `drill${i}`, s: d.status === 'done' ? 'done' : now ? 'now' : d.status === 'skipped' ? 'skip' : 'next',
+        label: `DRILL ${i + 1}`, text: d.title,
+        value: now && at ? `take ${Math.max(at.n, 1)} of ${at.of}` : '',
+        work: now && working, metric: now && hist.length ? m : null,
+      });
+    });
+    const wrapNow = working && plan.length && nowIdx < 0 && !summary;
+    const drillsDone = plan.filter((d) => d.status === 'done').length;
+    rows.push(summary
+      ? { k: 'end', s: 'done', label: 'DONE', text: `${drillsDone || 1} drill${drillsDone === 1 ? '' : 's'}${hist.length ? ` · ${hist.length} take${hist.length === 1 ? '' : 's'}` : ''}`,
+          value: m && hist.length > 1 ? `${Math.round(hist[0])} → ${Math.round(hist[hist.length - 1])} ${m.unit}` : '' }
+      : { k: 'end', s: wrapNow ? 'now' : 'next', label: 'DONE', text: 'Result and what\u2019s next', work: wrapNow });
+    if (summary) {
+      let nt = ses.next_time;
+      if (!nt) { const mm = /next(?: time)?:\s*(.+)$/i.exec(ses.summary); nt = mm ? mm[1] : null; }
+      if (nt) rows.push({ k: 'nexttime', s: 'ctx', label: 'NEXT TIME', text: nt.replace(/\.$/, '') });
+    }
+    return rows;
+  }
+
+  function workNode(f) {                         // what Riff is doing right now, from the feed's activity and plan
+    const acts = (f.activity || []).slice(-(innerHeight < 700 ? 3 : 4)), todos = f.todos || [];
+    const box = el('div', 'work');
+    const head = el('div', 'work-head');
+    head.append(el('b', null, 'RIFF’S CHECKS'));
+    if (todos.length) {
+      const dots = el('span', 'plan-dots');
+      todos.forEach((t) => { const i = document.createElement('i'); i.dataset.s = t.status; i.title = t.text; dots.append(i); });
+      head.append(dots, el('small', null, `${todos.filter((t) => t.status === 'completed').length} of ${todos.length}`));
+    }
+    box.append(head);
+    const ol = el('ol');
     const seen = new Set();
-    ui.agentSteps.replaceChildren(...acts.slice(innerHeight < 700 ? -2 : -3).map((a) => {
+    acts.forEach((a) => {
       const [who, text] = stepOf(a);
-      const li = document.createElement('li');
-      li.dataset.s = a.status; li.dataset.who = who.toLowerCase();
-      li.innerHTML = '<i></i><span></span><em></em>';
-      li.children[0].textContent = who;
-      li.children[1].textContent = text;
-      li.children[2].textContent = a.status === 'done' ? '✓' : a.status === 'failed' ? '✗' : '';
-      if (!shownSteps.has(text)) li.dataset.new = 'true';
-      seen.add(text);
+      const li = el('li'); li.dataset.s = a.status; li.dataset.who = who.toLowerCase();
+      li.append(el('i', null, who), el('span', null, text), el('em', null, a.status === 'done' ? '✓' : a.status === 'failed' ? '✗' : ''));
+      if (!seenSteps.has(text)) li.dataset.new = 'true';
+      seen.add(text); ol.append(li);
+    });
+    seenSteps = seen;
+    box.append(ol);
+    return box;
+  }
+
+  function metricNode(m) {                       // your number against its target, with where you started
+    const hist = m.history, last = hist[hist.length - 1];
+    const pass = m.lower_is_better ? last <= m.target : last >= m.target;
+    const word = m.lower_is_better ? 'under' : 'over';
+    const box = el('div', 'metric'); box.dataset.pass = String(pass);
+    const head = el('div', 'metric-head');
+    head.append(el('em', null, cap(m.name)), el('b', null, `${Math.round(last)} ${m.unit}`),
+      el('small', null, pass ? `✓ ${word} ${Math.round(m.target)}` : `target ${word} ${Math.round(m.target)}`));
+    const bar = el('span', 'gap-bar');
+    ['zone', 'trail', 'was', 'now'].forEach((c) => bar.append(el('i', c)));
+    const first = hist[0], top = Math.max(first, last, m.target) * 1.15;
+    const pc = (v) => `${Math.min(100, (v / top) * 100).toFixed(1)}%`;
+    bar.style.setProperty('--now', pc(last)); bar.style.setProperty('--goal', pc(m.target)); bar.style.setProperty('--was', pc(first));
+    bar.dataset.moved = String(hist.length > 1);
+    const key = `${hist.length}|${pass}`;          // a new take that lands in the zone: the block lights up
+    if (pass && gapKey !== null && key !== gapKey) box.dataset.flash = 'true';
+    gapKey = key;
+    box.append(head, bar);
+    return box;
+  }
+
+  function renderList(f) {
+    const L = ui.list;
+    if (!L) return;
+    const show = !!f && f.state !== 'asleep';
+    L.hidden = !show;
+    if (!show) { seenRows = new Set(); seenSteps = new Set(); doneKeys = new Set(); gapKey = null; return; }
+    const rows = listModel(f), now = performance.now(), keys = new Set(), done = new Set();
+    if (!rows.some((r) => r.metric)) gapKey = null;
+    L.replaceChildren(...rows.map((r) => {
+      keys.add(r.k); if (r.s === 'done') done.add(r.k);
+      if (r.s === 'done' && doneKeys.size && !doneKeys.has(r.k) && seenRows.has(r.k)) justUntil.set(r.k, now + 1200);   // you just finished this step
+      const li = el('li', 'step'); li.dataset.s = r.s; li.dataset.k = r.k;
+      if (!seenRows.has(r.k) && seenRows.size) li.dataset.new = 'true';
+      if ((justUntil.get(r.k) || 0) > now) li.dataset.just = 'true';
+      const body = el('div', 'body');
+      body.append(el('span', 'what', r.text), el('em', 'val', r.value || ''));
+      li.append(el('i', 'mark'), el('b', 'lab', r.label), body);
+      if (r.work || r.metric) {
+        const d = el('div', 'detail');
+        if (r.work) d.append(workNode(f));
+        if (r.metric) d.append(metricNode(r.metric));
+        li.append(d);
+      }
       return li;
     }));
-    shownSteps = seen;
+    seenRows = keys; doneKeys = done;
+    const cur = L.querySelector('.step[data-s="now"]');   // keep the row you are on in view when the list is long
+    if (cur) {
+      const top = cur.offsetTop - L.offsetTop, h = cur.offsetHeight;
+      if (top < L.scrollTop) L.scrollTop = top; else if (top + h > L.scrollTop + L.clientHeight) L.scrollTop = top + h - L.clientHeight;
+    } else L.scrollTop = 0;
   }
 
   // pop-ups: a moment worth saying out loud, beside Riff, for three seconds
@@ -359,21 +390,11 @@
   }
 
   // ---------- the map and the pedal: where you are, and what one tap does now ----------
-  let mapTimer = 0;
   function renderMap() {
     const f = frame, ses = f && f.session, loop = app ? app.dataset.loop : 'idle';
     const play = !f || f.state === 'asleep' || (ses && ses.mode === 'play');
     let step = 1;
     if (ses && ses.plan && ses.plan.length) { const i = ses.plan.findIndex((d) => d.status === 'now'); step = i >= 0 ? i + 2 : 4; }
-    if (ui.map) {
-      const was = Number(ui.map.dataset.step);
-      if (!play && step > was && f) {         // you just finished step `was`: it fills in green
-        ui.map.querySelectorAll('li').forEach((li) => { li.dataset.just = String(Number(li.dataset.n) === was); });
-        clearTimeout(mapTimer); mapTimer = setTimeout(() => ui.map.querySelectorAll('li').forEach((li) => { li.dataset.just = 'false'; }), 1200);
-      }
-      ui.map.dataset.step = String(step); ui.map.dataset.mode = play ? 'play' : 'practice';
-      ui.map.dataset.done = String(!!(ses && ses.summary));
-    }
     // what one press does right now, as keycaps: TAP / HOLD, or WAIT while Riff has the floor
     let acts;
     const awake = f && f.state !== 'asleep';
@@ -404,7 +425,7 @@
       }
     }
     if (ui.talkBtn) {                          // talk: any time Riff is awake and you're not recording
-      ui.talkBtn.hidden = !awake || loop === 'recording' || (f && f.state === 'thinking') || !ui.agent.hidden;
+      ui.talkBtn.hidden = !awake || loop === 'recording' || (f && f.state === 'thinking');
       const ask = !play && step === 1 && !(ses && ses.goal);
       ui.talkBtn.dataset.ask = String(ask);   // Riff is asking what you're working on: the button leads
     }

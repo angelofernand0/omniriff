@@ -19,7 +19,7 @@
 .gear kbd { font: inherit; }
 
 /* ---------- deck: loop on top, tone below; the side rail is gone ---------- */
-.deck { grid-template-columns: minmax(0, 1fr) clamp(400px, 31vw, 600px); grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--s5) var(--s6); padding: var(--s4) var(--s6) var(--s6); }
+.deck { grid-template-columns: minmax(0, 1fr) var(--col); grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--s5) var(--s6); padding: var(--s4) var(--s6) var(--s6); }
 .loop, .tone { grid-column: 1; }
 .coach-col { grid-column: 2; grid-row: 1 / span 2; }
 .loop { grid-row: 1; position: relative; }
@@ -28,10 +28,12 @@
 
 
 /* loop: bigger state word, the waveform carries the rest */
-.loop-state { flex: 0 0 296px; }
-.loop-word { font-size: var(--p5); }
-.loop-dot { width: 36px; height: 36px; }
-.loop-len { font-size: var(--p3); font-family: var(--font-pixel); font-weight: 400; }
+/* the record box is exactly as wide as READY (its widest word) plus equal padding left and right; dot, length and hint share one left edge */
+.loop-state { flex: none; align-items: flex-start; padding: var(--s5); width: calc(var(--ready-w) + 2 * var(--s5)); box-sizing: border-box; --ready-w: 214px; }
+.loop-word { font-size: 48px; }
+.loop-dot { width: 24px; height: 24px; }
+.loop-len { font-size: var(--p3); font-family: var(--font-pixel); font-weight: 400; margin-left: -0.125em; }   /* the pixel font has side bearing: pull the ink onto the dot's axis */
+.loop-state .hint { margin-left: -1px; }
 
 /* tone: two big readouts and the power button */
 .tone-row { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 232px; min-height: 0; }
@@ -144,9 +146,9 @@
 /* ---------- smaller screens (720p projector, the play room) ---------- */
 @media (max-height: 820px) {
   .bar { padding: var(--s2) var(--s5); }
-  .deck { gap: var(--s3) var(--s4); padding: var(--s3) var(--s5) var(--s4); grid-template-columns: minmax(0, 1fr) clamp(340px, 32vw, 460px); }
-  .loop-word { font-size: var(--p4); }
-  .loop-state { flex-basis: 232px; }
+  .deck { gap: var(--s3) var(--s4); padding: var(--s3) var(--s5) var(--s4); grid-template-columns: minmax(0, 1fr) var(--col); }
+  .loop-word { font-size: 40px; }
+  .loop-state { --ready-w: 184px; }
   .fx-glyph { font-size: 48px; }
   .booth { grid-template-columns: 112px minmax(0, 1fr); min-height: 120px; }
   .booth .riff-socket { width: 112px; height: 112px; }
@@ -169,15 +171,13 @@
 /* ---------- sizing that can't overflow (measured review, SM 2026-11-14) ----------
    Every big readout sizes itself to its own box (container query units), so a 3-digit value or a
    narrow window can never push text out of its panel. */
-.card, .loop-state, .fx-power, .engaged-text, .practice, .p-now, .coach-col { container-type: inline-size; }
+.card, .fx-power, .engaged-text, .practice, .p-now, .coach-col { container-type: inline-size; }
 .pct { font-size: clamp(32px, 26cqi, 112px); line-height: 1.05; white-space: nowrap; }
 .card h3 { font-size: clamp(14px, 7cqi, 24px); }
 .readout { flex-wrap: wrap; row-gap: var(--s1); }
 .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .engaged-name { font-size: clamp(16px, 9cqi, 48px); }
 .engaged-pct { font-size: clamp(40px, 34cqi, 144px); line-height: 1.05; white-space: nowrap; }
-.loop-word { font-size: clamp(24px, 17cqi, 72px); line-height: 1.1; }
-.loop-dot { width: 0.5em; height: 0.5em; }
 .fx-power b { font-size: clamp(16px, 14cqi, 32px); line-height: 1.1; }
 .fx-glyph { font-size: clamp(32px, 30cqi, 72px); line-height: 1.1; }
 .fx-word { font-size: clamp(14px, 11cqi, 24px); line-height: 1.1; }
@@ -275,3 +275,21 @@
 .hand canvas { top: 32px; height: calc(100% - 32px); }
 .hand-empty { top: 32px; }
 @media (max-height: 820px) { .tone-row { grid-template-columns: minmax(0, 1fr) 160px; } .hand-head .label-r { display: none; } }
+
+/* tone cards: the sub-label always sits under the number, on the left edge */
+.readout { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; gap: var(--s2); }
+.sub { text-align: left; }
+
+/* header: the same two columns as the deck. Meters are flush with the loop panel's right edge; the status pill and
+   RIG button sit over the coach column and fill it, so nothing moves when the pill changes or goes away. */
+.app { --col: clamp(400px, 31vw, 600px); }
+@media (max-height: 820px) { .app { --col: clamp(340px, 32vw, 460px); } }
+@media (min-width: 1200px) {
+  .bar { display: grid; grid-template-columns: auto minmax(0, 1fr) var(--col); column-gap: var(--gutter); padding: var(--s4) var(--edge); }
+  @media (max-height: 820px) { .bar { padding-block: var(--s2); } }
+  .bar .spacer { display: none; }
+  .bar .top-meters { justify-self: end; }
+  .bar-end { display: flex; gap: var(--gutter); min-width: 0; }
+  .bar-end .pill { flex: 1; min-width: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box; }
+}
+@media (max-width: 1199px) { .bar-end { display: contents; } }
