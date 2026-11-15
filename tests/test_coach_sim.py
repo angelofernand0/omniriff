@@ -116,7 +116,7 @@ class ScriptedCoachTests(unittest.TestCase):
         for f in frames:
             self.assertEqual([e.message for e in COACH.iter_errors(f)], [], f)
             self.assertTrue(f['scripted'])                         # always labelled as scripted
-        self.assertEqual(ask['drill_card']['skill'], 'keep-the-hand-moving')
+        self.assertEqual(ask['drill_card']['skill'], 'slow-then-speed-up')   # the skill the live coach picks for a timing-only take
         self.assertEqual(ask['target'], 'bypass')
         self.assertTrue(done['before_after']['improved'])
         whos = {a['who'] for f in frames for a in f['activity']}
@@ -186,7 +186,7 @@ class ScriptedCoachTests(unittest.TestCase):
         self.assertEqual([p['status'] for p in play['session']['plan']], ['done', 'done'])
         self.assertTrue(play['session']['summary'])
         self.assertTrue(play['session']['last_time'])
-        self.assertEqual(play['session']['metric']['history'], [430.0, 120.0, 110.0])
+        self.assertEqual(play['session']['metric']['history'], [665.0, 440.0, 360.0])   # 665 is what tools.ears measures on the simulated guitar loop
         from tools.sim.coach import ROUND_CUE
         self.assertEqual(again['cue'], ROUND_CUE)
 
@@ -245,3 +245,23 @@ class ScriptedCoachTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ScriptedNumbersAreGroundedTests(unittest.TestCase):
+    """The scripted coach's "before" numbers must be what tools.ears really measures on the simulated guitar
+    (the loop `engine --virtual-guitar` plays), so the fallback story is true for the demo input."""
+
+    def test_before_numbers_match_the_simulated_guitar(self):
+        import numpy as np
+        from tools.ears.analyze import analyze_timing, detect_onsets
+        from tools.sim.coach import WRAP_SUMMARY, TAKE_CUE  # noqa: F401  (the cue text states these numbers)
+        from tools.virtual_guitar.guitar import performance
+        sr, bpm = 48000, 92.0
+        bar_s = 2 * 60.0 / bpm
+        mono = performance(8 * bar_s, sr, bpm=bpm)[: int(8 * bar_s * sr)]
+        onsets, intervals, median, stability, findings = analyze_timing(detect_onsets(np.asarray(mono), sr))
+        gaps = [f['gap_ms'] for f in findings if f['type'] == 'hesitation']
+        self.assertGreaterEqual(len(gaps), 5)                         # a repeating pause, not a one-off
+        self.assertTrue(all(600 <= g <= 730 for g in gaps), gaps)     # "about 665 ms" in the script
+        self.assertTrue(300 <= median <= 390, median)                 # "a third of a second" strums
+        self.assertGreaterEqual(stability, 0.9)

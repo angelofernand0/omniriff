@@ -26,15 +26,21 @@ from .events import Sender
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = Draft202012Validator(json.loads((ROOT / 'protocol/coach.schema.json').read_text()))
 
-SKILL = 'keep-the-hand-moving'
+# The script follows the LIVE coach (coach/): same steps in the same order, the same plan labels, the same
+# cue wording, no chord names and no hand claims (this session has no camera). The "before" numbers are what
+# tools.ears actually measures on the simulated guitar loop (take-20261114-233059-2: 27 strums, median interval
+# 345 ms, seven pauses of about 665 ms, stability 0.92); the "after" numbers are scripted targets, not
+# measurements. Every frame still says scripted=true and the dashboard labels it.
+SKILL = 'slow-then-speed-up'
+ACK_CUE = "Okay, let me listen back to that."
 # Riff's voice: a laid-back session player who teaches (BRAND_SPEC.md section 7, "Riff's voice").
-TAKE_CUE = "Ooh, close. Your strumming hand stops right at the G to C change. Keep it swinging, even if you miss a string."
+TAKE_CUE = "Okay, about every fourth strum there's a pause of roughly a third of a second, right where the change probably lands. Let's slow it down and lock the change in."
 APPROVE_CUE = "Okay, I'll take the effects off so you can hear the timing. Tap the pedal when you're ready."
-DRILL_CUE = 'Just the change, four times, no rush. Let the hand keep moving.'
-PASS_CUE = "Nice. That gap went from almost half a second to about a tenth. Now play the whole pattern over your loop."
-WRAP_CUE = "That's the session. Your change went from half a second to about a tenth; next time let's push the tempo to 100."
-WRAP_SUMMARY = 'G to C change: longest gap 430 to 110 ms. Next: push the tempo to 100 bpm.'
-NEXT_TIME = 'Push the tempo to 100 bpm'
+DRILL_CUE = 'Four slow reps first, about seventy percent pace, then one take at your normal pace.'
+PASS_CUE = "Nice, the pauses are down from seven to three, and the longest is about a third shorter. Now the whole pattern over your loop."
+WRAP_CUE = "That's the session. The long pauses are gone: the longest gap went from two thirds of a second to a third. Next time, let's add tempo."
+WRAP_SUMMARY = 'Longest pause 665 to 360 ms, seven pauses to none. Next: add tempo.'
+NEXT_TIME = 'Add tempo once it stays even'
 MARK_AT = (0.55, 0.66)   # where in the loop the scripted stall is, as a fraction of its length
 PLAY_CUE = "Free play. I'll stay quiet. Press Y for another round."
 ROUND_CUE = "Okay, what are we working on? Hold V and tell me, or just play it."
@@ -45,7 +51,8 @@ NOTED_CUE = "Got it, I'll keep that in mind."
 AGAIN_CUE = 'Want to run it again? Tap the pedal.'
 PAUSE_S = 0.9   # a beat of silence after Riff finishes a line, before the next thing happens
 WORDS_PER_S = 2.6
-TODOS = ['Check timing (ears)', 'Check strumming hand (eyes)', 'Pick one drill', 'Set up the rig']
+TODOS = ['Diagnose: read take and hand reports', 'Speak cue', 'Choose and write drill card',
+         'Set up rig (needs approval)', 'Check after drill take']   # the live coach's plan, in its order
 
 
 def now_ms() -> int:
@@ -285,47 +292,50 @@ class ScriptedSession:
     # ---- the session (ROADMAP §1 "How you use it") ------------------------
     def session(self, attempt: int | None = None) -> dict:
         """The practice session as the player sees it (coach.schema.json `session`). Scripted numbers."""
-        drills = [('Keep the hand moving', SKILL), ('Full pattern over your loop', 'slow-then-speed-up')]
+        drills = [('Slow, then speed up', SKILL), ('Full pattern over your loop', SKILL)]
         done = self.drill_step > 2
         step = min(self.drill_step, 2)
         title, skill = drills[step - 1]
         plan = [dict(title=t, status='done' if i + 1 < self.drill_step else 'now' if i + 1 == self.drill_step else 'next')
                 for i, (t, _) in enumerate(drills)]
-        return dict(mode=self.mode, goal=self.goal or 'Clean G to C change', plan=plan,
+        return dict(mode=self.mode, goal=self.goal or 'Even timing through the change', plan=plan,
                     drill=None if done else dict(title=title, skill=skill, step=step, of=2),
                     attempt=None if done else dict(n=self.tries if attempt is None else attempt, of=3),
-                    metric=dict(name='longest gap', unit='ms', target=150, lower_is_better=True, history=self.history[-12:]),
+                    metric=dict(name='longest gap', unit='ms', target=450, lower_is_better=True, history=self.history[-12:]),
                     next=None if done else ('Full pattern over your loop' if step == 1 else 'Wrap up'),
                     last_time=self.last_time, summary=self.summary, next_time=NEXT_TIME if self.summary else None)
 
     async def diagnose(self) -> None:
-        """Step 1-2: the first take sets the goal; drill 1 is proposed."""
+        """Step 1-2, in the live coach's order: answer at once, read both reports in parallel, SPEAK FIRST,
+        then open the skill and write the drill card while the line is being said."""
         f = self.feed
-        # Riff's work is paced to be watched (SM review 4): ~10 s, longer than one loop playback
-        self.say(state='thinking', mood='curious', target='loop', cue=None, before_after=None, drill_card=None,
-                 todos=_todos(0), activity=[dict(who='ears', what='get_take_report', status='running')])
+        self.say(state='listening', mood='concentrating', target='loop', cue=ACK_CUE, before_after=None, drill_card=None,
+                 mark=None, todos=_todos(0), activity=[])
+        await self.wait(1.4)
+        await self.until_quiet()
+        self.say(state='thinking', mood='curious', target='coach', cue=None,
+                 activity=[dict(who='ears', what='get_take_report', status='running'),
+                           dict(who='eyes', what='get_hand_report', status='running')])
         await self.wait(2.6)
-        self.say(target='hand', mood='concentrating', todos=_todos(1),
-                 activity=_act(f, 'ears', 'get_take_report', 'done') + [dict(who='eyes', what='get_hand_report', status='running')])
-        await self.wait(2.6)
-        self.say(target='loop', mood='curious',
-                 activity=_act(f, 'eyes', 'get_hand_report', 'done') + [dict(who='coach', what='read_file /memories/player.md', status='running')])
-        await self.wait(1.8)
-        self.say(mood='aha', todos=_todos(2),
-                 activity=_act(f, 'coach', 'read_file /memories/player.md', 'done') + [dict(who='coach', what=f'open skill {SKILL}', status='running')])
-        await self.wait(2.0)
-        self.say(activity=_act(f, 'coach', f'open skill {SKILL}', 'done') + [dict(who='coach', what='write_drill_card', status='running')])
-        await self.wait(1.2)
-        card = dict(skill=SKILL, title='Keep the hand moving', passage='G to C change, bars 2-3', reps=4,
-                    pass_rule='longest gap under 150 ms', rig=dict(bypass=True),
-                    journal_path=f'/journal/scripted/{self.take_id()}.md')
-        self.history.append(430.0)
+        reads = [dict(who='ears', what='get_take_report', status='done'),
+                 dict(who='eyes', what='get_hand_report', status='failed')]   # no camera here: timing only, like live without a hand
+        secs = self.loop_seconds or 4.0           # Riff points at the pause in the loop while it names it
+        mark = dict(start_s=round(secs * MARK_AT[0], 2), end_s=round(secs * MARK_AT[1], 2), label='665 ms gap')
+        self.history.append(665.0)
         self.drill_step, self.tries, self.summary = 1, 0, None
-        secs = self.loop_seconds or 4.0           # Riff points at the stall in the loop while it names it
-        mark = dict(start_s=round(secs * MARK_AT[0], 2), end_s=round(secs * MARK_AT[1], 2), label='430 ms gap')
-        self.say(state='pointing', mood='concerned', target='loop', mark=mark, cue=TAKE_CUE, drill_card=card, todos=_todos(3),
-                 session=self.session(0),
-                 activity=_act(f, 'coach', 'write_drill_card', 'done'))
+        self.say(state='pointing', mood='concerned', target='loop', mark=mark, cue=TAKE_CUE, todos=_todos(2),
+                 session=self.session(0), activity=reads + [dict(who='coach', what='say', status='done')])
+        await self.wait(2.0)
+        self.say(mood='aha', activity=reads + [dict(who='coach', what='say', status='done'),
+                                               dict(who='coach', what=f'open skill {SKILL}', status='done')])
+        await self.wait(1.8)
+        self.say(todos=_todos(2), activity=_act(f, 'coach', 'write_drill_card', 'running'))
+        await self.wait(1.6)
+        card = dict(skill=SKILL, title='Slow, then speed up',
+                    passage='Same passage, about 70% pace, then one take at your pace', reps=4,
+                    pass_rule='longest gap under 450 ms', rig=dict(bypass=True),
+                    journal_path=f'/journal/scripted/{self.take_id()}.md')
+        self.say(drill_card=card, todos=_todos(3), activity=_act(f, 'coach', 'write_drill_card', 'done'))
         await self.until_quiet()
         self.awaiting, self.awaiting_kind = f'a{self.takes}', 'drill'
         self.say(state='pointing', mood='encouraging', target='bypass', cue=APPROVE_CUE, mark=None,
@@ -354,11 +364,17 @@ class ScriptedSession:
 
     async def _thinking(self, label: str) -> None:
         await self.until_quiet()
+        self.say(state='listening', mood='concentrating', target='loop', cue=ACK_CUE)
+        await self.wait(1.2)
+        await self.until_quiet()
         self.say(state='thinking', mood='curious', target='loop', cue=None,
-                 todos=_todos(4, [dict(text=label, status='in_progress')]),
-                 activity=_act(self.feed, 'ears', 'get_take_report', 'running'))
+                 todos=_todos(5, [dict(text=label, status='in_progress')]),
+                 activity=[dict(who='ears', what='get_take_report', status='running'),
+                           dict(who='eyes', what='get_hand_report', status='running')])
         await self.wait(2.4)
-        self.say(activity=_act(self.feed, 'ears', 'get_take_report', 'done') + [dict(who='coach', what='compare_takes', status='running')])
+        self.say(activity=[dict(who='ears', what='get_take_report', status='done'),
+                           dict(who='eyes', what='get_hand_report', status='failed'),
+                           dict(who='coach', what='compare_takes', status='running')])
         await self.wait(2.2)
         if self.we_bypassed and self.sender is not None:
             self.sender.send('bypass')             # give the player their sound back
@@ -367,15 +383,17 @@ class ScriptedSession:
     async def check_drill1(self) -> None:
         """Step 4: drill 1 passes; drill 2 puts it back in context over the loop."""
         await self._thinking('Compare with last take')
-        self.history.append(120.0)
+        self.history.append(440.0)
         self.drill_step, self.tries = 2, 0
         self.phase = 'drill2'
         self.say(state='pleased', mood='proud', target='player', cue=PASS_CUE, drill_card=None,
                  session=self.session(0),
-                 todos=_todos(4, [dict(text='Compare with last take', status='completed')]),
+                 todos=_todos(5, [dict(text='Compare with last take', status='completed')]),
                  before_after=dict(before_take_id=f'take-scripted-{self.takes - 1}', after_take_id=self.take_id(),
-                                   hesitations=[3, 0], worst_gap_ms=[430, 120], tempo_stability=[0.71, 0.93], improved=True),
-                 activity=_act(self.feed, 'coach', 'compare_takes', 'done'))
+                                   hesitations=[7, 3], worst_gap_ms=[665, 440], tempo_stability=[0.92, 0.94], improved=True),
+                 activity=_act(self.feed, 'coach', 'compare_takes', 'done')
+                 + [dict(who='coach', what='subagent memory-keeper', status='done'),
+                    dict(who='coach', what='write /memories/player.md', status='done')])
         await self.until_quiet()
         if self.loop != 'recording':
             self.say(state='idle', mood='neutral', target='loop')
@@ -383,18 +401,20 @@ class ScriptedSession:
     async def check_drill2(self) -> None:
         """Steps 5-7: drill 2 passes; wrap-up into memory; back to PLAY."""
         await self._thinking('Check the full pattern')
-        self.history.append(110.0)
+        self.history.append(360.0)
         self.drill_step, self.tries = 3, 0
         self.summary = WRAP_SUMMARY
         self.say(state='pleased', mood='proud', target='player', cue=WRAP_CUE, drill_card=None,
                  session=self.session(),
                  todos=[dict(text='Check the full pattern', status='completed'), dict(text='Write the wrap-up to memory', status='completed')],
                  before_after=dict(before_take_id=f'take-scripted-{self.takes - 1}', after_take_id=self.take_id(),
-                                   hesitations=[0, 0], worst_gap_ms=[120, 110], tempo_stability=[0.93, 0.95], improved=True),
-                 activity=_act(self.feed, 'coach', 'compare_takes', 'done') + [dict(who='coach', what='edit /memories/player.md', status='done')])
+                                   hesitations=[3, 0], worst_gap_ms=[440, 360], tempo_stability=[0.94, 0.96], improved=True),
+                 activity=_act(self.feed, 'coach', 'compare_takes', 'done')
+                 + [dict(who='coach', what='subagent memory-keeper', status='done'),
+                    dict(who='coach', what='write /memories/player.md', status='done')])
         await self.until_quiet()
         await self.wait(2.0)
-        self.mode, self.phase, self.last_time = 'play', 'play', 'the G to C change. Gap down to 110 ms; next, tempo 100.'
+        self.mode, self.phase, self.last_time = 'play', 'play', 'the pauses before the change: 665 ms down to 360; next, add tempo.'
         self.awaiting, self.awaiting_kind = 'again', 'again'
         self.say(state='idle', mood='neutral', target='player', cue=PLAY_CUE, todos=[], before_after=None,
                  session=self.session(),
@@ -428,7 +448,7 @@ async def run_scripted_coach(port: int = 47803, engine_ws: str = 'ws://127.0.0.1
         session.speak = lambda text: asyncio.ensure_future(_speak(text))
 
         async def _prewarm() -> None:                # render every scripted line once, so no line waits on the network
-            for name in ('IDLE_CUE', 'GOAL_CUE', 'NOTED_CUE', 'TAKE_CUE', 'APPROVE_CUE', 'DRILL_CUE', 'PASS_CUE', 'WRAP_CUE', 'PLAY_CUE', 'ROUND_CUE', 'DECLINE_CUE'):
+            for name in ('ACK_CUE', 'IDLE_CUE', 'GOAL_CUE', 'NOTED_CUE', 'TAKE_CUE', 'APPROVE_CUE', 'DRILL_CUE', 'PASS_CUE', 'WRAP_CUE', 'PLAY_CUE', 'ROUND_CUE', 'DECLINE_CUE'):
                 try:
                     await asyncio.to_thread(voice.synthesize, globals()[name])
                 except Exception:
