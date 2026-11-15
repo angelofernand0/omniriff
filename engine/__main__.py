@@ -13,6 +13,8 @@ def main(argv=None):
     p = argparse.ArgumentParser(description='OmniRiff audio/control runtime')
     p.add_argument('--replay', metavar='CONTROLS.JSONL', help='explicit labeled one-shot control replay; disables UDP and serial input')
     p.add_argument('--headless', action='store_true', help='process silence without any audio hardware')
+    p.add_argument('--virtual-guitar', action='store_true', help='SIMULATED input: a looping synthetic guitar (tools/virtual_guitar) through the real engine to the speakers; no guitar or interface needed')
+    p.add_argument('--volume', type=float, default=0.35, help='with --virtual-guitar: speaker level 0..1 after the DSP (default 0.35)')
     p.add_argument('--duration', type=float, help='stop after this many seconds')
     p.add_argument('--serial-port', help='e.g. COM3; omitted = disabled')
     p.add_argument('--udp-port', type=int, default=47800)
@@ -83,6 +85,19 @@ def main(argv=None):
                     stop.wait(delay)
                 elif delay < -0.5:
                     deadline = time.monotonic()  # fell far behind (e.g. machine suspended): resync
+    elif a.virtual_guitar:
+        from audio import stream
+        from tools.virtual_guitar.guitar import performance
+        out_dev = stream.resolve_device(a.out_dev, a.hostapi, 'output')
+        # 8 bars at 92 bpm, with the last notes' ring-out folded onto the start so the loop wraps cleanly.
+        bar_s = 2 * 60.0 / 92.0
+        length = int(round(8 * bar_s * a.samplerate))
+        rendered = performance(8 * bar_s + 3.5, a.samplerate, bpm=92.0)
+        guitar = rendered[:length].copy()
+        guitar[:len(rendered) - length] += rendered[length:]
+        print('VIRTUAL GUITAR: simulated input, real engine. Speaker level %.0f%%.' % (100 * a.volume), flush=True)
+        def work():
+            stream.run_virtual(audio, guitar, out_dev, a.out_channels, a.blocksize, stop, a.volume)
     else:
         from audio import stream
         in_dev = stream.resolve_device(a.in_dev, a.hostapi, 'input')

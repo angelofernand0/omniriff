@@ -5,6 +5,7 @@
 #   bash scripts/mac/start-demo.sh --coach         # also start the practice coach (needs ANTHROPIC_API_KEY in .env)
 #   bash scripts/mac/start-demo.sh --camera 1      # force a camera index (default: first one that is not black)
 #   bash scripts/mac/start-demo.sh --audio "--in Focusrite --out Focusrite --input-channel 2"
+#   bash scripts/mac/start-demo.sh --virtual-guitar --coach   # SIMULATED looping guitar (audible) through the real engine
 #   bash scripts/mac/start-demo.sh --no-vision --dry-run
 # Untested on hardware beyond SM's MacBook. It does not use tools.sim, so nothing is scripted.
 set -u
@@ -16,6 +17,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --coach) COACH=1 ;;
     --no-vision) VISION=0 ;;
+    --virtual-guitar) AUDIO="--virtual-guitar" ;;
     --camera) CAMERA="${2:?--camera needs an index}"; shift ;;
     --audio) AUDIO="${2:?--audio needs a quoted argument string}"; shift ;;
     --python) PYBIN="${2:?--python needs a path}"; shift ;;
@@ -108,7 +110,7 @@ fi
 
 URL="http://127.0.0.1:$HTTP/?ws=ws://127.0.0.1:$WS&hand=ws://127.0.0.1:$HAND&coachws=ws://127.0.0.1:$COACHP"
 echo "dashboard: $URL"
-[ "$AUDIO" = "" ] && echo "HEADLESS: processing silence (no guitar audio). Pass --audio to use an interface."
+[ "$AUDIO" = "" ] && echo "HEADLESS: processing silence (no guitar audio). Use --virtual-guitar for a simulated guitar, or --audio for an interface."
 echo "${CMD[*]}"
 [ "$DRY" = 1 ] && exit 0
 (sleep 6; open "$URL") &
