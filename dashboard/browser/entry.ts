@@ -105,6 +105,11 @@ dialog.innerHTML = `
     <div class="browser-actions"><button type="button" id="coachConnect">Connect Riff</button><button type="button" id="coachForget">Disconnect Riff</button></div>
     <p id="coachStatus" role="status" aria-live="polite"></p>
   </details>
+  <details id="browserPedal"><summary>USB Pedal (Arduino footswitch) <span id="pedalMode"></span></summary>
+    <p>Connect your USB Arduino footswitch (115200 baud). Tap to loop, hold to practice or approve.</p>
+    <div class="browser-actions"><button type="button" id="pedalConnect">Connect USB pedal</button></div>
+    <p id="pedalStatus" role="status" aria-live="polite"></p>
+  </details>
   <details id="devDemo"><summary>Dev demo <span id="devMode"></span></summary>
     <div id="devLocked">
       <label>Password<input id="devPass" type="password" autocomplete="off"></label>
@@ -354,6 +359,55 @@ for (const id of ['coachServer', 'coachKey', 'coachConnect', 'coachForget']) {
   const el = document.getElementById(id);
   const row = el?.closest('label') ?? el;
   if (row && demoCoach) (row as HTMLElement).hidden = true;   // the demo needs no server
+}
+
+const pedalConnect = $<HTMLButtonElement>('pedalConnect');
+const pedalStatus = $('pedalStatus');
+const pedalMode = $('pedalMode');
+
+function updatePedalUi() {
+  const isConn = manager.pedal.isConnected;
+  pedalConnect.textContent = isConn ? 'Disconnect pedal' : 'Connect USB pedal';
+  pedalMode.textContent = isConn ? '· ON' : manager.pedal.status === 'error' ? '· ERROR' : '';
+  if (!manager.pedal.isSupported()) {
+    pedalConnect.disabled = true;
+    pedalStatus.textContent = 'Web Serial is not supported in this browser (available in Chrome/Edge).';
+  } else if (isConn) {
+    pedalStatus.textContent = `Connected at 115200 baud. Events: ${manager.pedal.accepted} ok, ${manager.pedal.dropped} dropped.`;
+  } else if (manager.pedal.lastError) {
+    pedalStatus.textContent = manager.pedal.lastError;
+  } else {
+    pedalStatus.textContent = 'Not connected. Connect your Arduino footswitch via USB.';
+  }
+}
+
+manager.pedal.onStatus(() => updatePedalUi());
+manager.pedal.onAction(() => updatePedalUi());
+
+pedalConnect.addEventListener('click', async () => {
+  if (manager.pedal.isConnected) {
+    await manager.pedal.disconnect();
+    updatePedalUi();
+  } else {
+    try {
+      await manager.pedal.requestAndConnect();
+      updatePedalUi();
+    } catch {
+      updatePedalUi();
+    }
+  }
+});
+updatePedalUi();
+
+const pedalLed = document.getElementById('st-arduino');
+if (pedalLed) {
+  pedalLed.style.cursor = 'pointer';
+  pedalLed.setAttribute('title', 'Click to connect USB Arduino pedal');
+  pedalLed.addEventListener('click', () => {
+    dialog.showModal();
+    const pedalDetails = $('browserPedal') as HTMLDetailsElement | null;
+    if (pedalDetails) pedalDetails.open = true;
+  });
 }
 describe();
 dialog.showModal();

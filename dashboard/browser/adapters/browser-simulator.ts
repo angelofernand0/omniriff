@@ -12,6 +12,7 @@ import { SimulatorChoreography } from '../simulation/choreography';
 import type { StateFrame, HandFrame } from '../protocol/types';
 import { absentHand, type ConnectionCallback } from './connection';
 import { showSwapToast } from './browser-live';
+import type { WebSerialPedalAdapter } from './web-serial';
 
 export class BrowserSimulatorAdapter {
   public readonly modeId = 'simulator' as const;
@@ -22,6 +23,7 @@ export class BrowserSimulatorAdapter {
   public readonly setlist: Setlist;
   public readonly hand: SimulatedHandModel;
   public readonly choreography: SimulatorChoreography;
+  public pedal: WebSerialPedalAdapter | null = null;
 
   private onStateCb: ((frame: StateFrame) => void) | null = null;
   private onHandCb: ((frame: HandFrame) => void) | null = null;
@@ -270,12 +272,14 @@ export class BrowserSimulatorAdapter {
           dropped: 0,
           session: 0,
         },
+        ...(this.pedal?.sourcesArduino ? { arduino: this.pedal.sourcesArduino } : {}),
       },
       adapters: {
         udp: { status: 'disabled', errors: 0, last_error: null },
-        serial: { status: 'disabled', errors: 0, last_error: null },
+        serial: this.pedal?.adapterStatus ?? { status: 'disabled', errors: 0, last_error: null },
         websocket: { status: 'disabled', errors: 0, last_error: null },
       },
+      ...(this.pedal?.pedalTelemetry ? { pedal: this.pedal.pedalTelemetry } : {}),
     };
   }
 
