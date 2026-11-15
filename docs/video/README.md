@@ -83,3 +83,23 @@ The EDL v1 format matches `tools.promo` specification:
   "captions": [...]
 }
 ```
+
+### Assembler CLI Commands
+
+```bash
+# Validate EDL v1 schema, timing, and assets
+python -m tools.promo validate docs/video/edl.json --check-assets
+
+# Inspect assembly plan and generated FFmpeg command without encoding
+python -m tools.promo assemble docs/video/edl.json --dry-run
+
+# Assemble final promo video to MP4
+python -m tools.promo assemble docs/video/edl.json --assets . --out runs/promo/omniriff.mp4
+```
+
+Key features:
+- **Unified Filter Graph**: Letterboxed 1920×1080 @ 30 fps video segments concatenated seamlessly.
+- **Dynamic Audio Ducking**: Sidechain compressor automatically ducks music bed ~-12 dB under voiceover tracks.
+- **Caption Burn-In**: SubRip subtitles burned into video from `docs/video/captions.srt`.
+- **Zero External Dependency Friction**: Uses system `ffmpeg` or bundled `imageio-ffmpeg` static binary automatically.
+
