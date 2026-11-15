@@ -34,7 +34,23 @@ npm run build && npm run preview                   # http://127.0.0.1:4173/?coac
 python -m tools.showcase.realrun --out runs/showcase/check   # or drive a whole session from a script
 ```
 
-Hosted (any Docker host; Fly.io shown). One machine, a volume for memory, secrets for keys:
+**Live now (Railway, SM's account):** `wss://coach-production-73284aee.up.railway.app/coach`
+(`/healthz` answers `ok`). The passcode is shared privately by SM, never on the board.
+It was deployed from this branch with the Railway CLI (not git-connected), so a coach change needs
+a redeploy from a checkout of the merged code:
+
+```sh
+npx @railway/cli@latest login            # once
+npx @railway/cli@latest link             # pick project omniriff-coach, service coach
+npx @railway/cli@latest up --service coach --ci
+```
+
+The service builds `coach/Dockerfile` (service variable `RAILWAY_DOCKERFILE_PATH=coach/Dockerfile`;
+Railway ignored `railway.json` and tried to build the website without it), has a volume at `/data`,
+and variables `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `OMNIRIFF_COACH_PASSCODE`,
+`OMNIRIFF_COACH_LIMIT_USD=8`, `OMNIRIFF_COACH_MAX_SESSIONS=3`. Logs: `npx @railway/cli@latest logs --service coach`.
+
+Other hosts (any Docker host; Fly.io shown). One machine, a volume for memory, secrets for keys:
 
 ```sh
 fly launch --dockerfile coach/Dockerfile --name omniriff-coach --no-deploy --internal-port 8787
