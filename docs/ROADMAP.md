@@ -92,7 +92,7 @@ The product is now a teacher. "Interactive, accessible, personalized" is our pit
 
 ## 3. What's done, and what's missing
 
-**Done on `main` (sim-verified, 180 tests):** audio engine, looper, filter/reverb, bypass, limiter; engine with validated control path + `coach` source (#51); launcher `engine.demo`; take capture `--take-dir` (#47); **Ears** TakeReport v1 (#64); **Eyes** HandReport (#40); dashboard + brand + **Riff** drawn, with `OmniRiff.coach.set()` (#56); simulator, virtual guitar, play room, backup video (#62); preflight check, session log, Windows serial fixes. The browser instrument is live at omniriff.vercel.app; the hosted coach is coach/server.py.
+**Done on `main` (sim-verified, 180 tests):** audio engine, looper, filter/reverb, bypass, limiter; engine with validated control path + `coach` source (#51); launcher `engine.demo`; take capture `--take-dir` (#47); **Ears** TakeReport v1 (#64); **Eyes** HandReport (#40); dashboard + brand + **Riff** drawn, with `OmniRiff.coach.set()` (#56); simulator, virtual guitar, play room, backup video (#62); preflight check, session log, Windows serial fixes. The browser simulator is live at [omniriff.vercel.app](https://omniriff.vercel.app): tap Start simulator for synthetic guitar and hand controls. Hosted simulation does not include the live AI coach or establish real-hardware performance.
 
 **Not done, and it's the whole product:**
 
