@@ -13,9 +13,11 @@
 
 Built for guitarists practising alone, especially beginners and intermediates between lessons. A score tells you *that* you missed; a teacher helps you fix *why*. This is software built around an ordinary guitar and audio input, plus a laptop webcam when available—not a new guitar you have to buy. Gestures and an optional pedal keep the flow hands-free.
 
-![The OmniRiff dashboard: loop, tone, hand and coach modules](docs/img/dashboard.png)
+Meet **Riff**, the little pink coach. While you play, Riff stays out of the audio path; after a take, it helps turn “something felt off” into one thing to practise next.
 
-*Dashboard preview with synthetic guitar and hand input, not a physical-rig or live-coach test. Brand rules: [BRAND_SPEC.md](BRAND_SPEC.md).*
+![Riff proposing a drill beside a loop waveform in the OmniRiff practice dashboard](docs/media/gallery-01-coach.png)
+
+*An illustrative practice session with synthetic guitar and hand input and a scripted coach, not a real-guitar or live-AI test. The simulation label is visible in the image. Brand rules: [BRAND_SPEC.md](BRAND_SPEC.md).*
 
 ## The practice loop
 
