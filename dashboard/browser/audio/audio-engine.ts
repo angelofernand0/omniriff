@@ -34,6 +34,7 @@ export class AudioEngine {
   public isRunning: boolean = false;
   public isMuted: boolean = false;
   public mode: 'synth' | 'input' = 'synth';
+  public outputDeviceId: string = '';
 
   constructor() {}
 
@@ -51,6 +52,20 @@ export class AudioEngine {
 
   public get outputLatency(): number {
     return this.ctx && 'outputLatency' in this.ctx ? (this.ctx as any).outputLatency : 0;
+  }
+
+  public async setAudioOutput(deviceId: string): Promise<boolean> {
+    this.outputDeviceId = deviceId || '';
+    if (this.ctx && 'setSinkId' in this.ctx && typeof (this.ctx as any).setSinkId === 'function') {
+      try {
+        await (this.ctx as any).setSinkId(this.outputDeviceId);
+        return true;
+      } catch (e) {
+        console.warn('Failed to set audio sink ID:', e);
+        return false;
+      }
+    }
+    return false;
   }
 
   public async start(mode: 'synth' | 'input' = 'synth', inputStream?: MediaStream): Promise<void> {
@@ -84,6 +99,13 @@ export class AudioEngine {
     try {
       if (!AudioContextClass) throw new Error('Web Audio API is not supported in this browser.');
       ctx = new AudioContextClass({ latencyHint: 'interactive' });
+      if (this.outputDeviceId && 'setSinkId' in ctx && typeof (ctx as any).setSinkId === 'function') {
+        try {
+          await (ctx as any).setSinkId(this.outputDeviceId);
+        } catch (e) {
+          console.warn('Failed to set initial audio sink ID:', e);
+        }
+      }
     } catch (error) {
       if (mode === 'input') inputStream?.getTracks().forEach((track) => track.stop());
       throw error;
