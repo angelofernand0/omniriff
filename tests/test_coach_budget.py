@@ -16,6 +16,12 @@ def tokens(inputs=0, outputs=0):
 
 class BudgetAdmissionTests(unittest.TestCase):
     def setUp(self):
+        # The admission logic below is exercised with round synthetic rates ($15/$75 per M) so the arithmetic
+        # in these tests stays readable; real rates are covered by RealRateTests.
+        for name, value in (("INPUT_USD_PER_M", 15.0), ("OUTPUT_USD_PER_M", 75.0)):
+            patcher = patch(f"coach.budget.{name}", value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.path = Path(self.tmp.name) / "usage.jsonl"
@@ -183,3 +189,16 @@ class BudgetAdmissionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RealRateTests(unittest.TestCase):
+    def test_estimate_uses_sonnet_rates_and_cheap_cache_reads(self):
+        usage = {"m": {"input_tokens": 1_000_000, "output_tokens": 1_000_000,
+                       "input_token_details": {"cache_read": 800_000}}}
+        # 200k uncached * $2 + 800k cached * $0.10 + 1M out * $10 per M
+        self.assertAlmostEqual(estimate_upper_bound_usd(usage), 0.4 + 0.08 + 10.0, places=6)
+
+    def test_a_typical_live_take_fits_the_default_cap_many_times(self):
+        take = {"m": {"input_tokens": 100_000, "output_tokens": 2_500,
+                      "input_token_details": {"cache_read": 80_000}}}
+        self.assertLess(estimate_upper_bound_usd(take), 0.1)

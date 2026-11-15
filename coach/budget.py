@@ -9,10 +9,15 @@ from pathlib import Path
 
 
 LIMIT_USD = 8.0
-RUN_RESERVE_USD = 2.0
-# Deliberately pessimistic safety rates, not a claim about current provider prices.
-INPUT_USD_PER_M = 15.0
-OUTPUT_USD_PER_M = 75.0
+# Headroom held per in-flight model call. A real call costs a few cents; this only has to cover one
+# worst-case call, and the coach runs up to three in parallel (lead + two specialists).
+RUN_RESERVE_USD = 0.25
+# Claude Sonnet 5.5 list price (claude-sonnet-5-5: $2 in / $10 out / $0.10 cache read per million tokens;
+# checked 2026-11-14). The coach also uses Haiku 5.5, which is cheaper, so charging every model at the
+# Sonnet rate stays an upper bound. Update these if the coach moves to a pricier model.
+INPUT_USD_PER_M = 2.0
+OUTPUT_USD_PER_M = 10.0
+CACHE_READ_USD_PER_M = 0.10
 
 
 def _dollars(value: float) -> float:
@@ -27,7 +32,7 @@ def estimate_upper_bound_usd(usage_by_model: dict) -> float:
     """Charge every model at the same pessimistic upper-bound token rates."""
     if not isinstance(usage_by_model, dict):
         raise ValueError("usage must be a mapping of models to token counts")
-    input_tokens = output_tokens = 0
+    input_tokens = output_tokens = cache_read = 0
     # The pinned usage callback replaces per-model records concurrently.
     # Snapshot the mapping before iterating while specialists finish.
     for data in usage_by_model.copy().values():
@@ -40,7 +45,15 @@ def estimate_upper_bound_usd(usage_by_model: dict) -> float:
             raise ValueError("token counts must be nonnegative integers")
         input_tokens += counts[0]
         output_tokens += counts[1]
-    return round((input_tokens * INPUT_USD_PER_M + output_tokens * OUTPUT_USD_PER_M) / 1_000_000, 6)
+        # input_tokens already includes cached reads (LangChain usage metadata); bill those at the cache rate.
+        details = data.get("input_token_details")
+        read = details.get("cache_read", 0) if isinstance(details, dict) else 0
+        if isinstance(read, bool) or not isinstance(read, int) or read < 0:
+            raise ValueError("cache read tokens must be nonnegative integers")
+        cache_read += min(read, counts[0])
+    uncached = input_tokens - cache_read
+    return round((uncached * INPUT_USD_PER_M + cache_read * CACHE_READ_USD_PER_M
+                  + output_tokens * OUTPUT_USD_PER_M) / 1_000_000, 6)
 
 
 class BudgetGuard:
