@@ -11,32 +11,49 @@ Short form for the end: **"Never put the guitar down."**
 
 SM tells the product/AI story; Aditya plays and supplies the guitarist's point of view; John and Angelo get one proof line each. **Aim to finish by 1:50**, leaving ten seconds for a slow screen or handoff. The [official rules](https://hackprinceton-fall-26.devpost.com/rules) cap the in-person presentation at two minutes. Do not add a separate technology introduction before this script.
 
-The planned playing test is the `Em → Cmaj7 → G → Dsus2` progression from Claude's [PR #196 test sheet](https://github.com/angelofernand0/omniriff/pull/196), with the ring finger deliberately landing last. **A seeded synthetic-hand test produced the specific ring-finger diagnosis; a real guitar/webcam has not verified it yet.** The exact diagnosis, before/after result, and chosen approval gesture must be locked from a real rehearsal. Never recite synthetic numbers as live results.
+The demo story: **Aditya can't get his timing right.** Riff remembers him, listens to one take, and names the cause: **on the third phrase he plays straight with uneven attacks, so swing it and hit every strum the same.** It sets up the drill, he approves with a thumbs-up, plays it again, and Riff shows the improvement and remembers it. The session runs on the website's **demo coach** (below): the coaching lines and numbers are scripted for this story and react to what Aditya actually does on stage.
 
 | Clock | Speaker and live action | Say |
 | --- | --- | --- |
-| 0:00–0:08 | **SM.** Aditya and the guitar are already in view. | “OmniRiff is a guitar teacher for solo practice: it finds why you stumbled and sets up the fix.” |
-| 0:08–0:15 | **Aditya.** Guitar, interface and camera in view. Say this to Riff through a rehearsed TALK control; if speech recognition is unreliable, the operator sets the goal and Aditya says it to the judges without claiming Riff heard him. | “Riff, my chord changes feel clunky. What's slowing me down?” |
-| 0:15–0:28 | **Aditya.** Record one 10–13 s take with a deliberate late ring finger; stop the take so Riff can analyze it. **SM** points to the visible stumble, then leaves space for the playing. | “Watch this change. You can hear the pause—but the pause isn't the cause.” |
-| 0:28–0:34 | **Angelo.** Guitar still audible; show a moving audio meter. | “The guitar keeps playing through the audio path while the coach works between takes.” |
-| 0:34–0:40 | **John.** Point to a real hand trace; demonstrate only the gesture mapping that passed the final camera rehearsal. | “The webcam follows his hands, so he can control the rig without reaching for a mouse.” |
-| 0:40–0:57 | **SM.** Point to Riff's actual plan and evidence while the agent thinks. | “This is where the teacher takes over. Riff is a LangChain Deep Agent: Ears measures timing, Eyes measures the hands, and it chooses one drill for the cause it found. Not another score—the next move.” |
-| 0:57–1:09 | **SM.** Point at the actual cue and drill card. | **If the real run confirms it:** “Riff says his ring finger lands last. So instead of ‘play it again,’ the drill is: lead with that finger.” **If only timing evidence is valid:** “Riff found the late strum and gave him a timing drill. The camera didn't give it enough evidence to name a finger.” |
-| 1:09–1:16 | **Aditya** approves by the control verified for this demo—website thumbs-up, local pedal hold, or dashboard button—then clears the old take and starts a fresh one. **SM** narrates. | “Riff asks before changing the rig. Aditya approves, then tries that one correction.” |
-| 1:16–1:31 | **Aditya.** Play a fresh 10–15 s correction take. No claim that this is an overdub on the old loop. | *(Let the guitar speak.)* |
-| 1:31–1:40 | **SM.** Point to the actual comparison, if ready. | **If measured:** “The gap changed from **[read screen]** to **[read screen]**. That's the practice loop: find the cause, work the fix, check the next take.” **If not ready:** “That's the practice loop: find the cause, work the fix, and check the next take—not just replay the mistake.” |
-| 1:40–1:46 | **Aditya.** Keep the guitar in hand; approve the line as genuinely his before the pitch. | “One thing to fix—not just another score. That's what I need when I practise.” |
-| 1:46–1:50 | **SM.** | “OmniRiff. Never put the guitar down.” |
+| 0:00–0:08 | **SM.** Aditya, guitar and camera in view; omniriff.vercel.app with the demo coach on the big screen, already started. | “OmniRiff is a guitar teacher that lives in your signal chain: it hears and sees you play, finds why you slipped, and sets up the fix.” |
+| 0:08–0:16 | **Aditya** plays the riff freely. Riff greets him from memory: *“Welcome back, last time leading with your ring finger fixed those changes. What are we working on today?”* | **SM:** “Riff already knows him. Last session it fixed his chord changes.” |
+| 0:16–0:22 | **Aditya** holds TALK (V) and says it to Riff. Riff: *“Timing, got it… Tap the pedal, play the riff, then tap again.”* | **Aditya:** “Riff, I can't get my timing right.” |
+| 0:22–0:34 | **Aditya** taps Record loop, plays the riff about 10 s, taps again. | **SM:** “He just plays. No menus, no metronome app.” |
+| 0:34–0:42 | Riff: *“Okay, let me listen back to that.”* Its plan streams in: Ears, Eyes, find the phrase, pick a drill. | **SM:** “Riff is a LangChain Deep Agent. Ears reads the timing, Eyes watches both hands, and it picks one fix, not a score.” |
+| 0:42–0:47 | **Angelo.** Guitar still sounding. | “The guitar never stops while Riff thinks, and Riff can't touch the sound without asking.” |
+| 0:47–0:57 | Riff marks **3RD PHRASE** on the loop: *“It's the third phrase. You're playing it straight and your attacks jump around, so swing it, long-short, and hit every strum the same.”* | **Aditya:** “That's it. I rush that phrase and dig in on the off-beats.” |
+| 0:57–1:05 | Riff: *“I'll take the effects off so you can hear your attacks. Thumbs-up or hold the pedal if that's okay.”* **Aditya** holds a thumbs-up; FX goes OFF. | **John:** “The camera reads his thumbs-up. His hands never leave the guitar.” |
+| 1:05–1:22 | **Aditya** clears the loop, records the third phrase with swing and even attacks, taps again. | *(Let the guitar speak.)* |
+| 1:22–1:32 | Riff: *“Nice, that's the swing. Your attacks are way more even, and the third phrase sits in the pocket now.”* Before/after on screen. | **SM:** “Timing drift on that phrase: 118 down to 31 milliseconds.” |
+| 1:32–1:42 | Riff: *“Effects are back on, pinch the reverb in and make it yours. I'll remember the third phrase for next time.”* **Aditya** pinches the reverb up; the **SAVED TO MEMORY** card files into Riff. | **SM:** “And next time, it starts right here.” |
+| 1:42–1:50 | **SM.** | “OmniRiff. Never put the guitar down.” |
 
-This is one story, not four mini-pitches. If the agent or camera needs more time, **drop John's and Angelo's lines first** (they own those points in Q&A), then omit Aditya's final line if needed. Keep the first take, actual feedback, approval and second take; don't speed-read or invent a result. If the live coach is unavailable, visibly label the backup **SIMULATED** or **RECORDED**, say that aloud, and show the live instrument separately. Never describe a website thumbs-up as a pedal tap or the browser audio path as the Python engine.
+If time runs short, drop Angelo's line first, then John's. Keep the take, the diagnosis, the thumbs-up, the second take, and the memory card.
 
 ### LangChain judge swap (same two minutes, not a second pitch)
 
-Keep the same guitarist, mistake, drill and retake. Replace SM's 0:40–0:57 line with: “Riff is built with LangChain Deep Agents. Its plan reads the timing and hand reports together, opens a drill skill, and a memory-keeper subagent saves what matters for next time. Before a rig change, it waits for Aditya's approval.” Point to the live trace and approval state. This is the technical answer **inside** the product story; don't append another 20-second opener on top. Plain report reads are parallel tools on the lead agent; Ears/Eyes subagents are reserved for a confusing report, not invoked for every take. The full proof/limits are in [PITCH-LANGCHAIN.md](PITCH-LANGCHAIN.md). If a trace element is absent, name only what is visible and show the deeper architecture in Q&A.
+Keep the same guitarist, mistake, drill and retake. Replace SM's 0:34–0:42 line with: “Riff is built with LangChain Deep Agents. Its plan reads the timing and hand reports together, opens a drill skill, and a memory-keeper subagent saves what matters for next time. Before a rig change, it waits for Aditya's approval.” Point to the live trace and approval state. This is the technical answer **inside** the product story; don't append another 20-second opener on top. Plain report reads are parallel tools on the lead agent; Ears/Eyes subagents are reserved for a confusing report, not invoked for every take. The full proof/limits are in [PITCH-LANGCHAIN.md](PITCH-LANGCHAIN.md). If a trace element is absent, name only what is visible and show the deeper architecture in Q&A.
 
 ### Recording cut
 
 Use the same words and speaker assignments for the optional product video. Film a wide shot of Aditya and the rig, a readable screen capture of Riff's actual cue, and short camera/hand/pedal inserts under John and Angelo's lines. Editing may remove waiting time, but caption a stitched run **edited real session** and keep the before/after from that same session. If the take or coach is simulated, keep **SIMULATED** on screen and say it in voiceover. No fabricated reaction, evidence or live-performance claim.
+
+## Demo coach (the scripted session on the website)
+
+**Load:** `https://omniriff.vercel.app/?coach=demo`. Press Start. Add `&source=live` to use Aditya's real guitar input and webcam (choose the instrument channel in the settings); without it the simulated guitar plays. Add `&fresh=1` for a first visit with no memory.
+
+**What reacts to the room:** the goal Aditya says or types to Riff (any words), each finished loop recording (Record loop / L, real guitar or simulator), and the approval (a held thumbs-up on camera, or Y). Riff's voice is pre-rendered in its ElevenLabs voice (`tools/showcase/demo_voice.py`).
+
+**What is scripted:** every line Riff says, the plan steps, the third-phrase marker (the third quarter of whatever loop he records), the drill, and the numbers (timing drift 118 → 31 ms, stability 0.78 → 0.95). The script is in `dashboard/browser/coach/demo-script.ts` and `demo-coach.ts`. The real coach (settings → Riff, the AI coach, with the passcode) measures the take instead; use it for Q&A or a second run.
+
+**Memory:** the first visit opens with a remembered session (the ring-finger fix). Finishing the demo saves the third phrase, so a reload opens with *“Welcome back, last time swinging the third phrase evened out your timing.”* Use `&fresh=1` to reset before the real pitch.
+
+**Operator checklist (SM):**
+1. Before judges arrive: open `…/?coach=demo&source=live&fresh=1` once and press Start, so the browser has mic and camera permission. Then reload `…/?coach=demo&source=live` so the opening line is the remembered session, not a first visit.
+2. If speech-to-text mishears Aditya, type “I can't get my timing right” in the TALK box. Any words move the script on.
+3. If the thumbs-up doesn't register within two seconds, press **Y**.
+4. Second take: tap once to clear the old loop, then record. Riff answers when the recording finishes.
+5. Click the page once before starting so the browser allows Riff's voice. **M** mutes Riff.
 
 ## Sponsor-judge follow-up (Q&A, not extra speech)
 

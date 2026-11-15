@@ -2,6 +2,7 @@ import { SourceManager, type OperatingMode } from './source-manager';
 import type { StateFrame, HandFrame } from './protocol/types';
 import './controls.css';
 import { RemoteCoach, coachConfig, saveCoachConfig } from './coach/remote-coach';
+import { DemoCoach } from './coach/demo-coach';
 
 type BrowserSource = {
   onState(cb: (frame: StateFrame) => void): void;
@@ -53,9 +54,15 @@ await import('../app.js');
 for (const file of ['juice.js', 'riff.js', 'stage.js', 'tape.js']) await loadClassic(file);
 
 // Riff, the real AI coach, hosted (coach/server.py). The instrument stays in this browser.
-const hosted = params.get('coach') === 'off' ? null : coachConfig(params);
+// ?coach=demo: the pitch's scripted session in the browser (coach/demo-coach.ts), no server.
+const demoCoach = params.get('coach') === 'demo' ? new DemoCoach(manager, params.get('fresh') === '1') : null;
+const hosted = params.get('coach') === 'off' || demoCoach ? null : coachConfig(params);
 const remoteCoach = hosted ? new RemoteCoach(hosted, manager) : null;
-if (remoteCoach) {
+if (demoCoach) {
+  window.OmniCoachSocket = demoCoach.socketFactory;
+  // @ts-expect-error This existing classic script is loaded for its side effects.
+  await import('../coach.js'); coachLoaded = true;
+} else if (remoteCoach) {
   window.OmniCoachSocket = remoteCoach.socket;
   // @ts-expect-error This existing classic script is loaded for its side effects.
   await import('../coach.js'); coachLoaded = true;
@@ -137,7 +144,7 @@ function label() {
     sourceButton.textContent = connected ? 'PYTHON · SOUND' : 'PYTHON · OFF';
   } else sourceButton.textContent = 'START SOUND';
   if (connected && active && active !== 'python' && browserAdapter().audio.isMuted) sourceButton.textContent = active === 'simulator' ? 'SIMULATED · MUTED' : 'LIVE INPUT · MUTED';
-  $('pedalNext').hidden = active !== 'python' && !remoteCoach;
+  $('pedalNext').hidden = active !== 'python' && !(remoteCoach || demoCoach);
   stop.disabled = !active && !busy;
   if (typeof loopControl !== 'undefined') loopControl.disabled = !connected;
   stop.textContent = active === 'python' ? 'Disconnect' : 'Stop';
@@ -194,7 +201,7 @@ start.addEventListener('click', async () => {
   busy = true; describe(); label();
   const requested = selectedMode();
   try {
-    if (coachLoaded && !remoteCoach && requested !== 'python') {
+    if (coachLoaded && !(remoteCoach || demoCoach) && requested !== 'python') {
       await manager.stop();
       if (request !== startupRequest) return;
       const url = new URL(location.href); url.searchParams.set('source', requested);
@@ -226,7 +233,7 @@ start.addEventListener('click', async () => {
         adapter.audio.setSynthAuto(true);
         adapter.audio.setSynthBpm(92);
       }
-      if (!remoteCoach) $('coachLine').textContent = 'Play freely. Open settings to connect Riff, the coach.';
+      if (!remoteCoach && !demoCoach) $('coachLine').textContent = 'Play freely. Open settings to connect Riff, the coach.';
     }
     dialog.close();
   } catch (error) {
@@ -236,7 +243,7 @@ start.addEventListener('click', async () => {
   } finally { if (request === startupRequest) { busy = false; describe(); label(); } }
 });
 stop.addEventListener('click', async () => {
-  const python = manager.activeMode === 'python' || (coachLoaded && !remoteCoach) || (busy && selectedMode() === 'python');
+  const python = manager.activeMode === 'python' || (coachLoaded && !(remoteCoach || demoCoach)) || (busy && selectedMode() === 'python');
   ++startupRequest; busy = false; describe();
   await manager.stop(); connected = false; label();
   if (python) location.reload(); // unload the coach socket too; the Python instrument keeps playing
@@ -249,7 +256,7 @@ const coachKey = $<HTMLInputElement>('coachKey');
 coachServer.value = hosted?.url ?? '';
 coachKey.value = hosted?.key ?? '';
 const coachStatus = $('coachStatus');
-coachStatus.textContent = remoteCoach ? 'Connecting to Riff…' : 'Not connected. Ask your team for the server address and passcode.';
+coachStatus.textContent = demoCoach ? 'Demo coach: the pitch session, scripted in this browser.' : remoteCoach ? 'Connecting to Riff…' : 'Not connected. Ask your team for the server address and passcode.';
 if (remoteCoach) remoteCoach.status = text => { coachStatus.textContent = text; };
 function reloadWithCoach(url: string, key: string) {
   saveCoachConfig(url, key);
