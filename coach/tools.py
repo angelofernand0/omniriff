@@ -275,7 +275,10 @@ def build_langchain_tools(service: CoachTools) -> dict:
 
     @tool
     def say(text: str) -> str:
-        """Say at most two sentences: the measured cause, then one fix."""
+        """Say at most two short sentences, about 25 words and never over 180 characters: the measured
+        cause, then one fix. It is spoken aloud, so long cues make the player wait."""
+        if isinstance(text, str) and len(text) > 180:
+            return "Rejected: that is too long to speak. Say it again in under 25 words (180 characters)."
         return service.say(text)
 
     @tool

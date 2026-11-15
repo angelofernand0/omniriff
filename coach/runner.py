@@ -165,6 +165,23 @@ class CoachRunner:
         self._last_practice_count = 0
         self._last_recording_count = state.recording_counter()
 
+    def _speak(self, text: str) -> None:
+        """Voice a runner-written cue (live rig only) without ever blocking the take loop."""
+        if not self.quiet_until_asked or not text:
+            return
+
+        def work() -> None:
+            try:
+                import asyncio
+                from .voice import Voice
+                audio = asyncio.run(Voice.from_env().render(text))
+                if audio is not None:
+                    self.feed.broadcast_audio(audio)
+            except Exception as exc:  # voice is optional
+                LOG.warning("coach voice for a short cue failed: %s: %s", type(exc).__name__, exc)
+
+        threading.Thread(target=work, name="omniriff-cue-voice", daemon=True).start()
+
     def _poll_player_input(self) -> None:
         """Consume bounded player words outside recording and keep them as data."""
         snapshot = self.state.snapshot()
@@ -194,6 +211,7 @@ class CoachRunner:
             self.feed.publish(session=self.service.session.snapshot(), state="speaking",
                               mood="encouraging", target="player",
                               cue="Got it, we'll work on that. Tap the pedal, play it for me, then tap again.")
+            self._speak("Got it, we'll work on that. Tap the pedal, play it for me, then tap again.")
             self.feed.publish_activity("coach", "write /journal/goal.md", "done")
         else:
             self.player_note = text
@@ -460,6 +478,7 @@ class CoachRunner:
         self.feed.publish(state="idle", mood="neutral", target="player",
                           cue=cue or "What are you working on? Hold TALK or type it, then play.",
                           session=self.service.session.snapshot())
+        self._speak(cue or "What are you working on? Hold TALK or type it, then play.")
 
     def run_directory(self, take_dir: Path, *, once: bool = False) -> None:
         """Poll completed sidecars; a coach failure never stops the instrument."""
