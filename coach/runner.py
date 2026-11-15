@@ -145,7 +145,7 @@ class CoachRunner:
         self, agent, service: CoachTools, feed: CoachFeed, state: RigStateReader,
         budget: BudgetGuard, *, hand_log: Path | None = None,
         fixture_mode: bool = False, auto_approve_fixtures: bool = False,
-        approval_timeout_s: float = 60.0,
+        approval_timeout_s: float = 60.0, quiet_until_asked: bool = False,
     ):
         if auto_approve_fixtures and not fixture_mode:
             raise ValueError("automatic approval is allowed only for synthetic fixtures")
@@ -154,6 +154,9 @@ class CoachRunner:
         self.fixture_mode = fixture_mode
         self.auto_approve_fixtures = auto_approve_fixtures
         self.approval_timeout_s = approval_timeout_s
+        # Live rig: stay in quiet free play (no model calls) until the player starts practice with Y / the
+        # pedal hold, or says or types a goal. Loops made while jamming are not coached.
+        self.quiet_until_asked = quiet_until_asked
         self.session_id = feed.frame["session_id"]
         self.previous_take_id: str | None = None
         self.seen: set[Path] = set()
@@ -449,6 +452,11 @@ class CoachRunner:
     def open_session(self) -> None:
         """Show the most recent verified practice result before a new take."""
         cue = last_time_cue(self.service.workspace)
+        if self.quiet_until_asked:
+            self.service.session.stop()
+            self._session_active = False
+            cue = ("Free play, I'm just listening. Press Y or hold the pedal when you want to practice with me."
+                   if not cue else cue)
         self.feed.publish(state="idle", mood="neutral", target="player",
                           cue=cue or "What are you working on? Hold TALK or type it, then play.",
                           session=self.service.session.snapshot())
@@ -480,11 +488,15 @@ class CoachRunner:
                     self.seen.add(sidecar)
                     self.process_take(wav, sidecar)
                 except BudgetExhausted:
+                    if self.quiet_until_asked:
+                        continue  # live rig: stay alive so a raised cap works without restarting everything
                     return
                 except Exception:
                     if not self.budget.allow_new_run():
                         self.feed.publish(state="asleep", mood="sleepy", target=None,
                                           cue="Coach is out of credit.")
+                        if self.quiet_until_asked:
+                            continue
                         return
                     LOG.exception("coach could not process %s", sidecar.name)
                     # Plain-words reason; the full traceback is in the terminal log above.
