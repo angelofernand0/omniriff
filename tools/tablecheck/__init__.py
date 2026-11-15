@@ -88,7 +88,12 @@ async def hand_check(port, validator, timeout):
 
 async def coach_check(port, validator, timeout):
     frame = await websocket_frame(port, validator, 'coach', timeout)
-    mode = 'SCRIPTED — NOT LIVE AI' if frame['scripted'] else 'LIVE feed (model/credit not verified)'
+    replay = frame['session_id'].startswith('replay-')
+    if replay and not frame['scripted']:
+        return Result('coach', False, 'REPLAY metadata inconsistent: replay- session must be scripted; not a verified live feed')
+    mode = ('REPLAY — recorded feed, not live' if replay else
+            'SCRIPTED — NOT LIVE AI' if frame['scripted'] else
+            'LIVE feed (model/credit not verified)')
     cue = frame.get('cue') or ''
     out_of_credit = 'out of credit' in cue.casefold()
     age = max(0, time.time() * 1000 - frame['timestamp_ms']) / 1000

@@ -12,6 +12,7 @@ from .hand_view import HandView
 from .take import TakeRecorder
 from .setlist import Setlist
 from .metrics import FrameMetrics
+from .diagnostics import CameraDiagnostics
 from .hand_log import HandLog, hand_record
 from .zones import Rect, StrumGuard
 from .rehearsal_check import RehearsalCheck
@@ -24,12 +25,20 @@ def main(argv=None):
     p.add_argument('--camera', type=int, default=0)
     p.add_argument('--max-hand-jump', type=float, default=0.30,
                    help='maximum normalized wrist movement per frame before tracking fails closed')
+    p.add_argument('--model-detection-confidence', type=float, default=0.6,
+                   help='MediaPipe hand detection threshold (default: 0.6)')
+    p.add_argument('--model-presence-confidence', type=float, default=0.6,
+                   help='MediaPipe hand presence threshold (default: 0.6)')
+    p.add_argument('--model-tracking-confidence', type=float, default=0.6,
+                   help='MediaPipe hand tracking threshold (default: 0.6)')
     p.add_argument('--record-take', type=Path, help='save control events as replay JSONL; refuses overwrite')
     p.add_argument('--metrics-json', type=Path, help='save measured processing/rate summary on exit; refuses overwrite')
     p.add_argument('--hand-log', type=Path, help='append both wrist positions and Unix timestamps for coach take alignment')
     p.add_argument('--strum-hand', choices=('Left', 'Right'), default='Right', help='MediaPipe label of the strumming hand for hand-log analysis; verify camera orientation')
     p.add_argument('--strum-guard', action='store_true', help='suppress control in lower camera zone y>=0.55 and during rapid reversals; rehearse framing first')
     p.add_argument('--rehearsal', action='store_true', help='human label/framing confirmation then 30s measured check; requires overlay, --relative --strum-guard --metrics-json')
+    p.add_argument('--gesture-switch', action='store_true', help='enable live effect switching via thumb-to-pinky contact')
+    p.add_argument('--gesture-switch-hold', type=float, default=0.20, help='seconds of thumb-to-pinky contact required to switch effect')
     p.add_argument('--no-hand-view', action='store_true', help='disable local dashboard landmark feed')
     p.add_argument('--hand-view-port', type=int, default=47802)
     p.add_argument('--host', default='127.0.0.1')
@@ -48,14 +57,18 @@ def main(argv=None):
     args = p.parse_args(argv)
     if args.metrics_json and args.metrics_json.exists():
         p.error('metrics file exists; choose a new file')
-    if args.rehearsal and (args.no_overlay or not args.relative or not args.strum_guard or not args.metrics_json or args.calibrate or args.scene or args.scene_file or args.setlist or args.control!='filter'):
-        p.error('rehearsal needs --relative --strum-guard --metrics-json and the overlay; omit calibration/scenes/setlist/reverb control')
+    if args.rehearsal and (args.no_overlay or not args.relative or not args.strum_guard or not args.metrics_json or args.calibrate or args.scene or args.scene_file or args.setlist or args.control!='filter' or args.gesture_switch):
+        p.error('rehearsal needs --relative --strum-guard --metrics-json and the overlay; omit calibration/scenes/setlist/reverb control/gesture-switch')
     if args.rehearsal and not args.metrics_json.parent.is_dir():
         p.error('create the metrics output folder before starting rehearsal')
     if args.calibrate and args.no_overlay:
         p.error('calibration requires overlay')
     if not math.isfinite(args.max_hand_jump) or not 0 < args.max_hand_jump <= 1:
         p.error('--max-hand-jump must be finite and in (0, 1]')
+    for name in ('model_detection_confidence', 'model_presence_confidence', 'model_tracking_confidence'):
+        value = getattr(args, name)
+        if not math.isfinite(value) or not 0 < value <= 1:
+            p.error('--' + name.replace('_', '-') + ' must be finite and in (0, 1]')
     if args.setlist and (args.no_overlay or args.calibrate):
         p.error('setlist switching requires the camera overlay and cannot be used during calibration')
     try:
@@ -71,18 +84,25 @@ def main(argv=None):
         p.error('scene mode uses calibrated absolute position; omit --relative')
     if scene and args.control != 'filter':
         p.error('scene mode controls both effects; omit --control reverb')
+    if scene and args.gesture_switch:
+        p.error('scene mode controls both effects; omit --gesture-switch')
     import cv2
     import mediapipe as mp
     from jsonschema import Draft202012Validator
+    from .switcher import EffectSwitcher
     config = json.loads(args.calibration.read_text()) if args.calibration.exists() else {}
     controller = Controller(rate=args.rate / 2 if scene else args.rate, control=args.control, relative=args.relative, **config)
+    switcher = EffectSwitcher(hold_seconds=args.gesture_switch_hold, min_confidence=controller.confidence) if args.gesture_switch else None
+    if switcher:
+        switcher.set_control(args.control)
     schema = json.loads((Path(__file__).resolve().parents[1] / 'protocol/control.schema.json').read_text())
     validator = Draft202012Validator(schema)
     options = mp.tasks.vision.HandLandmarkerOptions(
         base_options=mp.tasks.BaseOptions(model_asset_path=args.model),
         running_mode=mp.tasks.vision.RunningMode.VIDEO, num_hands=2,
-        min_hand_detection_confidence=0.6, min_hand_presence_confidence=0.6,
-        min_tracking_confidence=0.6)
+        min_hand_detection_confidence=args.model_detection_confidence,
+        min_hand_presence_confidence=args.model_presence_confidence,
+        min_tracking_confidence=args.model_tracking_confidence)
     cap = cv2.VideoCapture(args.video if args.video else args.camera)
     if not cap.isOpened():
         cap.release()
@@ -106,6 +126,7 @@ def main(argv=None):
     hand_view = None if args.no_hand_view else HandView(args.hand_view_port).start()
     hand_view_error_reported = False
     metrics = FrameMetrics()
+    diagnostics = CameraDiagnostics()
     import sys
     rehearsal = RehearsalCheck(strum_hand=args.strum_hand,source='recorded-video' if args.video else 'webcam',
                               transmission='dry-run' if args.dry_run else 'udp',
@@ -143,7 +164,7 @@ def main(argv=None):
                         import sys
                         print('Hand log: ' + hand_log.error, file=sys.stderr)
                         hand_log_error_reported = True
-                y = pinch = None
+                y = pinch = pinky_pinch = None
                 confidence = 0.
                 centers = [(hand[0].x, hand[0].y) for hand in result.hand_landmarks]
                 selected = selector.select(centers)
@@ -155,6 +176,8 @@ def main(argv=None):
                     if scale > 1:
                         y = points[0].y
                         pinch = distance(4, 8) / scale
+                        if switcher:
+                            pinky_pinch = distance(4, 20) / scale
                         # Tasks exposes handedness score, not per-landmark confidence.
                         confidence = result.handedness[selected][0].score
                     if not args.no_overlay:
@@ -162,10 +185,12 @@ def main(argv=None):
                             cv2.circle(frame, (int(point.x * width), int(point.y * height)), 3, (0, 255, 0), -1)
                 fresh_frame = time.monotonic() - now <= .25
                 control_y, control_pinch = y, pinch
+                suppressed = False
                 if not fresh_frame:
                     control_y = control_pinch = None
                     expired_frames += 1
                     guard_reason = 'expired_frame'
+                    suppressed = True
                     if guard:
                         guard.reset()
                 elif guard:
@@ -177,18 +202,30 @@ def main(argv=None):
                     else:
                         guard.reset()
                         guard_reason = 'no_hand' if y is None else 'low_confidence'
+                        suppressed = True
+                elif y is None or confidence < controller.confidence:
+                    suppressed = True
+                # Update switcher when enabled, respecting suppression/stale state
+                if switcher:
+                    switcher.update(pinky_pinch, confidence, now, controller=controller, suppressed=suppressed)
                 # Suppression disarms without discarding native relative pickup history.
-                event = controller.update(control_y, control_pinch, confidence, now, captured_unix_ms)
+                brief_absence = (not centers and selector.center is not None
+                                 and fresh_frame and not guard)
+                event = controller.update(control_y, control_pinch, confidence, now,
+                                          captured_unix_ms, missing=brief_absence)
+                display_present = y is not None and fresh_frame
+                diagnostics.observe(frame, now, display_present)
                 if hand_view:
                     if hand_view.error and not hand_view_error_reported:
                         import sys
                         print('Hand view unavailable: ' + hand_view.error, file=sys.stderr)
                         hand_view_error_reported = True
-                    display_present = y is not None and fresh_frame
                     landmarks = [[min(1., max(0., p.x)), min(1., max(0., p.y))] for p in points] if display_present else []
                     hand_view.publish(dict(version=1, type='hand', timestamp_ms=captured_unix_ms,
-                        present=display_present, engaged=controller.active, confidence=confidence if fresh_frame else 0.,
-                        control=None if scene else args.control, value=controller.value, landmarks=landmarks))
+                        present=display_present, engaged=controller.active and display_present,
+                        confidence=confidence if display_present else 0.,
+                        control=None if scene else (switcher.current_control if switcher else args.control),
+                        value=controller.value, landmarks=landmarks))
                 events = scene.events(event) if scene and event else ([event] if event else [])
                 frame_events = 0
                 for event in events if not args.calibrate else []:
@@ -211,16 +248,27 @@ def main(argv=None):
                         interval = emitted - last_sent
                         minimum_interval = interval if minimum_interval is None else min(minimum_interval, interval)
                     last_sent = emitted
-                metrics.record(now, time.monotonic(), frame_events, hand_present=y is not None)
+                metrics.record(now, time.monotonic(), frame_events, hand_present=display_present)
                 if rehearsal:
                     rehearsal.observe(now,time.monotonic(),events if not args.calibrate else [],
                                       wrist_record['hands'] if fresh_frame else [],not fresh_frame,
                                       result.handedness[selected][0].category_name if selected is not None else None)
                 if not args.no_overlay:
-                    label = 'CALIBRATE: l low, h high, s save' if args.calibrate else f'{scene.name if scene else args.control}: {controller.value} active={controller.active} events={count}'
+                    ctrl_name = scene.name if scene else (switcher.current_control if switcher else args.control)
+                    label = 'CALIBRATE: l low, h high, s save' if args.calibrate else f'{ctrl_name}: {controller.value} active={controller.active} events={count}'
+                    if switcher:
+                        label += ' [pinky: switch]'
                     if guard:
                         label += f' guard={guard_reason}'
                     cv2.putText(frame, label, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 255, 255), 1)
+                    camera_status = diagnostics.snapshot()
+                    fps_label = f'{camera_status["camera_fps"]:.1f}' if camera_status['camera_fps'] is not None else '--'
+                    light_label = f'{camera_status["scene_brightness_0_255"]:.0f}'
+                    cue = f'CAM {fps_label} FPS | SCENE LIGHT~{light_label}/255 | HAND {"YES" if display_present else "NO"}'
+                    if brief_absence and controller.active:
+                        cue += ' (HOLD)'
+                    cv2.putText(frame, cue, (10, max(25, height - 12)),
+                                cv2.FONT_HERSHEY_SIMPLEX, .45, (255, 255, 255), 1)
                     if setlist:
                         cue = f'SCENE {setlist.index + 1}/{len(setlist.scenes)} | 1-9 select, n/p cycle | open hand then pinch'
                         cv2.putText(frame, cue, (10, 48), cv2.FONT_HERSHEY_SIMPLEX, .45, (0, 255, 255), 1)
@@ -273,6 +321,7 @@ def main(argv=None):
                           transmission='dry-run' if args.dry_run else 'udp',
                           expired_frames=expired_frames,
                           note='event rate is actual output during this run, not detector accuracy or audio latency')
+            report['camera_diagnostics'] = diagnostics.snapshot()
             if rehearsal:
                 report['rehearsal']=rehearsal.report()
                 report['runtime']=dict(python=sys.version.split()[0],opencv=getattr(cv2,'__version__',None),

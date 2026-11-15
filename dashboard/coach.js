@@ -433,12 +433,12 @@
       acts = [['TAP', loop === 'recording' ? 'close the loop' : loop === 'playing' ? 'clear the loop' : 'record a loop']];
       if (awake && loop !== 'recording') acts.push(['HOLD', 'practice with Riff', 'Y']);
     } else if (loop === 'recording') acts = [['TAP', 'stop, Riff listens']];
-    else if (f && f.awaiting_approval) acts = [['TAP', 'yes, start the drill', 'Y'], ['', 'no', 'N']];
+    else if (f && f.awaiting_approval) acts = [['HOLD', 'approve the drill', 'Y'], ['', 'no', 'N']];
     else if (f && f.state === 'thinking') acts = [['WAIT', 'Riff is working on it']];
     else if (f && (busy() || (held && held === f && held.cue))) acts = [['WAIT', 'Riff is talking']];   // the real voice, not the frame's state: when Riff is done, you can tap
     else if (step === 4) acts = [['WAIT', 'Riff is wrapping up']];
     else if (step === 1) acts = [['TAP', 'play what you\u2019re working on']];
-    else acts = [['TAP', 'record the drill take']];
+    else acts = [['TAP', loop === 'playing' ? 'clear, then record a fresh take' : 'record a fresh drill take']];
     if (ui.pedal) {
       const key = JSON.stringify(acts);
       if (ui.pedal.dataset.acts !== key) {

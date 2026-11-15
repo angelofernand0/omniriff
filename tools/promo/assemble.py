@@ -14,6 +14,7 @@ from .edl import (
     compile_plan,
     load_edl,
     missing_assets,
+    resolve_audio_asset,
     resolve_segment_asset,
 )
 
@@ -140,13 +141,13 @@ def build_filter_graph(plan, assets_root, captions_path=None, allow_fallbacks=Fa
     sfx_labels = []
 
     for a_idx, aud in enumerate(audio_tracks):
-        asset = aud.get('asset')
-        p = (root / asset).resolve() if asset else None
-        if p is None or not p.is_file():
-            p = (root / (asset or f'audio_{a_idx}.wav')).resolve()
+        resolved = resolve_audio_asset(aud, root)
+        if resolved is None:
+            asset = aud.get('asset')
+            resolved = (root / (asset or f'audio_{a_idx}.wav')).resolve()
 
         in_idx = len(inputs)
-        inputs.append(str(p))
+        inputs.append(str(resolved))
 
         raw_a_label = f'a_raw_{a_idx}'
         start_s = aud.get('start_s', 0.0)
@@ -316,11 +317,24 @@ def assemble(edl_or_plan, assets_root='.', output_path='runs/promo/omniriff.mp4'
         print(f"Captions:   {captions_path or 'None (skipped)'}")
         print(f"\n--- Segments ({len(plan['segments'])}) ---")
         for s in plan['segments']:
-            print(f"  [{s['start_s']:5.1f}s - {s['end_s']:5.1f}s] {s['id']:<20} ({s['kind']}) scene={s.get('scene')} asset={s.get('asset')}")
+            resolved = resolve_segment_asset(s, root, allow_fallbacks=allow_fallbacks)
+            disp_asset = s.get('asset') or (f"runs/promo/scenes/{s['scene']}.mp4" if s.get('scene') else None)
+            status_tag = " [PRESENT]" if (resolved and resolved.is_file()) else " [MISSING]"
+            print(f"  [{s['start_s']:5.1f}s - {s['end_s']:5.1f}s] {s['id']:<20} ({s['kind']}) scene={s.get('scene')} asset={disp_asset}{status_tag}")
         print(f"\n--- Audio Tracks ({len(plan['audio'])}) ---")
         for a in plan['audio']:
+            resolved = resolve_audio_asset(a, root)
+            alt_note = ""
+            if resolved:
+                try:
+                    rel = resolved.relative_to(root).as_posix()
+                    if rel != a.get('asset'):
+                        alt_note = f" -> {rel}"
+                except ValueError:
+                    pass
+            status_tag = " [PRESENT]" if (resolved and resolved.is_file()) else " [MISSING]"
             duck_info = f", duck={a['ducked_gain']}" if a.get('ducked_gain') is not None else ""
-            print(f"  [{a['start_s']:5.1f}s + {a['duration_s']:4.1f}s] {a['id']:<18} ({a['kind']}) gain={a.get('gain')}{duck_info} asset={a.get('asset')}")
+            print(f"  [{a['start_s']:5.1f}s + {a['duration_s']:4.1f}s] {a['id']:<18} ({a['kind']}) gain={a.get('gain')}{duck_info} asset={a.get('asset')}{alt_note}{status_tag}")
         print(f"\n--- Missing Assets ({len(missing)}) ---")
         if missing:
             for m in missing:

@@ -35,9 +35,9 @@ SKILL = 'slow-then-speed-up'
 ACK_CUE = "Okay, let me listen back to that."
 # Riff's voice: a laid-back session player who teaches (BRAND_SPEC.md section 7, "Riff's voice").
 TAKE_CUE = "Okay, about every fourth strum there's a pause of roughly a third of a second, right where the change probably lands. Let's slow it down and lock the change in."
-APPROVE_CUE = "Okay, I'll take the effects off so you can hear the timing. Tap the pedal when you're ready."
+APPROVE_CUE = "I'll take the effects off after you approve. Hold the pedal or press Y, then tap to clear and tap again to record."
 DRILL_CUE = 'Four slow reps first, about seventy percent pace, then one take at your normal pace.'
-PASS_CUE = "Nice, the pauses are down from seven to three, and the longest is about a third shorter. Now the whole pattern over your loop."
+PASS_CUE = "Nice, the pauses are down from seven to three, and the longest is about a third shorter. Clear the loop, then record the full pattern as a fresh take."
 WRAP_CUE = "That's the session. The long pauses are gone: the longest gap went from two thirds of a second to a third. Next time, let's add tempo."
 WRAP_SUMMARY = 'Longest pause 665 to 360 ms, seven pauses to none. Next: add tempo.'
 NEXT_TIME = 'Add tempo once it stays even'
@@ -48,7 +48,7 @@ DECLINE_CUE = "All good, I'll leave your sound as it is."
 IDLE_CUE = "Hey, I'm Riff. What are you working on? Hold V and tell me, then play it for me."
 GOAL_CUE = "Got it, that's what we'll work on. Tap the pedal, play it for me, tap again."
 NOTED_CUE = "Got it, I'll keep that in mind."
-AGAIN_CUE = 'Want to run it again? Tap the pedal.'
+AGAIN_CUE = 'Want to run it again? Hold the pedal or press Y.'
 PAUSE_S = 0.9   # a beat of silence after Riff finishes a line, before the next thing happens
 WORDS_PER_S = 2.6
 TODOS = ['Diagnose: read take and hand reports', 'Speak cue', 'Choose and write drill card',
@@ -292,7 +292,7 @@ class ScriptedSession:
     # ---- the session (ROADMAP §1 "How you use it") ------------------------
     def session(self, attempt: int | None = None) -> dict:
         """The practice session as the player sees it (coach.schema.json `session`). Scripted numbers."""
-        drills = [('Slow, then speed up', SKILL), ('Full pattern over your loop', SKILL)]
+        drills = [('Slow, then speed up', SKILL), ('Full pattern, fresh take', SKILL)]
         done = self.drill_step > 2
         step = min(self.drill_step, 2)
         title, skill = drills[step - 1]
@@ -302,7 +302,7 @@ class ScriptedSession:
                     drill=None if done else dict(title=title, skill=skill, step=step, of=2),
                     attempt=None if done else dict(n=self.tries if attempt is None else attempt, of=3),
                     metric=dict(name='longest gap', unit='ms', target=450, lower_is_better=True, history=self.history[-12:]),
-                    next=None if done else ('Full pattern over your loop' if step == 1 else 'Wrap up'),
+                    next=None if done else ('Full pattern, fresh take' if step == 1 else 'Wrap up'),
                     last_time=self.last_time, summary=self.summary, next_time=NEXT_TIME if self.summary else None)
 
     async def diagnose(self) -> None:
@@ -381,7 +381,7 @@ class ScriptedSession:
             self.we_bypassed = False
 
     async def check_drill1(self) -> None:
-        """Step 4: drill 1 passes; drill 2 puts it back in context over the loop."""
+        """Step 4: drill 1 passes; drill 2 asks for a fresh full-pattern take."""
         await self._thinking('Compare with last take')
         self.history.append(440.0)
         self.drill_step, self.tries = 2, 0

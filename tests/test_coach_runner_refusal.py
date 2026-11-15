@@ -15,33 +15,6 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
-# Provide lightweight stubs for optional langchain/langgraph modules if absent
-# so the test suite runs deterministically in minimal test environments.
-if "langchain_core.callbacks" not in sys.modules:
-    mod_callbacks = ModuleType("langchain_core.callbacks")
-
-    class UsageMetadataCallbackHandler:
-        def __init__(self):
-            self.usage_metadata = {}
-            self._lock = threading.Lock()
-
-    mod_callbacks.UsageMetadataCallbackHandler = UsageMetadataCallbackHandler
-    if "langchain_core" not in sys.modules:
-        sys.modules["langchain_core"] = ModuleType("langchain_core")
-    sys.modules["langchain_core.callbacks"] = mod_callbacks
-
-if "langgraph.types" not in sys.modules:
-    mod_types = ModuleType("langgraph.types")
-
-    class Command:
-        def __init__(self, resume=None):
-            self.resume = resume
-
-    mod_types.Command = Command
-    if "langgraph" not in sys.modules:
-        sys.modules["langgraph"] = ModuleType("langgraph")
-    sys.modules["langgraph.types"] = mod_types
-
 from coach.budget import BudgetGuard
 from coach.feed import CoachFeed, VALIDATOR
 from coach.model_gate import ModelCallGate
@@ -64,6 +37,40 @@ class CoachRunnerRefusalTests(unittest.TestCase):
             patcher = patch(f"coach.budget.{name}", value)
             patcher.start()
             self.addCleanup(patcher.stop)
+        # Keep optional fakes local to the test. Installing them at discovery
+        # time shadows real, not-yet-imported packages in the full coach suite.
+        modules = {}
+        try:
+            from langchain_core.callbacks import UsageMetadataCallbackHandler
+        except ImportError:
+            callbacks = ModuleType("langchain_core.callbacks")
+
+            class UsageMetadataCallbackHandler:
+                def __init__(self):
+                    self.usage_metadata = {}
+                    self._lock = threading.Lock()
+
+            callbacks.UsageMetadataCallbackHandler = UsageMetadataCallbackHandler
+            modules["langchain_core.callbacks"] = callbacks
+            if "langchain_core" not in sys.modules:
+                modules["langchain_core"] = ModuleType("langchain_core")
+        try:
+            from langgraph.types import Command
+        except ImportError:
+            types = ModuleType("langgraph.types")
+
+            class Command:
+                def __init__(self, resume=None):
+                    self.resume = resume
+
+            types.Command = Command
+            modules["langgraph.types"] = types
+            if "langgraph" not in sys.modules:
+                modules["langgraph"] = ModuleType("langgraph")
+        if modules:
+            imports = patch.dict(sys.modules, modules)
+            imports.start()
+            self.addCleanup(imports.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)

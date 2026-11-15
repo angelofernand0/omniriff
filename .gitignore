@@ -17,6 +17,7 @@ coach/fixtures/generated/
 coach/workspace/takes/
 coach/workspace/journal/
 coach/workspace/usage.jsonl
+coach/workspace/usage.jsonl.*
 coach/workspace/memories/player.md
 coach/workspace-fixtures/
 *.wav

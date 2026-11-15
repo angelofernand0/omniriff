@@ -373,8 +373,8 @@ class CoachRunnerTests(unittest.TestCase):
             guard = BudgetGuard(Path(folder) / "usage.jsonl")
             self.assertTrue(guard.allow_new_run())
             estimate = estimate_upper_bound_usd({"model": {"input_tokens": 1_000_000, "output_tokens": 0}})
-            self.assertEqual(estimate, 15.0)
-            guard.record("synthetic-test", {"model": {"input_tokens": 500_000, "output_tokens": 0}}, 1.0)
+            self.assertEqual(estimate, 2.0)   # real Sonnet 5.5 input rate, $2 per million (see coach/budget.py)
+            guard.record("synthetic-test", {"model": {"input_tokens": 4_000_000, "output_tokens": 0}}, 1.0)   # $8 = the cap
             self.assertFalse(guard.allow_new_run())
 
 

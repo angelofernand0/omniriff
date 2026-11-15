@@ -127,6 +127,13 @@ def compile_plan(edl, assets_root=None):
         scene = raw.get('scene')
         if scene is not None and (not isinstance(scene, str) or len(scene) > 80):
             raise ValueError(f'Segment {ident} scene must be a string up to 80 chars')
+        if kind == 'motion':
+            if not scene and not raw.get('asset'):
+                raise ValueError(f'Segment {ident} of kind "motion" requires a scene or asset')
+            if scene is not None and scene not in SCENES:
+                raise ValueError(f'Segment {ident} motion scene {scene!r} not in approved scenes: {SCENES}')
+        elif kind == 'video' and not raw.get('asset'):
+            raise ValueError(f'Segment {ident} of kind "video" requires an asset')
 
         asset = raw.get('asset')
         if asset is not None:
@@ -274,6 +281,36 @@ def resolve_segment_asset(segment, assets_root, allow_fallbacks=False):
     return None
 
 
+def resolve_audio_asset(audio_track, assets_root):
+    """Resolve the file path for an audio track or return None if missing.
+    Accepts either .m4a or .mp3 transparently (e.g. ElevenLabs exports .mp3 while EDL lists .m4a),
+    preferring whichever exists on disk.
+    """
+    root = Path(assets_root).resolve()
+    asset = audio_track.get('asset')
+    if not asset:
+        return None
+
+    # Check primary listed path
+    primary = (root / asset).resolve()
+    if primary.is_file():
+        return primary
+
+    # Check alternate extension for audio (.m4a <-> .mp3)
+    p_obj = Path(asset)
+    ext = p_obj.suffix.lower()
+    if ext == '.m4a':
+        alt = (root / p_obj.with_suffix('.mp3')).resolve()
+        if alt.is_file():
+            return alt
+    elif ext == '.mp3':
+        alt = (root / p_obj.with_suffix('.m4a')).resolve()
+        if alt.is_file():
+            return alt
+
+    return None
+
+
 def missing_assets(plan, root, allow_fallbacks=False):
     """Return sorted unique list of relative asset paths required by plan that do not exist."""
     root_path = Path(root).resolve()
@@ -289,12 +326,9 @@ def missing_assets(plan, root, allow_fallbacks=False):
                 missing.add(seg.get('asset') or seg['id'])
 
     for aud in plan['audio']:
-        asset = aud.get('asset')
-        if not asset:
-            missing.add(aud['id'])
-        else:
-            p = (root_path / asset).resolve()
-            if not p.is_file():
-                missing.add(asset)
+        resolved = resolve_audio_asset(aud, root_path)
+        if resolved is None:
+            asset = aud.get('asset')
+            missing.add(asset or aud['id'])
 
     return sorted(missing)
