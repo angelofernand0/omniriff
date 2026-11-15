@@ -67,6 +67,13 @@ class MissingHandGraceTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 Controller(missing_grace=value)
 
+    def test_zero_grace_disarms_only_on_missing_frame(self):
+        control = Controller(missing_grace=0, rate=60, deadband=0)
+        control.update(.5, .6, .9, 1.0, 1000)
+        self.assertIsNotNone(control.update(.5, .1, .9, 1.1, 1100))
+        self.assertIsNone(control.update(None, None, 0., 1.2, 1200, missing=True))
+        self.assertFalse(control.active)
+
 
 class CameraDiagnosticsTests(unittest.TestCase):
     def test_rolling_fps_lighting_and_dropout_counts(self):

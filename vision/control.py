@@ -64,7 +64,8 @@ class Controller:
             self.value = None
             self.last_valid_at = None
             return None
-        if self.last_valid_at is not None and now - self.last_valid_at > self.missing_grace:
+        if (self.missing_grace > 0 and self.last_valid_at is not None
+                and now - self.last_valid_at > self.missing_grace):
             self.active = self.armed = False
             self.previous = None
             self.value = None
