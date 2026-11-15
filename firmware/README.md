@@ -49,7 +49,7 @@ Both pedal switches use the internal ATmega pull-up resistors (`INPUT_PULLUP`). 
 
 | Pin | Switch Name | Function | Normal State | Pressed State | Internal Resistor |
 |---|---|---|---|---|---|
-| **Pin 2** | Loop / Practice | Tap: `loop`<br>Hold (≥700 ms): `practice` | `HIGH` (3.3V / 5V) | `LOW` (GND) | `INPUT_PULLUP` |
+| **Pin 2** | Loop / Practice | Tap: `loop`<br>Hold (≥700 ms): `practice` (also approves a change Riff is waiting on) | `HIGH` (3.3V / 5V) | `LOW` (GND) | `INPUT_PULLUP` |
 | **Pin 3** | Bypass | Press: `bypass` | `HIGH` (3.3V / 5V) | `LOW` (GND) | `INPUT_PULLUP` |
 | **GND** | Common Ground | Shared return rail for both switches | 0V | 0V | — |
 
@@ -99,7 +99,8 @@ Each event increments the monotonic sequence counter `seq`.
 ## 5. Verification
 
 ### Step 1: Footswitch / Pedal Tester (`tools.serialcheck`)
-Before starting the full audio engine, test the pedal with the standalone serial tester:
+Before starting the full audio engine, test the pedal with the standalone serial tester.
+**`tools.serialcheck` is assigned to Aditya's Codex and may not be on main yet.** Until it lands, open the Arduino IDE Serial Monitor at 115200 baud and check that each tap, hold and press prints one line like the ones above.
 ```bash
 # Windows
 python -m tools.serialcheck --port COM3
