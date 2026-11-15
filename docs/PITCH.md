@@ -2,6 +2,10 @@
 
 This is the spoken in-person cut, the LangChain-judge swap, and the recording plan. The beat-by-beat/failure runbook is [DEMO.md §3–4](DEMO.md). Only quote facts and numbers from an observed run, [DEVPOST.md](DEVPOST.md), or [QA.md](QA.md); bracketed cues below are **not** spoken aloud.
 
+## Team TL;DR (copy into DMs)
+
+> **OmniRiff is an AI guitar coach for people practising alone.** Plug in your own guitar, play a short phrase, and Riff listens for a stumble in the rhythm or feel; with a webcam, it can also check your hand movement. Riff suggests one focused drill, asks before changing your sound, and checks the next take. Gestures and an optional foot button keep your hands on the guitar. **The product is play → understand why → practise → retry—not just gesture-controlled effects.**
+
 ## The identity line (memorize it)
 > **OmniRiff is a guitar teacher that lives in your signal chain: it hears and sees you play, finds why you stumbled, and sets up the drill, without you ever putting the guitar down.**
 
