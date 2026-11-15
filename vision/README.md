@@ -30,6 +30,10 @@ Default output: v1 JSON UDP datagrams to 127.0.0.1:47800, at most 20 events/s. E
 
 The landmarker detects up to two hands. The selector follows the nearest wrist from frame to frame, so a changed detection order does not switch control to the other hand. A wrist jump above `--max-hand-jump` (default 0.30 normalized image distance) fails closed. After 15 missed frames, the old track is discarded; the controller still requires an open-hand clutch before sending again. Keep the intended control hand in view, and avoid crossing hands; two wrists that cross can still be ambiguous.
 
+Native capture now freezes an **already engaged** control for up to 250 ms of genuine no-hand detections. It sends no control events during the gap and resumes only if wrist tracking remains spatially continuous. A longer gap, a rejected wrist jump, low confidence, an expired frame, or strum-guard suppression still disarms and requires a fresh open-hand/pinch cycle. The hand-view feed reports `present=false, engaged=false` during the freeze; the camera overlay says `HOLD`. This is a dropout tolerance, not permission to control with a missing hand, and real-camera performance still needs human verification.
+
+The native camera overlay also shows rolling camera FPS, a coarse whole-scene brightness cue (0–255), and hand presence. The brightness number is **not** a measure of how well the hand is lit or model accuracy. Use `--metrics-json runs/gesture-check.json --dry-run` for private frame counts and dropout diagnostics; choose a fresh filename each run. No raw frames are saved. If the room/camera is choppy, you can experimentally change `--model-detection-confidence`, `--model-presence-confidence`, or `--model-tracking-confidence` from their 0.6 defaults; each accepts a value in (0, 1]. Lowering a model threshold may admit false detections and does **not** lower the separate 0.6 control-event confidence gate. Rehearse with the real webcam before choosing a setting.
+
 Exit metrics on stderr report actual elapsed runtime, emitted event count, average rate and minimum emission interval. `--dry-run` validates and prints JSON without UDP. No-hand frames emit nothing. Failure closes capture and socket; audio must retain its independent manual bypass. No camera frames or recordings are saved by this program.
 
 ## Demo-table entry point (R15/R16)
@@ -290,4 +294,3 @@ python -m vision.spatial --model models/hand_landmarker.task
    - **Knuckle roll tilt (3D roll angle)** modulates reverb depth: leveling the knuckles ($0^\circ$) gives a dry tone; rolling the knuckles outward ($0^\circ \rightarrow 60^\circ$) washes the guitar signal in spacious reverb.
    - Synchronized filter/reverb pairs are emitted at 10 pairs/s (strictly bounded to $\le 20$ events/s).
 4. **Dashboard Hand View**: Normalized 21-point hand skeleton streams simultaneously to `ws://127.0.0.1:47802` for the dashboard live HAND panel.
-

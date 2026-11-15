@@ -197,6 +197,29 @@ class TableCheckTests(unittest.IsolatedAsyncioTestCase):
         self.settings['coach']['payload'] = json.dumps(dict(version=1, type='coach.say', timestamp_ms=1, text='Hi'))
         self.assertFalse((await self.run_check())['coach'].green)
 
+    async def test_replay_coach_is_named_and_probe_remains_read_only(self):
+        replay = dict(self.coach, session_id='replay-synthetic-test', scripted=True)
+        self.settings['coach']['frame'] = replay
+        result = (await self.run_check())['coach']
+        self.assertTrue(result.green)
+        self.assertIn('REPLAY — recorded feed, not live', result.detail)
+        self.assertNotIn('LIVE feed', result.detail)
+        self.assertNotIn('SCRIPTED — NOT LIVE AI', result.detail)
+        self.assertEqual(self.app_messages, [])
+        self.settings['coach']['frame'] = dict(replay, cue='Coach is out of credit.')
+        result = (await self.run_check())['coach']
+        self.assertFalse(result.green)
+        self.assertIn('REPLAY', result.detail)
+        self.assertIn('OUT OF CREDIT', result.detail)
+
+    async def test_replay_prefix_cannot_be_reported_as_a_live_coach(self):
+        self.settings['coach']['frame'] = dict(self.coach, session_id='replay-synthetic-test', scripted=False)
+        result = (await self.run_check())['coach']
+        self.assertFalse(result.green)
+        self.assertIn('REPLAY metadata inconsistent', result.detail)
+        self.assertNotIn('LIVE feed', result.detail)
+        self.assertEqual(self.app_messages, [])
+
     async def test_optional_components_skip_their_networks_and_model(self):
         self.settings['hand']['silent'] = self.settings['coach']['silent'] = True
         rows = await self.run_check(no_vision=True, no_coach=True, model=self.root / 'missing')
