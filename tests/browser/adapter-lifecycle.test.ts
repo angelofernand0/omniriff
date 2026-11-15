@@ -86,7 +86,9 @@ describe('Browser adapter lifecycle', () => {
     const tracker: any = adapter.tracker;
     tracker.observation = { present: true, y: .5, pinch: .6, confidence: .95, timestamp_ms: 1000 }; tick(1000);
     tracker.observation = { ...tracker.observation, pinch: .1, timestamp_ms: 1100 }; tick(1100);
-    expect(adapter.controller.active).toBe(true); const sent = vi.mocked(adapter.audio.setFilter).mock.calls.length;
+    expect(adapter.controller.active).toBe(true);
+    expect(vi.mocked(tracker.update).mock.calls.at(-1)?.[4]).toBe(true); // open-hand arm reaches the tracker
+    const sent = vi.mocked(adapter.audio.setFilter).mock.calls.length;
     tick(1500); expect(adapter.controller.active).toBe(false); expect(hand.mock.calls.at(-1)?.[0].present).toBe(false);
     expect(adapter.audio.setFilter).toHaveBeenCalledTimes(sent); await adapter.stop();
   });
