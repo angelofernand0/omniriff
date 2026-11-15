@@ -63,7 +63,7 @@ Timing caution: four voices in 2 minutes costs seconds at every handoff, and jud
 3. **Failure drills, once each:** camera unplugged, pedal dead, coach slow or out of credit, guitar dead → switch to the labeled backup video ("Let me show you the recorded run while we fix this"), then resume live.
 4. **Q&A drill:** a teammate fires the seven questions above in random order; answer each in ≤20 s.
 5. **Per-track drill:** deliver each sponsor opener once in front of a teammate.
-6. **Before each judge:** engine running, dashboard on the coach column, a fresh loop cleared, backup video cued in a second tab, guitar in tune.
+6. **Before each judge:** engine running, dashboard on the coach column, a fresh loop cleared, backup video cued in a second tab, guitar in tune. Run `python -m tools.tablecheck` (Windows: `.\scripts\windows\tablecheck.ps1`) before the manual stage reset; it never clears loops or sends controls.
 
 ## Assets (owners on issue #1)
 - Labeled **coach-session backup video** ≤2 min (simulated guitar + scripted coach, visibly labeled) for the table and the Devpost fallback.

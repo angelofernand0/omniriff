@@ -67,6 +67,9 @@ If the coach isn't working on the real rig by the midnight gate, fall back to th
 Coach launch, once `coach/` is on main: add `--coach --hand-log runs/hand.jsonl` to the `engine.demo` command in §2 (the coach then watches the engine's takes in `runs/takes`).
 
 ## 4. If something fails at the table
+
+Before each judge: run `python -m tools.tablecheck` (Windows: `.\scripts\windows\tablecheck.ps1`); resolve RED rows or explicitly omit unused vision/coach with `--no-vision` / `--no-coach` ([checks and limits](../tools/tablecheck/README.md)).
+
 | Failure | Do this | Say this |
 |---|---|---|
 | Camera / vision | Keep playing; use the pedal and keyboard `f`/`r` | "The instrument never depends on the camera." |
