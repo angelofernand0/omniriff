@@ -84,7 +84,7 @@ For LangChain judges, use the swap *inside* the two-minute script above; [PITCH-
 ## Roles and rehearsal
 - **Speaker / narration and close:** SM
 - **Guitarist / the user journey:** Aditya: plays the intentional stumble and correction, approves the drill through the verified control, gives one authentic guitarist line, and owns hardware questions
-- **Gesture explanation:** Joey
+- **Gesture explanation:** John
 - **Audio engine explanation:** Angelo
 - **Rig operator:** assign before rehearsal; this person watches the dashboard, starts/clears takes if Aditya cannot do so hands-free, and cues the labeled backup
 
