@@ -6,7 +6,9 @@ import json
 import queue
 import threading
 import time
+import logging
 from pathlib import Path
+from typing import Callable
 from urllib.parse import urlsplit
 
 from jsonschema import Draft202012Validator
@@ -49,12 +51,15 @@ class CoachFeed:
     """Owns one latest coach frame; clients receive the latest full frame on join."""
 
     def __init__(self, session_id: str, *, host: str = "127.0.0.1", port: int = 47803,
-                 scripted: bool = False):
+                 scripted: bool = False, read_only: bool = False,
+                 tap: Callable[[dict], None] | None = None):
         if host != "127.0.0.1":
             raise ValueError("coach feed must bind only to 127.0.0.1")
         self.host, self.port = host, port
         self.frame = initial_frame(session_id)
         self.frame["scripted"] = bool(scripted)
+        self.read_only = read_only
+        self._tap = tap
         self.decisions: queue.Queue[dict] = queue.Queue(maxsize=16)
         self.said: queue.Queue[dict] = queue.Queue(maxsize=8)   # coach.say: what the player told Riff
         self._lock = threading.Lock()
@@ -71,12 +76,15 @@ class CoachFeed:
             frame = {**self.frame, **changes, "timestamp_ms": int(time.time() * 1000)}
             VALIDATOR.validate(frame)
             self.frame = frame
+            self._record(frame)
             if self._loop is not None:
                 asyncio.run_coroutine_threadsafe(self._broadcast(frame), self._loop)
         return frame
 
     def accept_decision(self, message: dict) -> bool:
         """Validate one dashboard decision; a caller still matches its approval id."""
+        if self.read_only:
+            return False
         if not isinstance(message, dict) or message.get("type") not in {"coach.approve", "coach.reject"}:
             return False
         if not VALIDATOR.is_valid(message):
@@ -89,6 +97,8 @@ class CoachFeed:
 
     def accept_say(self, message: dict) -> bool:
         """Validate one coach.say (what the player told Riff) and queue it for the brain."""
+        if self.read_only:
+            return False
         if not isinstance(message, dict) or message.get("type") != "coach.say" or not VALIDATOR.is_valid(message):
             return False
         try:
@@ -111,6 +121,7 @@ class CoachFeed:
             frame = {**self.frame, "activity": activity, "timestamp_ms": int(time.time() * 1000)}
             VALIDATOR.validate(frame)
             self.frame = frame
+            self._record(frame)
             if self._loop is not None:
                 asyncio.run_coroutine_threadsafe(self._broadcast(frame), self._loop)
         return frame
@@ -119,9 +130,21 @@ class CoachFeed:
         """Send validated server-rendered cue audio; never changes frame state."""
         if not isinstance(message, dict) or message.get("type") != "coach.audio" or not VALIDATOR.is_valid(message):
             return False
+        with self._lock:
+            self._record(message)
         if self._loop is not None:
             asyncio.run_coroutine_threadsafe(self._broadcast(message), self._loop)
         return True
+
+    def _record(self, message: dict) -> None:
+        """Recording failures never take down the coach (or the audio engine)."""
+        if self._tap is None:
+            return
+        try:
+            self._tap(message)
+        except Exception:
+            logging.exception("Coach replay recording stopped after a write failure")
+            self._tap = None
 
     def poll_decision(self, approval_id: str) -> str | None:
         """Discard stale/unrelated decisions and return approve/reject for this id."""
