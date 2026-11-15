@@ -1,136 +1,69 @@
 # OmniRiff Pedal Firmware
 
-This directory contains the Arduino firmware for the OmniRiff physical pedal controller. The sketch runs on standard Arduino boards (Uno, Nano, Mega, or compatible) and communicates with the OmniRiff engine over USB Serial at **115200 baud**.
+The [Arduino sketch](arduino/Footswitch/Footswitch.ino) sends loop, practice, and bypass actions to the laptop over USB serial at **115200 baud**.
 
 <!-- TODO(Aditya): Confirm the switch count, board pin labels and action mapping on the physical hardware build. -->
 
----
+## 1. Parts and wiring
 
-## 1. Hardware Parts List
+- Arduino board with two digital inputs and USB serial. Select the exact model when flashing.
+- Two normally open momentary switches with dry contacts, hookup wire, and a matching data-capable USB cable.
+- Optional breadboard or pedal enclosure.
 
-- **Microcontroller:** Arduino Uno, Nano, or compatible ATmega328P board
-- **Pedal Switches:** 2× momentary SPST footswitches (normally open / push-to-make)
-  - Switch 1: Loop / Practice switch
-  - Switch 2: Bypass toggle switch
-- **Wiring:** Hookup wire (22–24 AWG stranded or solid core)
-- **Host Connection:** USB cable (USB-A to Type-B / Mini / Micro depending on board)
-- **Optional:** Breadboard or sturdy stompbox pedal enclosure
+Unplug the Arduino before wiring. Each switch goes between its own digital input and shared Arduino GND. `INPUT_PULLUP` holds the input HIGH when the switch is open. Closing the switch pulls that input LOW. Confirm the pin labels on the actual board before connecting.
 
----
-
-## 2. Wiring Diagram
-
-Both pedal switches use the internal ATmega pull-up resistors (`INPUT_PULLUP`). One lug connects to the designated digital input pin; the other lug connects to `GND`. No external pull-up or pull-down resistors are required.
-
-```
-       +------------------------------------+
-       |            Arduino Board           |
-       |                                    |
-       |  [Pin 2] --------+                 |
-       |                  |                 |
-       |  [Pin 3] ------------------+       |
-       |                  |         |       |
-       |  [ GND ] --------+---------+       |
-       +------------------|---------|-------+
-                          |         |
-                  +-------+         +-------+
-                  |                         |
-            +------------+            +------------+
-            |  SW1 (NO)  |            |  SW2 (NO)  |
-            |   [Loop]   |            |  [Bypass]  |
-            +------------+            +------------+
-                  |                         |
-                  +-----------+-------------+
-                              |
-                            (GND)
+```text
+Digital pin 2 ---- normally open loop/practice switch ---- GND
+Digital pin 3 ---- normally open bypass switch ----------- GND
 ```
 
-### Pin Assignment Table
+If using a Grove button module and shield, verify the module's pinout, supply voltage, and output polarity first. The wiring above is for dry contacts. An active-HIGH module will need a polarity change in the sketch before it will behave as described here.
 
-| Pin | Switch Name | Function | Normal State | Pressed State | Internal Resistor |
-|---|---|---|---|---|---|
-| **Pin 2** | Loop / Practice | Tap: `loop`<br>Hold (≥700 ms): `practice` (also approves a change Riff is waiting on) | `HIGH` (3.3V / 5V) | `LOW` (GND) | `INPUT_PULLUP` |
-| **Pin 3** | Bypass | Press: `bypass` | `HIGH` (3.3V / 5V) | `LOW` (GND) | `INPUT_PULLUP` |
-| **GND** | Common Ground | Shared return rail for both switches | 0V | 0V | — |
+## 2. Flash on Windows with Arduino IDE
 
----
+1. Install [Arduino IDE](https://www.arduino.cc/en/software) and connect the board directly with a data-capable USB cable.
+2. Open [`Footswitch.ino`](arduino/Footswitch/Footswitch.ino). Use the board selector to choose the exact board and its `COM` port. Install the board package if prompted. If more than one port appears, unplug and reconnect the Arduino to identify its port.
+3. Quit any running engine, pedal tester, or other program using the port. Click **Verify**, then **Upload** and check for a successful upload. See [Arduino’s upload guide](https://support.arduino.cc/hc/en-us/articles/4733418441116-Upload-a-sketch-in-Arduino-IDE) for board selection details.
+4. Open **Serial Monitor**, set **115200 baud**, and wait for the sketch to start. Opening a serial connection can reset some boards. Close Serial Monitor before opening the tester or engine.
 
-## 3. Flashing Firmware (Windows / macOS / Linux)
+## 3. Expected output
 
-### Using Arduino IDE
+After a reset, try these actions in order. Each emits one newline-terminated JSON object. `seq` starts at 0 on reset and increments for each event.
 
-1. **Install Arduino IDE:** Download from [arduino.cc](https://www.arduino.cc/en/software) if not already installed.
-2. **Open the Sketch:** Open [`firmware/arduino/Footswitch/Footswitch.ino`](arduino/Footswitch/Footswitch.ino).
-3. **Select Board:** Go to **Tools → Board → Arduino AVR Boards → Arduino Uno** (or **Arduino Nano**).
-4. **Select Port:** Go to **Tools → Port** and choose your device:
-   - Windows: `COM3`, `COM4`, etc. (check Windows Device Manager if uncertain)
-   - macOS: `/dev/cu.usbserial-*` or `/dev/cu.usbmodem*`
-   - Linux: `/dev/ttyUSB0` or `/dev/ttyACM0`
-5. **Verify & Upload:** Click the **Upload** button (or press `Ctrl+U` / `Cmd+U`).
-6. **Baud Rate:** The firmware operates at **115200 baud** (`kBaudRate = 115200`).
-
----
-
-## 4. Serial Protocol & Expected Lines
-
-The sketch emits single-line JSON action objects terminated by `\n` (`LF`):
+| Input | Expected action |
+| --- | --- |
+| Release the loop switch after a tap shorter than 700 ms | `loop` on release |
+| Hold the loop switch at least 700 ms | One `practice`, with no `loop` on release |
+| Press the bypass switch | `bypass` on press |
 
 ```json
 {"seq":0,"type":"action","control":"loop"}
+{"seq":1,"type":"action","control":"practice"}
+{"seq":2,"type":"action","control":"bypass"}
 ```
 
-Each event increments the monotonic sequence counter `seq`.
+The sketch uses 25 ms debounce. A switch held during reset must be released and pressed again before it sends an action. In the full rig, `practice` can start a session or approve a pending change from Riff.
 
-### Action Mappings & Timing
+### Standalone serial test
 
-- **Tap Loop Switch (Pin 2):**
-  - Hold duration: **< 700 ms** (released before hold threshold)
-  - Emits: `{"seq":N,"type":"action","control":"loop"}` on release edge.
-- **Hold Loop Switch (Pin 2):**
-  - Hold duration: **≥ 700 ms** (`kPracticeHoldMs = 700`)
-  - Emits: `{"seq":N,"type":"action","control":"practice"}` as soon as the 700 ms threshold is reached (before release).
-- **Press Bypass Switch (Pin 3):**
-  - Emits: `{"seq":N,"type":"action","control":"bypass"}` immediately on debounced press edge.
-- **Debounce Window:** 25 ms (`kDebounceMs = 25`) on all state transitions to prevent mechanical contact bounce.
-- **Boot/Reset Protection:** If a switch is held down while plugging in or resetting the Arduino, the firmware marks it as stable and ignores it until released, preventing accidental latching.
+If your checkout includes `tools.serialcheck`, close Serial Monitor and run these commands from the repository root. Replace `COM3` with the actual port.
 
----
-
-## 5. Verification
-
-### Step 1: Footswitch / Pedal Tester (`tools.serialcheck`)
-Before starting the full audio engine, test the pedal with the standalone serial tester.
-**`tools.serialcheck` is assigned to Aditya's Codex and may not be on main yet.** Until it lands, open the Arduino IDE Serial Monitor at 115200 baud and check that each tap, hold and press prints one line like the ones above.
-```bash
-# Windows
+```powershell
+python -m pip install "pyserial>=3.5,<4"
 python -m tools.serialcheck --port COM3
-
-# macOS / Linux
-python -m tools.serialcheck --port /dev/cu.usbserial-10
-```
-Expected output:
-- Tapping Pin 2 displays: `TAP → loop (+0.0ms)`
-- Holding Pin 2 displays: `HOLD → practice (+702.4ms)`
-- Pressing Pin 3 displays: `PRESS → bypass (+0.0ms)`
-
-### Step 2: Audio Engine Integration
-Run the audio engine with serial enabled:
-```bash
-python -m engine --serial-port COM3
-```
-Or start the full demo:
-```bash
-python -m engine.demo --serial-port COM3
 ```
 
----
+Expect `TAP -> loop`, `HOLD -> practice`, and `PRESS -> bypass`. The tester prints `seq`, time since listening started, and the gap since the previous valid event, all timed on the host. The board sends no press timestamp or duration. If the tester is unavailable, use the raw JSON in Serial Monitor instead.
 
-## 6. Troubleshooting
+Stop the tester with **Ctrl+C** before starting `python -m engine --serial-port COM3` or `python -m engine.demo --serial-port COM3`.
 
-| Symptom | Cause | Solution |
-|---|---|---|
-| **No COM port in IDE or Device Manager** | Missing USB-to-UART driver or bad cable | Check cable is data-capable (not power-only). Install CH340 or FTDI drivers for clone boards. Check Windows Device Manager under *Ports (COM & LPT)*. |
-| **Garbage / gibberish characters in Serial Monitor** | Baud rate mismatch | Ensure receiver/monitor is configured to **115200 baud** (sketch default). |
-| **No event emitted when pressing switch** | Loose ground or open circuit | Verify continuity between Arduino GND rail and switch terminal. Confirm Pin 2 or Pin 3 connection. |
-| **Switch doesn't trigger on boot** | Held down during reset | Normal safety behavior: release the switch completely; subsequent presses will register cleanly. |
-| **Access denied / port busy** | Port locked by another program | Close Arduino Serial Monitor, Cura, or existing engine instances before running `tools.serialcheck` or `engine`. |
+## 4. Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| No COM port | Try a known data cable and another USB port. Check **Device Manager → Ports (COM & LPT)** and follow the board vendor’s driver instructions if Windows shows an error. |
+| Verify or upload fails | Confirm the board model, board package, and COM port. Close other programs using the port. See [Arduino’s upload troubleshooting](https://support.arduino.cc/hc/en-us/articles/4403365313810-If-your-sketch-doesn-t-upload). |
+| Access denied or port busy | Close Serial Monitor, the tester, and the engine. Then start only the program you want to use. |
+| Garbled output | Set Serial Monitor to **115200 baud** and verify that the port belongs to the pedal. |
+| Missing or inverted events | Check the ground and pin mapping. Verify the contact closes on press, or check the Grove module’s output polarity. Release switches held through reset. |
+| Tap works but hold emits no `practice` | Flash the current sketch, hold the loop switch for at least 700 ms, and check the raw output before starting the engine. |
