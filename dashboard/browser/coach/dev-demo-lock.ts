@@ -5,7 +5,7 @@
  * on a door, not a vault: the demo has no secrets and costs nothing to run.
  * To change it: python - <<< "import hashlib;print(hashlib.sha256(b'omniriff-dev-demo:'+b'NEW').hexdigest())"
  */
-const DEV_DEMO_HASH = '75874552564ddb0da740eca32b9e8c78fa24cc39095abc0c14d17ca7f20e67bb';
+const DEV_DEMO_HASH = '2512b5ee9ea96d9d7371a7bbe36cde773fcc08d580f57da9838e202a8e850773';
 const KEY = 'omniriff.devDemoKey';
 
 async function sha256(text: string): Promise<string> {
