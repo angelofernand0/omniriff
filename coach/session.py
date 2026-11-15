@@ -23,7 +23,14 @@ def late_ms(report: dict) -> float:
               and isinstance(f.get("extra_ms"), (int, float)) and not isinstance(f.get("extra_ms"), bool)]
     if extras:
         return round(max(0.0, max(extras)), 1)
-    intervals = sorted(float(x) for x in report.get("intervals_ms") or [])
+    raw = [float(x) for x in report.get("intervals_ms") or []]
+    if report.get("feel") == "swung" and len(raw) >= 4:
+        # long-short pairs are the groove: measure lateness per beat (pair), not per eighth
+        beats = sorted(raw[i] + raw[i + 1] for i in range(0, len(raw) - 1, 2))
+        mid = len(beats) // 2
+        median = beats[mid] if len(beats) % 2 else (beats[mid - 1] + beats[mid]) / 2
+        return round(max(0.0, beats[-1] - median), 1)
+    intervals = sorted(raw)
     if not intervals:
         return 0.0
     median = report.get("median_interval_ms")

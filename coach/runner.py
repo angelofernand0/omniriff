@@ -32,8 +32,24 @@ class _OfflineUsageCollector:
         self._lock = threading.Lock()
 
 
+def _feel_mark(report: dict) -> dict | None:
+    """Mark the phrase a feel finding is about (straight / uneven), when there is no gap to mark.
+
+    Same label as the Dev demo's marker, e.g. "3rd phrase · straight"."""
+    for kind, word in (("straight_phrase", "straight"), ("uneven_attacks", "uneven")):
+        for f in report.get("findings") or []:
+            if (isinstance(f, dict) and f.get("type") == kind and isinstance(f.get("phrase"), int)
+                    and isinstance(f.get("at_ms"), (int, float)) and isinstance(f.get("end_ms"), (int, float))
+                    and f["end_ms"] > f["at_ms"] >= 0):
+                n = f["phrase"]
+                nth = {1: "1st", 2: "2nd", 3: "3rd"}.get(n, f"{n}th")
+                return {"start_s": round(f["at_ms"] / 1000, 3), "end_s": round(f["end_ms"] / 1000, 3),
+                        "label": f"{nth} phrase · {word}"[:24]}
+    return None
+
+
 def _hesitation_mark(report: dict) -> dict | None:
-    """Turn the strongest measured audio gap into a take-relative loop mark."""
+    """Turn the strongest measured audio gap into a take-relative loop mark (or the phrase a feel finding names)."""
     findings = report.get("findings") or []
     pauses = [item for item in findings if isinstance(item, dict) and item.get("type") == "hesitation"]
     pauses.sort(key=lambda item: item.get("extra_ms", 0), reverse=True)
@@ -49,7 +65,7 @@ def _hesitation_mark(report: dict) -> dict | None:
         return {"start_s": round((at - gap) / 1000, 3),
                 "end_s": round(at / 1000, 3),
                 "label": label[:24]}   # same number Riff quotes and the practice card shows
-    return None
+    return _feel_mark(report)
 
 
 def _todo_frame(result: dict) -> list[dict]:
@@ -155,7 +171,9 @@ def technique_report(log_path: Path | None, sidecar: dict, ear: dict, *, fixture
 
 # The diagnose step's choice of drill: the measured cause decides it, not habit.
 SKILL_MAP = (
-    "Pick the drill skill from the top technique finding in get_hand_report: late_finger or pattern "
+    "If the TakeReport has straight_phrase or uneven_attacks findings (feel: a phrase played straight "
+    "in a swung take, or attacks that jump around), use swing-the-phrase and name the phrase number. "
+    "Otherwise pick the drill skill from the top technique finding in get_hand_report: late_finger or pattern "
     "-> lead-with-the-last-finger, late_start -> move-on-the-and, slow_change or finger_wander -> "
     "shortest-path, picking_stop -> keep-the-hand-moving; no camera cause -> isolate-the-change. "
     "Call a change by its time; name chords only if the player said which change it is. "

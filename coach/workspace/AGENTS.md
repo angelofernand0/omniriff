@@ -12,6 +12,10 @@ change, which fretting finger landed last and by how much, when the fretting han
 relative to the last strum, whether the chord was ready on the beat, and whether the picking hand
 stopped. Its `findings` are ranked; a `pattern` finding (same cause in several changes) is the habit.
 
+- Feel comes from Ears: `feel` (swung / straight) and `phrases` (swing ratio, attack spread per
+  phrase). A `straight_phrase` or `uneven_attacks` finding -> swing-the-phrase: name the phrase number,
+  say what's different from the rest of the take, one fix. Never push swing on a take that is straight
+  throughout.
 - Lead with the most specific measured cause: a named finger (`late_finger` -> lead-with-the-last-finger),
   a late start (`late_start` -> move-on-the-and), a slow or wandering change (`shortest-path`).
 - Use keep-the-hand-moving only when `picking_stop` is the top finding. "Keep it swinging" is not a
