@@ -16,7 +16,7 @@ export class SimulatorChoreography {
   private readonly setlist: Setlist;
   private readonly onSwap?: (target: 'filter' | 'reverb') => void;
 
-  private startTimeMs: number = 0;
+  private startTimeMs: number | null = null;
   public currentTarget: 'filter' | 'reverb' = 'filter';
   private lastSwapStep: number = -1;
 
@@ -32,8 +32,8 @@ export class SimulatorChoreography {
     this.onSwap = onSwap;
   }
 
-  public reset(nowMs: number = performance.now()): void {
-    this.startTimeMs = nowMs;
+  public reset(nowMs?: number): void {
+    this.startTimeMs = typeof nowMs === 'number' ? nowMs : null;
     this.currentTarget = 'filter';
     this.lastSwapStep = -1;
     this.hand.fistAmount = 0.0;
@@ -43,7 +43,7 @@ export class SimulatorChoreography {
 
   public update(nowMs: number): void {
     if (!this.enabled) return;
-    if (this.startTimeMs === 0) this.startTimeMs = nowMs;
+    if (this.startTimeMs === null) this.startTimeMs = nowMs;
 
     const elapsed = ((nowMs - this.startTimeMs) / 1000) % 22.0; // 22-second full demonstration cycle
     this.hand.swapTriggered = false;
