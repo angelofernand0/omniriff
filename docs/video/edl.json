@@ -108,7 +108,7 @@
       "fallback_asset": "runs/promo/raw/dashboard_simulated_beat07.mp4",
       "source_start_s": 0.0,
       "shot_number": 3,
-      "description": "Riff plays back take, goes dry, and pauses. Prompt shows APPROVE (press Y or tap pedal). Close-up of player approving."
+      "description": "Riff plays back take, goes dry, and pauses. Prompt shows HOLD PEDAL TO APPROVE (or press Y). Close-up of foot holding pedal."
     },
     {
       "id": "seg_08_result",
@@ -390,7 +390,7 @@
     {
       "start_s": 44.0,
       "end_s": 56.0,
-      "text": "It sets up the drill, plays your take back,\nbut never touches your sound until you approve. [APPROVE: press Y]",
+      "text": "It sets up the drill, plays your take back,\nbut never touches your sound until you approve. [HOLD PEDAL TO APPROVE]",
       "speaker": "SM"
     },
     {

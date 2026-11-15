@@ -66,11 +66,11 @@ Placeholders: `___` placeholders are filled from the live screen during the toni
 ---
 
 ### Beat 7: The Drill & Approval (0:44 – 0:56 | 12.0s)
-- **Visual:** Riff plays back take, goes dry, and pauses. Large APPROVE prompt appears. Close-up of foot pressing pedal (Shot 3).
+- **Visual:** Riff plays back take, goes dry, and pauses. Large HOLD PEDAL TO APPROVE prompt appears. Close-up of foot holding pedal (Shot 3).
 - **SFX / Music:** Filtered break; pedal mechanical click, dry bypass click.
 - **Voice (SM):**
   > *"I set up the drill, but I never touch your sound until you approve."*
-- **Stats:** 14 words | 1.17 words/sec | On-screen prompt: **APPROVE** *(dashboard/Y or hold pedal per PR #165)*
+- **Stats:** 14 words | 1.17 words/sec | On-screen prompt: **HOLD PEDAL TO APPROVE** (Human-in-the-loop)
 
 ---
 
