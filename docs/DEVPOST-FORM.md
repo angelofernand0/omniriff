@@ -22,7 +22,7 @@ OmniRiff
 A guitar teacher that lives in your signal chain.
 ```
 
-*Alternative option (57 / 60 characters):*
+*Alternative option (58 / 60 characters):*
 ```text
 Never put the guitar down. A teacher in your signal chain.
 ```
@@ -116,7 +116,7 @@ OmniRiff perceives the physical world through two concurrent sensor streams—an
 *(Category Track)*
 
 ```text
-The rig integrates an Arduino footswitch (debounced USB serial), USB webcam, Focusrite Scarlett Solo 3rd-gen interface, and electric guitar into a unified Python audio engine running with PortAudio and preallocated NumPy buffers. In software tests, the core audio callback remains isolated from external input failures (adapter failure, USB disconnect), with hardware dropouts, real-take strum detection, and latency measured on the physical rig: [after the hardware run: Scarlett Solo latency median ± spread ms, xruns over a 5-minute sustained play test, real-take strum detection, and physical footswitch response].
+The rig integrates an Arduino footswitch (debounced USB serial), USB webcam, Focusrite Scarlett Solo 3rd-gen interface, and electric guitar into a unified Python audio engine running with PortAudio and preallocated NumPy buffers. In software tests, the core audio callback remains isolated from external input failures (camera, pedal, dashboard or coach failures; not the audio interface itself), with hardware dropouts, real-take strum detection, and latency measured on the physical rig: [after the hardware run: Scarlett Solo latency median ± spread ms, xruns over a 5-minute sustained play test, real-take strum detection, and physical footswitch response].
 ```
 
 ---
@@ -133,7 +133,7 @@ Practising alone, you know you messed up, but not *why*. Apps score your notes a
 - **Hears:** guitar → Focusrite Scarlett Solo → a real-time audio engine with a looper, filter, reverb and a safe limiter. Every loop you record is saved as a take, and **Ears** measures strum timing, gaps and hesitations.
 - **Sees:** a pretrained hand-landmark model watches your hands. **Eyes** spots the strumming hand stalling. The pinch gesture also lets you shape your tone without letting go.
 - **Teaches:** **Riff**, a coach built on a LangChain deep agent, fuses what it heard and saw to name the *cause* ("your strumming hand stops at the change"), plans a drill, and **operates the rig**: it plays your take back so you can hear the stumble, goes dry, and waits for you to hold the pedal (or press Y) before changing anything. You record a fresh drill take, it shows the gap shrinking, with numbers, and it remembers you next session.
-- **You stay in control:** an Arduino footswitch: tap to loop, hold to start practice or approve what Riff proposes. The AI never changes your sound without that hold (or Y on the keyboard), and the music keeps playing with every sensor unplugged.
+- **You stay in control:** an Arduino footswitch: tap to loop, hold to start practice or approve what Riff proposes. The AI never changes your sound without that hold (or Y on the keyboard), and the music keeps playing if the camera, pedal, dashboard or coach drops out (the audio interface itself is the one part the sound needs).
 
 ## How we built it
 - **audio/** (Python, numpy/scipy, sounddevice/PortAudio): streaming engine with a smoothed biquad low-pass, a Freeverb-style reverb (public-domain tunings), a looper, crossfaded bypass, optional noise gate and a peak limiter. The callback does no I/O, locks or logging. Take capture writes each finished loop to WAV + JSON off the real-time path.
@@ -155,15 +155,15 @@ Run `scripts/windows/measure.ps1 -Pass Loopback` then `-Pass Guitar` (see DEMO.m
 - Engine CPU per 128-frame block: ~0.25 ms mean on an Apple M1 Pro (≈9% of the real-time budget), [Windows number]
 
 ## Challenges
-- **Real-time audio in Python:** Preallocated NumPy buffers, zero memory allocation, zero locks, and no file I/O or logging inside the real-time audio callback.
+- **Real-time audio in Python:** Preallocated NumPy buffers and a design rule of no locks, network I/O, file I/O or logging inside the real-time audio callback.
 - **Acoustic transient perception:** Detecting strums on a ringing guitar is deceptively difficult. Our initial energy detector was fooled by ringing string overtones and overtone beating, while completely missing soft upstrokes. We had to rebuild Ears around pick-attack physics (a 3 kHz high-pass filter, log-energy rise, and dynamic thresholding).
 - **Safe cyber-physical agency:** An AI agent controlling live audio parameters cannot act unguided. The agent proposes changes, the player approves by holding a physical footswitch (or pressing Y), and every single action routes through the exact same schema-validation gate as the pedal.
-- **Concurrent multi-agent orchestration:** Coordinating four humans and their autonomous coding agents across 144 merged PRs and 330 commits: owner-scoped folders, versioned contracts agreed on the board, and CI-gated PRs kept conflicts rare and caught them before main.
+- **Concurrent multi-agent orchestration:** Coordinating four humans and their autonomous coding agents across well over a hundred pull requests: owner-scoped folders, versioned contracts agreed on the board, and CI-gated PRs kept conflicts rare and caught them before main.
 
 ## Accomplishments
 - **One complete cyber-physical teaching loop:** The full journey runs end to end (verified in simulation; real-rig run: [after the hardware run]): you play a phrase; the looper records the take; **Ears** measures strum timing and pauses while **Eyes** tracks hand kinematics; **Riff** diagnoses the root cause ("your strumming hand stopped at the chord change"), plans a drill, plays your take back, and waits for a physical pedal hold before altering your sound; a fresh drill take then shows whether the measured gap shrank, and the result is recorded to your practice journal.
-- **Every input fails safe without stopping the music:** The audio callback is strictly isolated from the rest of the system: covered by software tests, the audio keeps running when external inputs fail (adapter failure, USB disconnect, WebSocket loss, or coach budget exhaustion), with hardware dropouts measured in the 5-minute soak: [xruns]. Parameters are smoothed, bypass uses a 5 ms linear crossfade, vision output is rate-limited, and the router drops stale, duplicate, and low-confidence events.
-- **Rigorous multi-agent engineering with contract enforcement:** Four teammates directed autonomous coding agents through 144 merged pull requests and 330 commits on a shared GitHub message board. By enforcing owner-scoped directories, versioned, additive-only schema changes agreed on the board, and automated contract tests (421 tests passing in CI), we developed real-time DSP, computer vision, LangChain deep agents, and firmware simultaneously, keeping branch conflicts rare and catching them before main.
+- **Every input fails safe without stopping the music:** The audio callback is strictly isolated from the rest of the system: covered by software tests, the audio keeps running when external inputs fail (camera/vision, pedal serial, dashboard WebSocket or coach failures, including the coach running out of budget; unplugging the audio interface itself does stop the sound), with hardware dropouts measured in the 5-minute soak: [xruns]. Parameters are smoothed, bypass uses a 5 ms linear crossfade, vision output is rate-limited, and the router drops stale, duplicate, and low-confidence events.
+- **Rigorous multi-agent engineering with contract enforcement:** Four teammates directed autonomous coding agents through more than a hundred CI-gated pull requests on a shared GitHub message board. By enforcing owner-scoped directories, versioned, additive-only schema changes agreed on the board, and automated contract tests run in CI on every pull request, we developed real-time DSP, computer vision, LangChain deep agents, and firmware simultaneously, keeping branch conflicts rare and catching them before main.
 - **Hardware-ready physical prototype:** [after the hardware run: latency median ± spread; xruns over a 5-minute play test; real-take strum detection; footswitch check].
 
 ## What we learned
