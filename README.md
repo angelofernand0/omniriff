@@ -9,6 +9,8 @@
 
 **OmniRiff is an AI guitar teacher that lives in your signal chain.** It hears what you play, sees how your hands move when a camera is available, explains *why* you stumbled, and sets up the next drill—without making you put the guitar down.
 
+**[Try OmniRiff in your browser](https://omniriff.vercel.app/)** — use the free simulator, or connect Riff with the team's passcode.
+
 Built for guitarists practising alone, especially beginners and intermediates between lessons. A score tells you *that* you missed; a teacher helps you fix *why*. This is software built around an ordinary guitar and audio input, plus a laptop webcam when available—not a new guitar you have to buy. Gestures and an optional pedal keep the flow hands-free.
 
 ![The OmniRiff dashboard: loop, tone, hand and coach modules](docs/img/dashboard.png)
@@ -27,11 +29,11 @@ The AI works **between** takes, never inside the audio callback. Guitar → inte
 
 ## Try it
 
-**In a browser:** Open [omniriff.vercel.app](https://omniriff.vercel.app/) and choose **Start simulator**. It runs a labeled synthetic guitar and generated hand controls, with no account, hardware or API key. This hosted browser mode does **not** run the live AI coach. [Browser modes and limitations](docs/BROWSER.md).
+**In a browser:** Open [omniriff.vercel.app](https://omniriff.vercel.app/) and choose **Start simulator**. The synthetic guitar and generated hand controls need no account, hardware or API key. To try the hosted AI coach, open **Riff, the AI coach** in settings and enter the team passcode, which the team shares privately. Riff runs on a separate server and may incur model usage; recorded takes and relevant hand/state data are sent for coaching. You can also choose **Live audio + camera** to test with a real guitar and webcam. [Browser modes and limitations](docs/BROWSER.md).
 
 **Locally:** The [virtual-guitar play room](tools/virtual_guitar/README.md) lets you test the Python audio path with a simulated guitar and your actual webcam, without an interface. For a real guitar/interface/pedal and the local coach, follow the [demo runbook](docs/DEMO.md) and [coach setup](coach/README.md). Keep simulated, replayed and live runs labeled distinctly.
 
-**Current boundary:** The hosted simulator is playable, but is not proof of real-camera accuracy, a physical pedal/guitar run, live coach behavior, or measured end-to-end latency. Those require the local rig and explicit verification. No hardware or model result is inferred from synthetic/replay footage.
+**Current boundary:** The hosted site has completed a synthetic-loop-to-Riff test, not a real-guitar/webcam or physical-pedal validation. It does not establish camera accuracy, coaching quality on real takes, or measured end-to-end latency. [Try a real coaching session](docs/PLAY-THIS.md) and report what Riff actually observes. Never present synthetic/replay footage as a real performance.
 
 **Team board:** https://github.com/angelofernand0/omniriff/issues/1
 
