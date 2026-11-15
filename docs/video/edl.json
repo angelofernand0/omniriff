@@ -69,7 +69,7 @@
       "fallback_asset": "runs/promo/raw/dashboard_rig_fallback.mp4",
       "source_start_s": 0.0,
       "shot_number": 1,
-      "description": "Wide establishing shot of physical rig on table with callout badges (Guitar In, Camera On, One Footswitch)."
+      "description": "Wide establishing shot of physical rig on table with callout badges (Guitar In, Cam, One Pedal)."
     },
     {
       "id": "seg_05_goal",
@@ -147,7 +147,7 @@
       "fallback_asset": "runs/promo/raw/dashboard_simulated_beat10.mp4",
       "source_start_s": 0.0,
       "shot_number": 7,
-      "description": "Hand pinch-and-sweep filter gesture with skeleton overlay (Shot 7), then USB webcam cable yanked mid-song (Shot 8)."
+      "description": "Hand pinch-and-sweep filter gesture with skeleton overlay (Shot 7), then USB cam cable yanked mid-song (Shot 8)."
     },
     {
       "id": "seg_11_architecture",
@@ -248,7 +248,7 @@
       "source_start_s": 0.0,
       "duration_s": 6.5,
       "gain": 1.0,
-      "line": "Guitar in. Camera on. One footswitch. That\u2019s it."
+      "line": "Guitar in. Camera on. One pedal. That\u2019s it."
     },
     {
       "id": "vo_beat05_player",
@@ -372,7 +372,7 @@
     {
       "start_s": 16.0,
       "end_s": 24.0,
-      "text": "Guitar in. Camera on. One footswitch. That\u2019s it.",
+      "text": "Guitar in. Camera on. One pedal. That\u2019s it.",
       "speaker": "SM"
     },
     {

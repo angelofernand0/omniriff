@@ -17,7 +17,7 @@ This directory contains the production assets and timeline definitions for the O
 | **1** | 0:00–0:03 | 3.0s | Motion | `hook` | SM: *"…but do you know why?"* |
 | **2** | 0:03–0:10 | 7.0s | Motion | `collage` | SM: *"Practising alone, every tool makes you stop..."* |
 | **3** | 0:10–0:16 | 6.0s | Motion | `logo` | SM: *"So we built a teacher that lives in your signal chain."* |
-| **4** | 0:16–0:24 | 8.0s | Video | Shot 1 & 2 (`rig`) | SM: *"Guitar in. Camera on. One footswitch. That’s it."* |
+| **4** | 0:16–0:24 | 8.0s | Video | Shot 1 & 2 (`rig`) | SM: *"Guitar in. Camera on. One pedal. That’s it."* |
 | **5** | 0:24–0:30 | 6.0s | Video | Shot 4 (`goal`) | Player: *"My G to C change."* / Riff: *"Got it."* |
 | **6** | 0:30–0:44 | 14.0s | Video | Shot 5 + UI (`diagnosis`) | SM: *"Riff listens with Ears, watches your hand with Eyes..."* |
 | **7** | 0:44–0:56 | 12.0s | Video | Shot 3 + UI (`approval`) | SM: *"It sets up the drill, plays your take back..."* |
@@ -26,6 +26,19 @@ This directory contains the production assets and timeline definitions for the O
 | **10** | 1:16–1:24 | 8.0s | Video | Shot 7 & 8 (`failsafe`) | SM: *"Pinch to shape your tone. Unplug the camera..."* |
 | **11** | 1:24–1:32 | 8.0s | Motion | `architecture` | SM: *"Real-time audio engine, hand tracking, and a LangChain deep agent..."* |
 | **12** | 1:32–1:36 | 4.0s | Motion | `end` | SM: *"OmniRiff. Never put the guitar down."* |
+
+---
+
+## Brand & Production Guidelines
+
+- **Color Palette:** Pink `#FF5CCB` on `#0B0B10` dark canvas. Red `#FF5340` is reserved strictly for **REC** (recording) indicators.
+- **Approved Terminology:**
+  - Say **PEDAL** (never "footswitch").
+  - Say **CAM** (never "webcam").
+  - Use badge **`PINCH = TONE`** (the word "clutch" is strictly banned per BRAND_SPEC §10).
+- **Truthful Status Representation:**
+  - Beat 9 (`saved to filesystem`) and Beat 11 (`deep agent with subagents, skills, memory`) are used only if fully shipped when filming; otherwise fall back to the in-progress prototype phrasing documented in [SCRIPT.md](SCRIPT.md).
+  - Every `___` placeholder is filled from measured values on the live hardware screen.
 
 ---
 
