@@ -9,6 +9,21 @@ import math
 import re
 
 
+def late_ms(report: dict) -> float:
+    """How late the worst strum came against the player's own beat (worst interval minus the median).
+
+    Not the raw interval: at 120 bpm a 30 ms stumble is a 530 ms interval, which no drill target
+    can sensibly be written against. Reports call this worst_gap_ms."""
+    intervals = sorted(float(x) for x in report.get("intervals_ms") or [])
+    if not intervals:
+        return 0.0
+    median = report.get("median_interval_ms")
+    if not isinstance(median, (int, float)) or isinstance(median, bool) or not median > 0:
+        mid = len(intervals) // 2
+        median = intervals[mid] if len(intervals) % 2 else (intervals[mid - 1] + intervals[mid]) / 2
+    return round(max(0.0, intervals[-1] - float(median)), 1)
+
+
 GAP_TARGET = re.compile(r"^(?:worst|longest) gap (?:under|below|<) (\d+(?:\.\d+)?) ms$", re.I)
 
 
@@ -97,7 +112,7 @@ class PracticeSession:
         if not all(isinstance(x, (int, float)) and not isinstance(x, bool)
                    and math.isfinite(x) and x >= 0 for x in intervals):
             return False
-        gap = float(max(intervals))
+        gap = late_ms(report)
         self.history = [*self.history, gap][-12:]
         self._seen_takes.add(take_id)
         self._measured_gaps[take_id] = gap

@@ -111,6 +111,37 @@ def play(engine: Engine, mono: np.ndarray, output_device: int | None, out_channe
             stop.wait(0.1)
 
 
+def run_virtual(engine: Engine, mono: np.ndarray, output_device: int | None, out_channels: int,
+                blocksize: int, stop: threading.Event, volume: float = 0.35) -> dict:
+    """Loop a synthetic guitar `mono` through the real engine to the speakers until `stop` is set.
+
+    A SIMULATED input for demos/tests without a guitar or interface: the engine, looper, takes and
+    controls are the real ones. `volume` scales the speaker output after the DSP (not the DSP input).
+    """
+    if not len(mono):
+        raise ValueError("virtual guitar signal is empty")
+    pos = [0]
+
+    def callback(outdata, frames, time, status):
+        if status.output_underflow:
+            engine.note_xrun()
+        chunk = np.empty(frames, dtype=np.float32)
+        filled = 0
+        while filled < frames:  # wrap around so the performance repeats forever
+            n = min(frames - filled, len(mono) - pos[0])
+            chunk[filled:filled + n] = mono[pos[0]:pos[0] + n]
+            filled += n
+            pos[0] = (pos[0] + n) % len(mono)
+        engine.process(chunk, outdata)
+        outdata *= volume
+
+    with sd.OutputStream(device=output_device, samplerate=engine.config.samplerate, blocksize=blocksize,
+                         dtype="float32", channels=out_channels, callback=callback) as stream:
+        info = {"latency_s": stream.latency, "samplerate": stream.samplerate, "blocksize": stream.blocksize}
+        stop.wait()
+    return info
+
+
 def record_input(input_device: int | None, input_channel: int, seconds: float, samplerate: int) -> np.ndarray:
     """Record one input channel for `seconds` (blocking; never used in the audio callback)."""
     frames = int(seconds * samplerate)

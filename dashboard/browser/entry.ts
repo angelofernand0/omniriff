@@ -1,6 +1,7 @@
 import { SourceManager, type OperatingMode } from './source-manager';
 import type { StateFrame, HandFrame } from './protocol/types';
 import './controls.css';
+import { RemoteCoach, coachConfig, saveCoachConfig } from './coach/remote-coach';
 
 type BrowserSource = {
   onState(cb: (frame: StateFrame) => void): void;
@@ -8,7 +9,7 @@ type BrowserSource = {
   sendControl(control: string, value?: number): boolean;
   isConnected(): boolean;
 };
-declare global { interface Window { OmniBrowserSource?: BrowserSource; } }
+declare global { interface Window { OmniBrowserSource?: BrowserSource; OmniCoachSocket?: () => WebSocket; } }
 
 const manager = new SourceManager();
 let connected = false;
@@ -52,6 +53,15 @@ await loadClassic('brand.js');
 await import('../app.js');
 for (const file of ['juice.js', 'riff.js', 'stage.js', 'tape.js']) await loadClassic(file);
 
+// Riff, the real AI coach, hosted (coach/server.py). The instrument stays in this browser.
+const hosted = params.get('coach') === 'off' ? null : coachConfig(params);
+const remoteCoach = hosted ? new RemoteCoach(hosted, manager) : null;
+if (remoteCoach) {
+  window.OmniCoachSocket = remoteCoach.socket;
+  // @ts-expect-error This existing classic script is loaded for its side effects.
+  await import('../coach.js'); coachLoaded = true;
+}
+
 const sourceButton = document.createElement('button');
 sourceButton.type = 'button';
 sourceButton.className = 'browser-source-button';
@@ -90,7 +100,14 @@ dialog.innerHTML = `
   </fieldset>
 
   </details>
-  <p class="browser-footnote">Browser modes run filter, reverb and looping locally. Live coaching is available through the Python bridge.</p>`;
+  <details id="browserCoach"><summary>Riff, the AI coach</summary>
+    <p>Riff listens to each loop you record (and watches your hand if the camera is on), then picks one thing to practice. Your sound stays in this browser; finished loops go to the coach server.</p>
+    <label>Coach server<input id="coachServer" type="url" placeholder="wss://…/coach" autocomplete="off"></label>
+    <label>Team passcode<input id="coachKey" type="password" autocomplete="off"></label>
+    <div class="browser-actions"><button type="button" id="coachConnect">Connect Riff</button><button type="button" id="coachForget">Disconnect Riff</button></div>
+    <p id="coachStatus" role="status" aria-live="polite"></p>
+  </details>
+  <p class="browser-footnote">Filter, reverb and looping run in your browser. Riff, the coach, runs on the coach server.</p>`;
 document.body.append(dialog);
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const mode = $<HTMLSelectElement>('browserMode');
@@ -143,7 +160,7 @@ function label() {
     sourceButton.textContent = connected ? 'PYTHON · SOUND' : 'PYTHON · OFF';
   } else sourceButton.textContent = 'START SOUND';
   if (connected && active && active !== 'python' && browserAdapter().audio.isMuted) sourceButton.textContent = active === 'simulator' ? 'SIMULATED · MUTED' : 'LIVE INPUT · MUTED';
-  $('pedalNext').hidden = active !== 'python';
+  $('pedalNext').hidden = active !== 'python' && !remoteCoach;
   stop.disabled = !active && !busy;
   if (typeof loopControl !== 'undefined') loopControl.disabled = !connected;
   stop.textContent = active === 'python' ? 'Disconnect' : 'Stop';
@@ -201,7 +218,7 @@ start.addEventListener('click', async () => {
   busy = true; describe(); label();
   const requested = selectedMode();
   try {
-    if (coachLoaded && requested !== 'python') {
+    if (coachLoaded && !remoteCoach && requested !== 'python') {
       await manager.stop();
       if (request !== startupRequest) return;
       const url = new URL(location.href); url.searchParams.set('source', requested);
@@ -213,6 +230,7 @@ start.addEventListener('click', async () => {
     manager.live.devices.selectedVideoInputId = camera.value || null;
     manager.live.devices.selectedChannel = Number(channel.value);
     manager.simulator.gestureTarget = manager.live.gestureTarget = target.value as 'filter' | 'reverb' | 'scene';
+    if (requested === 'python' && remoteCoach) throw new Error('Disconnect Riff (the hosted coach) before using the Python bridge.');
     if (requested === 'python' && !coachLoaded) {
       // @ts-expect-error This existing classic script is loaded for its side effects.
       await import('../coach.js'); coachLoaded = true;
@@ -233,7 +251,7 @@ start.addEventListener('click', async () => {
         adapter.audio.setSynthAuto(autoGuitar.checked);
         adapter.audio.setSynthBpm(Number(bpm.value));
       }
-      $('coachLine').textContent = 'Play freely. Connect the Python bridge for live coaching.';
+      if (!remoteCoach) $('coachLine').textContent = 'Play freely. Open settings to connect Riff, the coach.';
     }
     dialog.close();
   } catch (error) {
@@ -243,7 +261,7 @@ start.addEventListener('click', async () => {
   } finally { if (request === startupRequest) { busy = false; describe(); label(); } }
 });
 stop.addEventListener('click', async () => {
-  const python = manager.activeMode === 'python' || coachLoaded || (busy && selectedMode() === 'python');
+  const python = manager.activeMode === 'python' || (coachLoaded && !remoteCoach) || (busy && selectedMode() === 'python');
   ++startupRequest; busy = false; describe();
   await manager.stop(); connected = false; label();
   if (python) location.reload(); // unload the coach socket too; the Python instrument keeps playing
@@ -266,6 +284,25 @@ scene.addEventListener('change', () => {
 });
 const pendingControls = setInterval(() => { if (busy) label(); }, 200);
 window.addEventListener('pagehide', () => { clearInterval(pendingControls); ++startupRequest; busy = false; void manager.stop(); });
+const coachServer = $<HTMLInputElement>('coachServer');
+const coachKey = $<HTMLInputElement>('coachKey');
+coachServer.value = hosted?.url ?? '';
+coachKey.value = hosted?.key ?? '';
+const coachStatus = $('coachStatus');
+coachStatus.textContent = remoteCoach ? 'Connecting to Riff…' : 'Not connected. Ask your team for the server address and passcode.';
+if (remoteCoach) remoteCoach.status = text => { coachStatus.textContent = text; };
+function reloadWithCoach(url: string, key: string) {
+  saveCoachConfig(url, key);
+  const next = new URL(location.href);
+  next.searchParams.delete('coachserver'); next.searchParams.delete('coachkey'); next.searchParams.delete('coach');
+  if (manager.activeMode && manager.activeMode !== 'python') next.searchParams.set('source', manager.activeMode);
+  location.assign(next);
+}
+$('coachConnect').addEventListener('click', () => {
+  if (!/^wss?:\/\//.test(coachServer.value.trim())) { coachStatus.textContent = 'The server address starts with wss:// (or ws:// on this computer).'; return; }
+  reloadWithCoach(coachServer.value, coachKey.value);
+});
+$('coachForget').addEventListener('click', () => reloadWithCoach('', ''));
 describe();
 if (initialMode === 'live') ($('browserAdvanced') as HTMLDetailsElement).open = true;
 dialog.showModal();

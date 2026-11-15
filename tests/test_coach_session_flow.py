@@ -21,7 +21,7 @@ from tools.ears.analyze import TakeReport
 
 def report(take_id: str, gap_ms: float, *, judgeable: bool = True) -> dict:
     return {"take_id": take_id, "judgeable": judgeable,
-            "intervals_ms": [gap_ms]}
+            "intervals_ms": [500, 500, 500, 500 + gap_ms]}   # steady beat + one strum gap_ms late
 
 
 def card(title: str, skill: str) -> dict:
@@ -60,14 +60,14 @@ class PracticeSessionFlowTests(unittest.TestCase):
 
             reports = [
                 TakeReport(take_id="base", judgeable=True, strum_count=4,
-                           intervals_ms=[200, 210, 430],
+                           intervals_ms=[500, 500, 930],
                            findings=[{"type": "hesitation", "at_ms": 2000, "gap_ms": 430, "extra_ms": 220}]),
                 TakeReport(take_id="try1", judgeable=True, strum_count=4,
-                           intervals_ms=[200, 210, 350]),
+                           intervals_ms=[500, 500, 850]),
                 TakeReport(take_id="try2", judgeable=True, strum_count=4,
-                           intervals_ms=[200, 210, 280]),
+                           intervals_ms=[500, 500, 780]),
                 TakeReport(take_id="full", judgeable=True, strum_count=4,
-                           intervals_ms=[180, 185, 190]),
+                           intervals_ms=[500, 500, 690]),
             ]
             with patch("tools.ears.analyze.analyze_take", side_effect=reports):
                 for take_id in ("base", "try1", "try2", "full"):

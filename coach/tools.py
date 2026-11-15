@@ -1,6 +1,8 @@
 """Evidence-backed tools exposed to the coach and its Ears/Eyes subagents."""
 from __future__ import annotations
 
+import logging
+
 import asyncio
 import json
 import re
@@ -9,11 +11,15 @@ from pathlib import Path
 from .feed import CoachFeed
 from .memory import last_time_cue
 from .rig import RigClient, RigStateReader
-from .session import PracticeSession
+from .session import PracticeSession, late_ms
 
 
 TAKE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
-SKILLS = frozenset({"isolate-the-change", "slow-then-speed-up", "dry-check", "keep-the-hand-moving"})
+SKILLS = frozenset({"isolate-the-change", "slow-then-speed-up", "dry-check", "keep-the-hand-moving",
+                    "lead-with-the-last-finger", "move-on-the-and", "shortest-path"})
+
+
+LOG = logging.getLogger(__name__)
 
 
 def _safe_take_id(take_id: str) -> str:
@@ -24,8 +30,7 @@ def _safe_take_id(take_id: str) -> str:
 
 def _numbers(report: dict) -> tuple[int, float, float]:
     hes = [item for item in report.get("findings", []) if item.get("type") == "hesitation"]
-    intervals = report.get("intervals_ms", [])
-    worst = max((float(x) for x in intervals), default=0.0)
+    worst = late_ms(report)   # late against the player's own beat, not the raw interval
     return len(hes), worst, float(report.get("tempo_stability") or 0.0)
 
 
@@ -82,7 +87,7 @@ class CoachTools:
         self.session.plan(
             goal=goal, next_step="Isolate the measured trouble spot",
             drill_count=2, attempt_count=3,
-            drill_titles=["Isolate the trouble spot", "Full pattern over your loop"],
+            drill_titles=["Fix the measured cause", "Full pattern over your loop"],
         )
         self.feed.publish(session=self.session.snapshot())
         self.feed.publish_activity("coach", "set_practice_goal", "done")
@@ -151,6 +156,13 @@ class CoachTools:
         self.feed.publish_activity("coach", "write_drill_card", "done")
         return journal_path
 
+    def _cue_mood(self, naming_a_mistake: bool) -> str:
+        """Riff's face follows the measurement, not a fixed expression."""
+        result = self.feed.frame.get("before_after")
+        if result and result.get("after_take_id") == self.current_take_id:
+            return "proud" if result.get("improved") else "encouraging"
+        return "concerned" if naming_a_mistake else "encouraging"
+
     def say(self, text: str) -> str:
         """Speak one short cause-and-fix cue grounded in the reports."""
         if not isinstance(text, str) or not 1 <= len(text) <= 240:
@@ -158,18 +170,30 @@ class CoachTools:
         # A simple punctuation guard; models can use decimal numbers in reports.
         if len(re.findall(r"[.!?](?:\s|$)", text)) > 2:
             raise ValueError("cue must be at most two sentences")
-        self.feed.publish(state="speaking", mood="concerned", target="player", cue=text)
+        extra = {}
+        pending = getattr(self, "pending_mark", None)
+        if pending:  # live rig: the gap marker appears with the explanation
+            extra = {"mark": pending}
+            self.pending_mark = None
+        self.feed.publish(state="speaking", mood=self._cue_mood(bool(extra)),
+                          target="loop" if extra else "player", cue=text, **extra)
         self.feed.publish_activity("coach", "say", "done")
         try:
             from .voice import Voice  # supplied by R4; browser speech is the fallback until then
         except ImportError:
             return text
         try:
-            audio = asyncio.run(Voice.from_env().render(text))
-            if audio is not None:
-                self.feed.broadcast_audio(audio)
-        except Exception:
-            pass  # voice is optional: the dashboard retains its browser fallback
+            voice = Voice.from_env()
+            audio = asyncio.run(voice.render(text))
+            if audio is None:
+                LOG.warning("coach voice: no audio rendered (%s); the dashboard falls back to the browser voice",
+                            getattr(voice, "last_error", None) or "no key or empty response")
+            else:
+                sent = self.feed.broadcast_audio(audio)
+                LOG.info("coach voice: %d bytes of MP3 %s", len(audio.get("audio_b64", "")) * 3 // 4,
+                         "sent to the dashboard" if sent else "REJECTED by the feed schema")
+        except Exception as exc:  # voice is optional: the dashboard retains its browser fallback
+            LOG.warning("coach voice failed: %s: %s", type(exc).__name__, exc)
         return text
 
     def rig_control(self, control: str, value: float | None = None) -> str:
@@ -211,7 +235,22 @@ class CoachTools:
 
 def build_langchain_tools(service: CoachTools) -> dict:
     """Wrap the plain methods as named LangChain tools without importing them in CI."""
-    from langchain_core.tools import tool
+    from langchain_core.tools import tool as _lc_tool
+    import functools
+
+    def tool(fn):
+        """Return a rejected call to the model as text so it can fix and retry.
+
+        A ValueError from validation (goal too long, bad rig value...) used to
+        propagate and abort the whole coach run for that take.
+        """
+        @functools.wraps(fn)
+        def guarded(*args, **kwargs):
+            try:
+                return fn(*args, **kwargs)
+            except ValueError as exc:
+                return f"Rejected: {exc}. Fix the arguments and call the tool again."
+        return _lc_tool(guarded)
 
     @tool
     def get_rig_state() -> dict:
@@ -225,7 +264,9 @@ def build_langchain_tools(service: CoachTools) -> dict:
 
     @tool
     def get_hand_report(take_id: str) -> dict:
-        """Read the measured strumming-hand report; unavailable means no hand claim."""
+        """Read the camera report: strumming-hand stalls, and under 'technique' each chord change
+        (which fretting finger landed last and by how much, when the change started vs the last
+        strum, whether the picking hand stopped) with ranked findings. Unavailable = no hand claim."""
         return service.get_hand_report(take_id)
 
     @tool
@@ -235,17 +276,28 @@ def build_langchain_tools(service: CoachTools) -> dict:
 
     @tool
     def set_practice_goal(goal: str) -> str:
-        """Set one short goal grounded in the measured first take; do not guess a chord name."""
+        """Set one short goal (at most 80 characters) grounded in the measured first take; do not guess a chord name."""
         return service.set_practice_goal(goal)
 
     @tool
     def write_drill_card(skill: str, passage: str, reps: int, pass_rule: str, rig: dict) -> str:
-        """Save a measurable drill card; proposed rig settings still need approval."""
+        """Save a measurable drill card; proposed rig settings still need approval.
+
+        skill: the cause it fixes. lead-with-the-last-finger (late_finger), move-on-the-and
+        (late_start), shortest-path (slow_change / finger_wander), keep-the-hand-moving
+        (picking_stop only), isolate-the-change (timing only, no camera cause).
+
+        Limits (a call that breaks one is rejected): passage at most 80 characters; reps 1 to 20;
+        pass_rule at most 120 characters; rig is {} or only the keys bypass (true/false), filter (0 to 1)
+        and reverb (0 to 1) -- nothing else, no loop or tempo keys."""
         return service.write_drill_card(skill, passage, reps, pass_rule, rig)
 
     @tool
     def say(text: str) -> str:
-        """Say at most two sentences: the measured cause, then one fix."""
+        """Say at most two short sentences, about 25 words and never over 180 characters: the measured
+        cause, then one fix. It is spoken aloud, so long cues make the player wait."""
+        if isinstance(text, str) and len(text) > 180:
+            return "Rejected: that is too long to speak. Say it again in under 25 words (180 characters)."
         return service.say(text)
 
     @tool

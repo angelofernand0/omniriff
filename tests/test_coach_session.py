@@ -24,7 +24,7 @@ class PracticeSessionTests(unittest.TestCase):
         self.assertEqual(snapshot["drill"]["step"], 2)
         self.assertEqual(snapshot["drill"]["of"], 3)
         self.assertEqual(snapshot["attempt"], {"n": 2, "of": 3})
-        self.assertEqual(snapshot["metric"]["history"], [900.0, 620.0])
+        self.assertEqual(snapshot["metric"]["history"], [400.0, 120.0])  # late vs the 500 ms beat
         self.assertEqual(snapshot["metric"]["target"], 700.0)
         self.assertEqual(snapshot["next"], "Full pattern at tempo")
         feed = CoachFeed("session-test")
@@ -40,7 +40,7 @@ class PracticeSessionTests(unittest.TestCase):
                                               "intervals_ms": [float("nan")]}))
         for n in range(14):
             self.assertTrue(session.record_take({"take_id": f"take-{n}", "judgeable": True,
-                                                 "intervals_ms": [n + 1.0]}))
+                                                 "intervals_ms": [500, 500, 500 + n + 1.0]}))
         session.set_drill_card({"title": "Dry check", "skill": "dry-check",
                                 "pass_rule": "worst gap under 150 ms"})
         snapshot = session.snapshot()

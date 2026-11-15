@@ -30,6 +30,7 @@
     else if (d.replay === 'true') [word, kind] = ['REPLAY', 'warn'];
     else if (d.sim) [word, kind] = [d.sim === 'guitar' ? 'SIM GUITAR' : 'SIMULATED', 'warn'];
     if (d.coach === 'scripted') { word += ' · SCRIPTED COACH'; kind = 'warn'; }
+    else if (d.coach === 'replay') { word += ' · REPLAY COACH'; kind = 'warn'; }   // a recorded real session, never live
     pill.textContent = word;
     pill.dataset.kind = kind;
     if (document.body.dataset.browser === 'true') {

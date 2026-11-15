@@ -103,6 +103,7 @@ def main(argv: list[str] | None = None) -> int:
         runner = CoachRunner(
             agent, service, feed, state, budget, hand_log=args.hand_log,
             fixture_mode=args.fixtures, auto_approve_fixtures=args.auto_approve_fixtures,
+            quiet_until_asked=not args.fixtures,
         )
         if args.fixtures:
             from .fixtures.generate import generate

@@ -1,6 +1,6 @@
 ---
 name: keep-the-hand-moving
-description: Use when a TakeReport hesitation and an aligned HandReport strumming-hand stall support the same chord-change problem.
+description: Use only when the picking hand itself stops at a change (TechniqueReport picking_stop is the top finding, or Eyes shows a strumming-hand stall and no fretting-hand cause is measured).
 ---
 
 # Keep the hand moving
