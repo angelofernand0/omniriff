@@ -30,6 +30,8 @@ def main(argv=None):
     p.add_argument('--strum-hand', choices=('Left', 'Right'), default='Right', help='MediaPipe label of the strumming hand for hand-log analysis; verify camera orientation')
     p.add_argument('--strum-guard', action='store_true', help='suppress control in lower camera zone y>=0.55 and during rapid reversals; rehearse framing first')
     p.add_argument('--rehearsal', action='store_true', help='human label/framing confirmation then 30s measured check; requires overlay, --relative --strum-guard --metrics-json')
+    p.add_argument('--gesture-switch', action='store_true', help='enable live effect switching via thumb-to-pinky contact')
+    p.add_argument('--gesture-switch-hold', type=float, default=0.20, help='seconds of thumb-to-pinky contact required to switch effect')
     p.add_argument('--no-hand-view', action='store_true', help='disable local dashboard landmark feed')
     p.add_argument('--hand-view-port', type=int, default=47802)
     p.add_argument('--host', default='127.0.0.1')
@@ -71,11 +73,17 @@ def main(argv=None):
         p.error('scene mode uses calibrated absolute position; omit --relative')
     if scene and args.control != 'filter':
         p.error('scene mode controls both effects; omit --control reverb')
+    if scene and args.gesture_switch:
+        p.error('scene mode controls both effects; omit --gesture-switch')
     import cv2
     import mediapipe as mp
     from jsonschema import Draft202012Validator
+    from .switcher import EffectSwitcher
     config = json.loads(args.calibration.read_text()) if args.calibration.exists() else {}
     controller = Controller(rate=args.rate / 2 if scene else args.rate, control=args.control, relative=args.relative, **config)
+    switcher = EffectSwitcher(hold_seconds=args.gesture_switch_hold) if args.gesture_switch else None
+    if switcher:
+        switcher.set_control(args.control)
     schema = json.loads((Path(__file__).resolve().parents[1] / 'protocol/control.schema.json').read_text())
     validator = Draft202012Validator(schema)
     options = mp.tasks.vision.HandLandmarkerOptions(
@@ -143,7 +151,7 @@ def main(argv=None):
                         import sys
                         print('Hand log: ' + hand_log.error, file=sys.stderr)
                         hand_log_error_reported = True
-                y = pinch = None
+                y = pinch = pinky_pinch = None
                 confidence = 0.
                 centers = [(hand[0].x, hand[0].y) for hand in result.hand_landmarks]
                 selected = selector.select(centers)
@@ -155,6 +163,8 @@ def main(argv=None):
                     if scale > 1:
                         y = points[0].y
                         pinch = distance(4, 8) / scale
+                        if switcher:
+                            pinky_pinch = distance(4, 20) / scale
                         # Tasks exposes handedness score, not per-landmark confidence.
                         confidence = result.handedness[selected][0].score
                     if not args.no_overlay:
@@ -177,6 +187,9 @@ def main(argv=None):
                     else:
                         guard.reset()
                         guard_reason = 'no_hand' if y is None else 'low_confidence'
+                # Update switcher when enabled before updating parameter controller
+                if switcher and fresh_frame:
+                    switcher.update(pinky_pinch, confidence, now, controller=controller)
                 # Suppression disarms without discarding native relative pickup history.
                 event = controller.update(control_y, control_pinch, confidence, now, captured_unix_ms)
                 if hand_view:
@@ -188,7 +201,8 @@ def main(argv=None):
                     landmarks = [[min(1., max(0., p.x)), min(1., max(0., p.y))] for p in points] if display_present else []
                     hand_view.publish(dict(version=1, type='hand', timestamp_ms=captured_unix_ms,
                         present=display_present, engaged=controller.active, confidence=confidence if fresh_frame else 0.,
-                        control=None if scene else args.control, value=controller.value, landmarks=landmarks))
+                        control=None if scene else (switcher.current_control if switcher else args.control),
+                        value=controller.value, landmarks=landmarks))
                 events = scene.events(event) if scene and event else ([event] if event else [])
                 frame_events = 0
                 for event in events if not args.calibrate else []:
@@ -217,7 +231,10 @@ def main(argv=None):
                                       wrist_record['hands'] if fresh_frame else [],not fresh_frame,
                                       result.handedness[selected][0].category_name if selected is not None else None)
                 if not args.no_overlay:
-                    label = 'CALIBRATE: l low, h high, s save' if args.calibrate else f'{scene.name if scene else args.control}: {controller.value} active={controller.active} events={count}'
+                    ctrl_name = scene.name if scene else (switcher.current_control if switcher else args.control)
+                    label = 'CALIBRATE: l low, h high, s save' if args.calibrate else f'{ctrl_name}: {controller.value} active={controller.active} events={count}'
+                    if switcher:
+                        label += ' [pinky: switch]'
                     if guard:
                         label += f' guard={guard_reason}'
                     cv2.putText(frame, label, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, .5, (0, 255, 255), 1)
