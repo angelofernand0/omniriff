@@ -13,7 +13,16 @@ def late_ms(report: dict) -> float:
     """How late the worst strum came against the player's own beat (worst interval minus the median).
 
     Not the raw interval: at 120 bpm a 30 ms stumble is a 530 ms interval, which no drill target
-    can sensibly be written against. Reports call this worst_gap_ms."""
+    can sensibly be written against. Reports call this worst_gap_ms.
+
+    When Ears flagged hesitations, this is its largest `extra_ms` (late against the local beat),
+    the same number Riff reads and the loop marker shows, so the screen never shows three numbers
+    for one moment."""
+    extras = [float(f["extra_ms"]) for f in report.get("findings") or []
+              if isinstance(f, dict) and f.get("type") == "hesitation"
+              and isinstance(f.get("extra_ms"), (int, float)) and not isinstance(f.get("extra_ms"), bool)]
+    if extras:
+        return round(max(0.0, max(extras)), 1)
     intervals = sorted(float(x) for x in report.get("intervals_ms") or [])
     if not intervals:
         return 0.0

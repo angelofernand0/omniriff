@@ -61,7 +61,7 @@ class PracticeSessionFlowTests(unittest.TestCase):
             reports = [
                 TakeReport(take_id="base", judgeable=True, strum_count=4,
                            intervals_ms=[500, 500, 930],
-                           findings=[{"type": "hesitation", "at_ms": 2000, "gap_ms": 430, "extra_ms": 220}]),
+                           findings=[{"type": "hesitation", "at_ms": 2000, "gap_ms": 930, "extra_ms": 430}]),
                 TakeReport(take_id="try1", judgeable=True, strum_count=4,
                            intervals_ms=[500, 500, 850]),
                 TakeReport(take_id="try2", judgeable=True, strum_count=4,
@@ -78,7 +78,7 @@ class PracticeSessionFlowTests(unittest.TestCase):
                     runner.process_take(wav, sidecar)
                     if take_id == "base":
                         self.assertEqual(feed.frame["mark"],
-                                         {"start_s": 1.57, "end_s": 2.0, "label": "430 ms gap"})
+                                         {"start_s": 1.07, "end_s": 2.0, "label": "430 ms late"})
                     if take_id == "try1":
                         self.assertIsNone(feed.frame["mark"])
                         self.assertEqual(service.session.snapshot()["attempt"], {"n": 1, "of": 3})
