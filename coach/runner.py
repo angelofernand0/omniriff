@@ -233,15 +233,17 @@ class CoachRunner:
         approval_id = uuid.uuid4().hex
         deadline = time.monotonic() + self.approval_timeout_s
         expires = int(time.time() * 1000 + self.approval_timeout_s * 1000)
-        recording_before = self.state.recording_counter()
-        summary = "Tap the pedal to start the drill, or approve these rig changes on the dashboard."
+        pedal_before = (self.state.snapshot().get("pedal") or {}).get("practice_count")
+        if not isinstance(pedal_before, int) or isinstance(pedal_before, bool) or pedal_before < 0:
+            pedal_before = None
+        summary = "Hold the pedal to approve the rig change, or approve it on the dashboard."
         self.feed.publish(
             state="thinking", mood="encouraging", target="player", cue=summary,
             awaiting_approval={"id": approval_id, "summary": summary,
                                "actions": actions, "expires_unix_ms": expires},
         )
         self.feed.publish_activity("coach", "rig_control approval", "waiting")
-        print(f"Approval needed: {actions}. Tap pedal or approve in dashboard.")
+        print(f"Approval needed: {actions}. Hold pedal or approve in dashboard.")
         if self.auto_approve_fixtures:
             self.feed.publish(awaiting_approval=None)
             self.feed.publish_activity("coach", "rig_control approval", "done")
@@ -252,10 +254,15 @@ class CoachRunner:
                 self.feed.publish(awaiting_approval=None)
                 self.feed.publish_activity("coach", "rig_control approval", "done" if decision == "approve" else "failed")
                 return decision == "approve"
-            if self.state.recording_counter() > recording_before:
-                self.feed.publish(awaiting_approval=None)
-                self.feed.publish_activity("coach", "rig_control approval", "done")
-                return True
+            count = (self.state.snapshot().get("pedal") or {}).get("practice_count")
+            if isinstance(count, int) and not isinstance(count, bool) and count >= 0:
+                if pedal_before is None or count < pedal_before:
+                    pedal_before = count  # reconnect/counter reset is not approval
+                elif count > pedal_before:
+                    self._last_practice_count = count  # do not pause practice on the next poll
+                    self.feed.publish(awaiting_approval=None)
+                    self.feed.publish_activity("coach", "rig_control approval", "done")
+                    return True
             time.sleep(0.1)
         self.feed.publish(awaiting_approval=None)
         self.feed.publish_activity("coach", "rig_control approval", "failed")
