@@ -1,3 +1,4 @@
+# Requires Pillow: pip install pillow (not part of the engine/dev requirements).
 """Pad gallery images to 3:2 aspect ratio with #0B0B10 for Devpost thumbnail safety.
 
 Devpost cards and thumbnails use 3:2. Unpadded 16:9 screenshots get vertically
