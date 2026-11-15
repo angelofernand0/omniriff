@@ -4,6 +4,7 @@ import './controls.css';
 import { RemoteCoach, coachConfig, saveCoachConfig } from './coach/remote-coach';
 import { DemoCoach, resetDemoMemory } from './coach/demo-coach';
 import { devDemoUnlocked, lockDevDemo, unlockDevDemo } from './coach/dev-demo-lock';
+import { installVoiceMic, saveVoiceMic, savedVoiceMic } from './audio/voice-mic';
 
 type BrowserSource = {
   onState(cb: (frame: StateFrame) => void): void;
@@ -13,7 +14,9 @@ type BrowserSource = {
 };
 declare global { interface Window { OmniBrowserSource?: BrowserSource; OmniCoachSocket?: () => WebSocket; } }
 
+installVoiceMic();
 const manager = new SourceManager();
+(window as any).OmniRiff.pedal = { connected: () => manager.pedal.isConnected };
 let connected = false;
 let coachLoaded = false;
 let busy = false;
@@ -103,11 +106,12 @@ dialog.innerHTML = `
     <p>Riff listens to each loop you record (and watches your hand if the camera is on), then picks one thing to practice. Your sound stays in this browser; finished loops go to the coach server.</p>
     <label>Coach server<input id="coachServer" type="url" placeholder="wss://…/coach" autocomplete="off"></label>
     <label>Team passcode<input id="coachKey" type="password" autocomplete="off"></label>
+    <label>Voice mic (talking to Riff)<select id="voiceMic"><option value="">Laptop mic (automatic)</option></select></label>
     <div class="browser-actions"><button type="button" id="coachConnect">Connect Riff</button><button type="button" id="coachForget">Disconnect Riff</button></div>
     <p id="coachStatus" role="status" aria-live="polite"></p>
   </details>
   <details id="browserPedal"><summary>USB Pedal (Arduino footswitch) <span id="pedalMode"></span></summary>
-    <p>Connect your USB Arduino footswitch (115200 baud). Tap to loop, hold to practice or approve.</p>
+    <p>Connect your USB Arduino footswitch (115200 baud). Tap to loop, hold to approve. <strong>Double-tap to talk to Riff</strong>: say it, then pause (or tap) to send. Riff hears the voice mic, not the guitar.</p>
     <div class="browser-actions"><button type="button" id="pedalConnect">Connect USB pedal</button></div>
     <p id="pedalStatus" role="status" aria-live="polite"></p>
   </details>
@@ -119,7 +123,7 @@ dialog.innerHTML = `
     <div id="devOpen" hidden>
       <div class="browser-actions"><button type="button" id="devLive">My guitar + camera</button><button type="button" id="devSim">Simulated guitar</button></div>
       <div class="browser-actions"><button type="button" id="demoReset">Reset for the pitch</button><button type="button" id="demoLeave">Leave dev demo</button><button type="button" id="devLock">Lock</button></div>
-      <p>The pitch session, scripted. <strong>Simulated guitar</strong> is the backup when the real rig fails: the computer plays the riff and you take it from the keyboard. <strong>L</strong> starts and stops a take, <strong>V</strong> (hold) talks to Riff, <strong>Y</strong> approves.</p>
+      <p>The pitch session, scripted. <strong>Simulated guitar</strong> is the backup when the real rig fails: the computer plays the riff and you take it from the keyboard. <strong>L</strong> starts and stops a take, <strong>V</strong> (hold) or a pedal double-tap talks to Riff, <strong>Y</strong> or a pedal hold approves.</p>
     </div>
     <p id="devStatus" role="status" aria-live="polite"></p>
   </details>
@@ -223,15 +227,18 @@ manager.onState(frame => {
   updateSimGuitarBtn();
 });
 
+const voiceMic = $<HTMLSelectElement>('voiceMic');
+voiceMic.addEventListener('change', () => saveVoiceMic(voiceMic.value));
 async function refreshDevices() {
   await manager.live.devices.enumerate();
   for (const [select, devices] of [
     [input, manager.live.devices.audioInputs],
     [output, manager.live.devices.audioOutputs],
     [camera, manager.live.devices.videoInputs],
+    [voiceMic, manager.live.devices.audioInputs],
   ] as const) {
-    const previous = select.value;
-    select.replaceChildren(new Option('System default', ''));
+    const previous = select === voiceMic ? savedVoiceMic() : select.value;
+    select.replaceChildren(new Option(select === voiceMic ? 'Laptop mic (automatic)' : 'System default', ''));
     for (const device of devices) select.add(new Option(device.label, device.deviceId));
     if (Array.from(select.options).some(option => option.value === previous)) select.value = previous;
   }
@@ -247,6 +254,7 @@ mode.addEventListener('change', () => { describe(); });
 function openSettings() {
   if (!document.getElementById('drawer')!.hidden) document.getElementById('drawerClose')!.click();
   describe(); dialog.showModal();
+  void refreshDevices().catch(() => { /* no media devices */ });
 }
 sourceButton.addEventListener('click', openSettings);
 const rigSettings = document.createElement('button');
@@ -300,6 +308,7 @@ start.addEventListener('click', async () => {
       if (!remoteCoach && !demoCoach) $('coachLine').textContent = 'Play freely. Open settings to connect Riff, the coach.';
     }
     dialog.close();
+    void refreshDevices().catch(() => { /* labels stay generic */ });
   } catch (error) {
     if (request !== startupRequest) return;
     status.dataset.kind = 'error';
@@ -425,4 +434,5 @@ if (pedalLed) {
   });
 }
 describe();
+void refreshDevices().catch(() => { /* no media devices */ });
 dialog.showModal();
