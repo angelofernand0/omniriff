@@ -48,11 +48,14 @@ Use after the identity line when the judge is there for a special track. Full an
 - **Can the AI wreck my sound mid-song?** No. It proposes; nothing happens until you tap. Every action passes the same validation gate as the pedal, and bypass is always yours.
 - **Latency?** Only the measured number from `tools.measure` (runs/measure/*/results.md), or "not measured yet".
 
-## Roles (humans decide; fill in)
-- **Speaker:** ___ (the clearest talker, not the most senior)
-- **Guitarist:** ___ (plays throughout; owns the pedal)
+## Roles (proposed by SM 2026-11-15; pending each person's OK and rehearsal timing)
+- **Speaker / narration and close:** SM
+- **Guitarist / the user journey:** Aditya: plays, talks to Riff, uses the pedal and pinch; one authentic guitarist line, plus the hardware explanation for the Hardware judge
+- **Gesture explanation:** Joey
+- **Audio engine explanation:** Angelo
 - **Rig operator:** ___ (dashboard, camera, backup video on a second tab)
-- **Q&A backup:** ___ (one person answers per question; don't pile on)
+
+Timing caution: four voices in 2 minutes costs seconds at every handoff, and judges remember one clear speaker. In the main 2-minute run, keep it to **SM narrating + Aditya playing (one line)**. Joey and Angelo each get at most one ≤10 s line over the matching action, and own the gesture and audio questions in Q&A and in the sponsor-track openers (Physical AI / Hardware). Rehearse both versions and keep whichever fits under 1:50.
 
 ## Rehearsal plan (Saturday night after the rig works, then Sunday morning)
 1. **Five timed run-throughs** at the table, stopwatch on; cut words until every run is ≤1:50.

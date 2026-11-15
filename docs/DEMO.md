@@ -15,6 +15,7 @@ Windows blocks `.ps1` files by default ("running scripts is disabled"), so start
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\setup.ps1 -Coach
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -SerialPort COM3 -Coach  # use the port --check printed; omit -SerialPort if no pedal, -Coach if the coach isn't set up
+# add -StrumHand Left and/or -Camera 1 if that's what the camera rehearsal verified; with -Coach, vision and the coach share runs/hand-<time>.jsonl for Eyes
 powershell -ExecutionPolicy Bypass -File .\scripts\windows\start-demo.ps1 -Headless         # alternative: silence processing, no Focusrite output
 ```
 
