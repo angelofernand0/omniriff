@@ -329,7 +329,7 @@
       mode = 'engaged';
       const pct = typeof f.value === 'number' ? Math.round(f.value * 100) + '%' : '';
       label = (f.control ? f.control.toUpperCase() : 'MORPH') + ' ' + pct;
-    } else if (f) { mode = 'seen'; label = 'SEEN'; }  // not "armed": may be waiting for an open-hand re-arm
+    } else if (f) { mode = 'seen'; label = f.control ? f.control.toUpperCase() : 'SEEN'; }
     $('handPanel').dataset.hand = mode;
     $('handState').textContent = label;
     $('handEmptyWord').textContent = mode === 'none' ? 'NO HAND' : HAND_URL ? 'NO CAMERA' : 'HAND VIEW OFF';
@@ -370,9 +370,9 @@
     hctx.stroke();
     hctx.fillStyle = color('--text');
     for (const [x, y] of P) hctx.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
-    if (engaged) {  // the pinch: thumb tip + index tip
+    if (engaged) {  // fist engaged: highlight fingertips and palm center
       hctx.strokeStyle = color('--accent'); hctx.lineWidth = 2;
-      for (const i of [4, 8]) hctx.strokeRect(Math.round(P[i][0]) - 7, Math.round(P[i][1]) - 7, 14, 14);
+      for (const i of [0, 4, 8, 12, 16, 20]) hctx.strokeRect(Math.round(P[i][0]) - 6, Math.round(P[i][1]) - 6, 12, 12);
     }
   }
   connectHand();

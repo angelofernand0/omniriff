@@ -37,6 +37,16 @@ export class BrowserLiveAdapter {
     this.controller.rearm();
   }
 
+  public swapTarget(): void {
+    const next = this.target === 'filter' ? 'reverb' : 'filter';
+    this.gestureTarget = next;
+    const select = document.getElementById('browserTarget') as HTMLSelectElement | null;
+    if (select) {
+      select.value = next;
+      select.dispatchEvent(new Event('change'));
+    }
+  }
+
   private animFrameId: number | null = null;
   public isRunning: boolean = false;
   private acceptedEvents: number = 0;
@@ -62,6 +72,9 @@ export class BrowserLiveAdapter {
     this.audio = new AudioEngine();
     this.devices = new DeviceManager();
     this.tracker = new LiveHandTracker();
+    this.tracker.onPinchSwap = () => {
+      this.swapTarget();
+    };
     this.controller = new GestureController({
       low: 0.8,
       high: 0.2,

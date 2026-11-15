@@ -26,6 +26,9 @@ export class LiveHandTracker {
   private readonly maxWristJump: number = 0.30;
   private readonly maxMissedFrames: number = 15;
 
+  public onPinchSwap: (() => void) | null = null;
+  private pinchLatched: boolean = false;
+
   private latestObservation: GestureObservation = {
     present: false,
     y: null,
@@ -205,21 +208,47 @@ export class LiveHandTracker {
     // Convert to normalized 21 points
     const landmarks: Array<[number, number]> = hand.map((lm: any) => [lm.x, lm.y]);
 
-    // Compute pinch ratio
+    // Compute pixel distances
     const d = (a: number, b: number) =>
       Math.hypot((landmarks[a][0] - landmarks[b][0]) * (this.videoEl?.videoWidth || 640),
         (landmarks[a][1] - landmarks[b][1]) * (this.videoEl?.videoHeight || 480));
     const palmWidth = d(5, 17);
     if (palmWidth <= 1) { this.onMissedFrame(nowMs); return; }
+
+    // Index-to-thumb pinch ratio (triggers effect swap between Filter and Reverb)
     const pinch = d(4, 8) / palmWidth;
+
+    // Fist curl ratio: average distance of fingertips to MCPs and palm center
+    const fingerCurl = (d(8, 5) + d(12, 9) + d(16, 13) + d(20, 17)) / (4 * palmWidth);
+    const centerCurl = (d(8, 9) + d(12, 9) + d(16, 9) + d(20, 9)) / (4 * palmWidth);
+    const curl = (fingerCurl + centerCurl) / 2;
+
+    // Map curl to [0, 1] fist grip metric:
+    // Closed fist: curl <= 0.45 -> fist <= 0.11 (engages at <= 0.25)
+    // Open hand: curl >= 0.80 -> fist >= 0.88 (disengages/arms at >= 0.45)
+    const fist = Math.min(1.0, Math.max(0.0, (curl - 0.40) / 0.45));
+
+    // Pinch-to-swap: thumb touches index finger to swap active effect
+    if (pinch <= 0.28) {
+      if (!this.pinchLatched) {
+        this.pinchLatched = true;
+        this.onPinchSwap?.();
+      }
+    } else if (pinch >= 0.42) {
+      this.pinchLatched = false;
+    }
 
     const conf = scores && scores[bestHandIdx] && scores[bestHandIdx][0] ? scores[bestHandIdx][0].score : 0;
     if (!Number.isFinite(conf) || conf < 0 || conf > 1) { this.onMissedFrame(nowMs); return; }
 
+    // Use palm joint (middle MCP: landmark 9) for vertical drag coordinate
+    // Landmark 9 stays reliably in frame even when the fist is lowered near the camera edge
+    const yCoord = landmarks[9][1];
+
     this.latestObservation = {
       present: true,
-      y: wrist.y,
-      pinch,
+      y: yCoord,
+      pinch: fist,
       confidence: conf,
       timestamp_ms: Math.floor(nowMs),
     };
@@ -241,6 +270,7 @@ export class LiveHandTracker {
     this.consecutiveMisses++;
     if (this.consecutiveMisses >= this.maxMissedFrames) {
       this.lastWrist = null;
+      this.pinchLatched = false;
     }
 
     this.latestObservation = {
@@ -273,6 +303,7 @@ export class LiveHandTracker {
   }
 
   private resetObservation(): void {
+    this.pinchLatched = false;
     this.latestObservation = { present: false, y: null, pinch: null, confidence: 0, timestamp_ms: 0 };
     this.latestHandFrame = absentHand();
   }

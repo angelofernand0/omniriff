@@ -35,4 +35,60 @@ describe('Live hand tracker guards without camera access', () => {
     const pending = tracker.start(stream); await Promise.resolve(); tracker.stop(); await pending;
     expect(track.stop).toHaveBeenCalledOnce(); expect(video.play).not.toHaveBeenCalled(); expect(tracker.isRunning).toBe(false);
   });
+  it('detects index-to-thumb pinch and triggers onPinchSwap with latching', () => {
+    const tracker: any = new LiveHandTracker();
+    let swapCount = 0;
+    tracker.onPinchSwap = () => { swapCount++; };
+
+    const pinched = result();
+    pinched.landmarks[0][4] = { x: 0.50, y: 0.50 };
+    pinched.landmarks[0][8] = { x: 0.51, y: 0.50 };
+    tracker.processResult(pinched, 1000, false, 'filter', 0.5);
+    expect(swapCount).toBe(1);
+
+    // Repeated frame while still pinched should NOT trigger another swap (latched)
+    tracker.processResult(pinched, 1030, false, 'filter', 0.5);
+    expect(swapCount).toBe(1);
+
+    // Release pinch (pinch >= 0.42): thumb tip and index tip separated
+    const released = result();
+    released.landmarks[0][4] = { x: 0.35, y: 0.50 };
+    released.landmarks[0][8] = { x: 0.65, y: 0.50 };
+    tracker.processResult(released, 1060, false, 'filter', 0.5);
+    expect(swapCount).toBe(1);
+
+    // Pinch again -> second swap!
+    tracker.processResult(pinched, 1090, false, 'filter', 0.5);
+    expect(swapCount).toBe(2);
+  });
+  it('computes fist curl and palm center y for vertical drag', () => {
+    const tracker: any = new LiveHandTracker();
+    const openHand = result();
+    openHand.landmarks[0][5] = { x: 0.4, y: 0.5 };
+    openHand.landmarks[0][17] = { x: 0.6, y: 0.5 };
+    openHand.landmarks[0][9] = { x: 0.5, y: 0.45 };
+    openHand.landmarks[0][8] = { x: 0.4, y: 0.2 };
+    openHand.landmarks[0][12] = { x: 0.5, y: 0.15 };
+    openHand.landmarks[0][16] = { x: 0.58, y: 0.2 };
+    openHand.landmarks[0][20] = { x: 0.65, y: 0.25 };
+    tracker.processResult(openHand, 1000, false, 'filter', 0.5);
+    const openObs = tracker.getObservation();
+    expect(openObs.present).toBe(true);
+    expect(openObs.y).toBe(0.45);
+    expect(openObs.pinch).toBeGreaterThanOrEqual(0.45);
+
+    const fistHand = result();
+    fistHand.landmarks[0][5] = { x: 0.4, y: 0.5 };
+    fistHand.landmarks[0][17] = { x: 0.6, y: 0.5 };
+    fistHand.landmarks[0][9] = { x: 0.5, y: 0.45 };
+    fistHand.landmarks[0][8] = { x: 0.42, y: 0.48 };
+    fistHand.landmarks[0][12] = { x: 0.50, y: 0.46 };
+    fistHand.landmarks[0][16] = { x: 0.56, y: 0.48 };
+    fistHand.landmarks[0][20] = { x: 0.60, y: 0.50 };
+    tracker.processResult(fistHand, 1030, false, 'filter', 0.5);
+    const fistObs = tracker.getObservation();
+    expect(fistObs.present).toBe(true);
+    expect(fistObs.y).toBe(0.45);
+    expect(fistObs.pinch).toBeLessThanOrEqual(0.25);
+  });
 });
