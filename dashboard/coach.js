@@ -56,13 +56,14 @@
   }
   function later() { setTimeout(connect, Math.min(4000, 500 * 2 ** retry++)); }
   function send(type) {
-    if (!frame || isReplay(frame) || !frame.awaiting_approval || !ws || ws.readyState !== 1) return false;  // a replay is read-only
+    if (!frame || isReplay(frame) || isShowcase(frame) || !frame.awaiting_approval || !ws || ws.readyState !== 1) return false;  // display modes are read-only
     ws.send(JSON.stringify({ version: 1, type, timestamp_ms: Date.now(), approval_id: frame.awaiting_approval.id }));
     return true;
   }
 
   function offline() {
     frame = null; held = null; clearTimeout(waitTimer);
+    if (showcaseTag) showcaseTag.hidden = true;
     window.OmniRiff.coach.set({ state: 'asleep', target: null, cue: '', mood: 'sleepy', stage: false });
     mark(null); type('', 0); setLed('off', 'OFF');
     if (dock) dock.dataset.state = 'asleep';
@@ -75,11 +76,16 @@
   // A recorded session played back by coach/replay.py: scripted=true and a replay- session id (agreed on the board,
   // no schema change). It must say REPLAY the whole time, and nothing the player does can reach it.
   const isReplay = (f) => !!f && f.scripted === true && typeof f.session_id === 'string' && f.session_id.startsWith('replay-');
+  const isShowcase = (f) => !!f && f.scripted === true && typeof f.session_id === 'string' && f.session_id.startsWith('showcase-');
   const replayTag = document.createElement('div');
   replayTag.className = 'replay-tag'; replayTag.hidden = true; replayTag.setAttribute('role', 'status');
   replayTag.textContent = 'REPLAY · a recorded session, not live';
   const coachCol = document.querySelector('.coach-col');
   if (coachCol) coachCol.prepend(replayTag);
+  const showcaseTag = document.createElement('div');
+  showcaseTag.className = 'replay-tag'; showcaseTag.hidden = true; showcaseTag.setAttribute('role', 'status');
+  showcaseTag.textContent = 'SIMULATED · SCRIPTED EXAMPLE · NUMBERS ILLUSTRATIVE';
+  if (coachCol) coachCol.prepend(showcaseTag);
 
   // ---------- Riff: pose, place and bubble, always together with the voice ----------
   let marked = null;
@@ -122,8 +128,16 @@
     frame = f;
     const replay = isReplay(f);
     replayTag.hidden = !replay;
+    showcaseTag.hidden = !isShowcase(f);
     setLed(replay ? 'replay' : f.scripted ? 'scripted' : 'live',
       f.state === 'asleep' ? 'OFF' : replay ? 'REPLAY' : f.scripted ? 'SCRIPTED' : 'LIVE');
+    if (isShowcase(f)) {
+      clearTimeout(waitTimer);
+      held = null;
+      show(f, 0, true); // silent, visual-only: no browser speech or voice clip
+      renderMark(f);
+      return;
+    }
     const newLine = !!f.cue && f.cue !== prevCue;
     renderMark(f); renderMap();
     if (!newLine || joined) renderList(f);   // a new line changes the rows and steps when it starts (show)
@@ -433,7 +447,8 @@
     // what one press does right now, as keycaps: TAP / HOLD, or WAIT while Riff has the floor
     let acts;
     const awake = f && f.state !== 'asleep';
-    if (play) {
+    if (isShowcase(f)) acts = [['AUTO', 'scripted practice loop']];
+    else if (play) {
       acts = [['TAP', loop === 'recording' ? 'close the loop' : loop === 'playing' ? 'clear the loop' : 'record a loop']];
       if (awake && loop !== 'recording') acts.push(['HOLD', 'practice with Riff', 'Y']);
     } else if (loop === 'recording') acts = [['TAP', 'stop, Riff listens']];
@@ -462,7 +477,7 @@
       }
     }
     if (ui.talkBtn) {                          // talk: any time Riff is awake and you're not recording
-      ui.talkBtn.hidden = !awake || loop === 'recording' || (f && f.state === 'thinking');
+      ui.talkBtn.hidden = isShowcase(f) || !awake || loop === 'recording' || (f && f.state === 'thinking');
       const ask = !play && step === 1 && !(ses && ses.goal);
       ui.talkBtn.dataset.ask = String(ask);   // Riff is asking what you're working on: the button leads
       const key = $('talkKey'), pedalOn = !!(window.OmniRiff.pedal && window.OmniRiff.pedal.connected());
@@ -596,7 +611,7 @@
     if (talk.handsFree) talk.quiet = setTimeout(stopTalk, ms);
   }
   function canTalk() {
-    return !!ui.you && !!frame && frame.state !== 'asleep' && !(app && app.dataset.loop === 'recording')
+    return !!ui.you && !!frame && !isShowcase(frame) && frame.state !== 'asleep' && !(app && app.dataset.loop === 'recording')
       && talk.mode !== 'listening' && talk.mode !== 'typing';
   }
   function hideYou() { if (talk.mode === 'idle' && ui.you) { ui.you.hidden = true; ui.you.dataset.mode = 'idle'; } }
@@ -687,7 +702,7 @@
   }
   function sendSay(text, via) {
     const msg = { version: 1, type: 'coach.say', timestamp_ms: Date.now(), text: text.slice(0, 240), via };
-    if (isReplay(frame)) { youMode('idle', 'This is a replay. Riff can\u2019t hear you.'); riffListens(false); talk.hide = setTimeout(hideYou, 3000); return; }
+    if (isReplay(frame) || isShowcase(frame)) { youMode('idle', 'This is a scripted display. Riff can\u2019t hear you.'); riffListens(false); talk.hide = setTimeout(hideYou, 3000); return; }
     if (!ws || ws.readyState !== 1) { youMode('idle', 'Riff isn\u2019t connected.'); riffListens(false); talk.hide = setTimeout(hideYou, 3000); return; }
     ws.send(JSON.stringify(msg));
     youMode('sent', msg.text);
