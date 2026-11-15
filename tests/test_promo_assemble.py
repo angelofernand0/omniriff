@@ -19,7 +19,7 @@ from tools.promo import (
     missing_assets,
 )
 from tools.promo.__main__ import main
-from tools.promo.edl import asset_path
+from tools.promo.edl import asset_path, resolve_audio_asset
 
 
 def tiny_edl():
@@ -319,6 +319,60 @@ class TestPromoAssemble(unittest.TestCase):
             self.assertFalse(result['dry_run'])
             self.assertTrue(out_mp4.is_file())
             self.assertGreater(out_mp4.stat().st_size, 1000)
+
+    def test_audio_m4a_mp3_extension_interchangeability(self):
+        """EDL expecting .m4a accepts .mp3 and vice versa (e.g. ElevenLabs exports)."""
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            audio_dir = root / 'runs/promo/audio'
+            audio_dir.mkdir(parents=True, exist_ok=True)
+
+            # Scenario 1: EDL asks for vo-01.m4a, disk has vo-01.mp3
+            f_mp3 = audio_dir / 'vo-01.mp3'
+            f_mp3.write_bytes(b'fake mp3 audio')
+
+            track1 = {'id': 'vo1', 'kind': 'voice', 'asset': 'runs/promo/audio/vo-01.m4a', 'start_s': 0.0, 'duration_s': 1.0}
+            res1 = resolve_audio_asset(track1, root)
+            self.assertIsNotNone(res1)
+            self.assertEqual(res1.resolve(), f_mp3.resolve())
+
+            # Scenario 2: EDL asks for bg.mp3, disk has bg.m4a
+            f_m4a = audio_dir / 'bg.m4a'
+            f_m4a.write_bytes(b'fake m4a audio')
+
+            track2 = {'id': 'bg', 'kind': 'music', 'asset': 'runs/promo/audio/bg.mp3', 'start_s': 0.0, 'duration_s': 1.0}
+            res2 = resolve_audio_asset(track2, root)
+            self.assertIsNotNone(res2)
+            self.assertEqual(res2.resolve(), f_m4a.resolve())
+
+            # Scenario 3: Neither exists
+            track3 = {'id': 'missing', 'kind': 'sfx', 'asset': 'runs/promo/audio/sfx.wav', 'start_s': 0.0, 'duration_s': 1.0}
+            res3 = resolve_audio_asset(track3, root)
+            self.assertIsNone(res3)
+
+            # Verify missing_assets handles alternate extensions
+            plan = {
+                'version': 1,
+                'width': 1920,
+                'height': 1080,
+                'fps': 30,
+                'duration_s': 2.0,
+                'segments': [
+                    {'id': 's1', 'start_s': 0.0, 'end_s': 2.0, 'kind': 'motion', 'scene': 'hook', 'source_start_s': 0.0}
+                ],
+                'audio': [track1, track2, track3],
+            }
+            # Create the scene file so segment is present
+            scenes_dir = root / 'runs/promo/scenes'
+            scenes_dir.mkdir(parents=True, exist_ok=True)
+            (scenes_dir / 'hook.mp4').write_bytes(b'fake hook video')
+
+            missing = missing_assets(plan, root)
+            # track1 and track2 should be satisfied by their alternate extensions!
+            # track3 should be the only missing audio asset
+            self.assertIn('runs/promo/audio/sfx.wav', missing)
+            self.assertNotIn('runs/promo/audio/vo-01.m4a', missing)
+            self.assertNotIn('runs/promo/audio/bg.mp3', missing)
 
 
 if __name__ == '__main__':
