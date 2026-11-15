@@ -19,6 +19,14 @@ export const LINES = {
   keepSound: { text: "No problem, we'll keep your sound. Loop the third phrase with that swing, and tap when you're ready.", ms: 6290 },
   result: { text: "Nice, that's the swing. Your attacks are way more even, and the third phrase sits in the pocket now.", ms: 6760 },
   handBack: { text: "Effects are back on, pinch the reverb in and make it yours. I'll remember the third phrase for next time.", ms: 6660 },
+  // replies when you talk to Riff after the script (demo-coach.ts replyFor), recorded too so Riff never falls back to a robot voice
+  replySpeed: { text: "Got it, shifting focus to speed and tempo. Keep your fretting hand relaxed and let's push the pace on your next take.", ms: 8150 },
+  replyTiming: { text: 'Understood, locked in on timing and rhythm. Focus on tight, even attacks right on the beat.', ms: 6200 },
+  replyChords: { text: 'Heard loud and clear. Focus on clean finger placement and smooth transitions between chords.', ms: 6010 },
+  replyStrum: { text: 'Got it. Keep your wrist loose and aim for consistent attack and dynamic control on every stroke.', ms: 6290 },
+  replyTone: { text: 'Dialing in your tone. Keep your notes articulate and focus on muting any unplayed strings.', ms: 6340 },
+  replyPhrasing: { text: 'Nice, working on phrasing and melodic flow. Keep your notes deliberate and expressive.', ms: 5920 },
+  replyOther: { text: "Got it, I've updated your goal. Show me what you've got on your next take.", ms: 4990 },
 } as const;
 
 export type LineId = keyof typeof LINES;

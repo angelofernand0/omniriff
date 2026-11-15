@@ -9,7 +9,7 @@ describe('generateCoachReply', () => {
     expect(generateCoachReply('Strumming attack is uneven')).toContain('wrist loose and aim for consistent attack');
     expect(generateCoachReply('Clean tone without string buzz')).toContain('Dialing in your tone');
     expect(generateCoachReply('Work on solo and lead phrasing')).toContain('phrasing and melodic flow');
-    expect(generateCoachReply('practice song 2')).toContain('practice song 2');
+    expect(generateCoachReply('practice song 2')).toContain('updated your goal');
   });
 });
 
