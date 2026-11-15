@@ -81,7 +81,7 @@ def main(argv=None):
     from .switcher import EffectSwitcher
     config = json.loads(args.calibration.read_text()) if args.calibration.exists() else {}
     controller = Controller(rate=args.rate / 2 if scene else args.rate, control=args.control, relative=args.relative, **config)
-    switcher = EffectSwitcher(hold_seconds=args.gesture_switch_hold) if args.gesture_switch else None
+    switcher = EffectSwitcher(hold_seconds=args.gesture_switch_hold, min_confidence=controller.confidence) if args.gesture_switch else None
     if switcher:
         switcher.set_control(args.control)
     schema = json.loads((Path(__file__).resolve().parents[1] / 'protocol/control.schema.json').read_text())
@@ -172,10 +172,12 @@ def main(argv=None):
                             cv2.circle(frame, (int(point.x * width), int(point.y * height)), 3, (0, 255, 0), -1)
                 fresh_frame = time.monotonic() - now <= .25
                 control_y, control_pinch = y, pinch
+                suppressed = False
                 if not fresh_frame:
                     control_y = control_pinch = None
                     expired_frames += 1
                     guard_reason = 'expired_frame'
+                    suppressed = True
                     if guard:
                         guard.reset()
                 elif guard:
@@ -187,9 +189,12 @@ def main(argv=None):
                     else:
                         guard.reset()
                         guard_reason = 'no_hand' if y is None else 'low_confidence'
-                # Update switcher when enabled before updating parameter controller
-                if switcher and fresh_frame:
-                    switcher.update(pinky_pinch, confidence, now, controller=controller)
+                        suppressed = True
+                elif y is None or confidence < controller.confidence:
+                    suppressed = True
+                # Update switcher when enabled, respecting suppression/stale state
+                if switcher:
+                    switcher.update(pinky_pinch, confidence, now, controller=controller, suppressed=suppressed)
                 # Suppression disarms without discarding native relative pickup history.
                 event = controller.update(control_y, control_pinch, confidence, now, captured_unix_ms)
                 if hand_view:
