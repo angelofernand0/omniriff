@@ -1,12 +1,12 @@
 # Devpost gallery
 
-Three actual browser captures from main `203c3c0a0924bcd357f88b29b5a7d1c9bf339835`, captured November 14, 2026 (US Eastern). Use these captions with the images. All inputs shown are synthetic. These images document software behavior, not live guitar, webcam accuracy, hardware latency, or a measured learning outcome.
+Three actual browser captures from main `2f8f4cf`, captured November 14, 2026 (US Eastern). Use these captions with the images. All inputs shown are synthetic. These images document software behavior, not live guitar, webcam accuracy, hardware latency, or a measured learning outcome.
 
 ## 1. Practice dashboard
 
 ![Scripted practice session](gallery-01-coach.png)
 
-**Caption:** The practice dashboard brings loop playback, tone controls and Riff's guidance together. This view uses synthetic guitar input and a scripted coach session.
+**Caption:** The practice dashboard brings loop playback, tone controls and Riff's guidance together. This mid-session view captures Riff delivering the drill card ("Keep the hand moving") with the 430 ms timing gap highlighted on the loop waveform, completed Ears and Eyes diagnosis steps, and the active session plan.
 
 The `SIMULATED · SCRIPTED COACH` badge is visible. The displayed gap values and coaching text come from `tools/sim/coach.py`; they are scripted examples, not analysis of this simulator's audio or evidence of a player improving.
 
@@ -14,9 +14,9 @@ The `SIMULATED · SCRIPTED COACH` badge is visible. The displayed gap values and
 
 ![Synthetic hand driving the filter](gallery-02-hand.png)
 
-**Caption:** Generated hand landmarks exercise the gesture-control display, showing an engaged hand and the active filter value. This is a synthetic hand feed, not webcam detection.
+**Caption:** Generated hand landmarks exercise the gesture-control display, showing an engaged hand driving the filter sweep (`FILTER 67%`) alongside an active coach session. This is a synthetic hand feed, not webcam detection.
 
-The `SIMULATED` badge remains in frame. `tools/sim/hand.py` generates the 21 hand points; `tools/sim/demo.py` sends the matching control sweep through the running engine. The hand's requested value and the engine's smoothed value may differ slightly while moving.
+The `SIMULATED · SCRIPTED COACH` badge remains in frame. `tools/sim/hand.py` generates the 21 hand points; `tools/sim/demo.py` sends the matching control sweep through the running engine. The hand's requested value and the engine's smoothed value may differ slightly while moving.
 
 ## 3. Take evidence timeline
 
@@ -42,7 +42,7 @@ Open the dashboard with the isolated endpoints:
 http://127.0.0.1:18985/?ws=ws://127.0.0.1:59211&hand=ws://127.0.0.1:59212&coachws=ws://127.0.0.1:59213&sim=input
 ```
 
-Capture during the scripted session's second drill. `Y` starts another round after the script finishes. For the gesture image, replace `coachws=ws://127.0.0.1:59213` with `coach=off`, then capture the filter sweep in the repeating 16-second demo. No paid model or voice calls are needed.
+Capture during the scripted session's drill proposal or pass cue. `Y` starts another round after the script finishes. For the gesture image, capture during the active filter sweep in the repeating 16-second demo with the coach session active. No paid model or voice calls are needed. Alternatively, run `python scripts/recapture_gallery.py`.
 
 Recreate the evidence page in a new output directory:
 
@@ -58,6 +58,4 @@ python -m http.server 18986 --bind 127.0.0.1 --directory /tmp/omniriff-gallery-e
 
 Open `http://127.0.0.1:18986/` and capture the full page. Evidence export refuses to overwrite an existing output directory.
 
-All three images were captured through the browser at its default 1280 × 720 viewport (full-page evidence: 1280 × 1574). Browser JPEG captures were decoded and saved as RGB PNGs; no content was retouched or composited. No private recording or raw webcam frame is included. A fourth rehearsal image is omitted because a live-camera rehearsal was not available in this capture session.
-
-Dashboard drafts #140/#144 were still under review when these images were captured. Refresh the first two images after that UI handoff if the submission uses the new layout. The evidence image is independent of those dashboard changes.
+Gallery 01 and 02 were captured through the browser at 1920 × 1080 viewport (full-page evidence: 1280 × 1574). Browser captures were saved directly as RGB PNGs; no content was retouched or composited. No private recording or raw webcam frame is included. A fourth rehearsal image is omitted because a live-camera rehearsal was not available in this capture session.
