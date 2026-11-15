@@ -22,7 +22,7 @@ Placeholders: \`___\` placeholders are filled from the live screen during the to
 - **Visual:** Fast kinetic collage: tapping a phone app, rewinding a video lesson, swinging metronome.
 - **SFX / Music:** Indie guitar groove starts low (~110 BPM); subtle metronome clicks.
 - **Voice (Riff):**
-  > *"Practising alone, every tool stops your playing. Apps grade notes; a teacher tells you the cause, for weekly money."*
+  > *"Practising alone, every tool makes you stop. Apps grade notes. A teacher tells you why, but every week, for a fee."*
 - **Stats:** 19 words | 2.71 words/sec | On-screen captions: **"Practising alone"** / **"Apps grade notes"** / **"A teacher tells you the cause"**
 
 ---
@@ -65,11 +65,11 @@ Placeholders: \`___\` placeholders are filled from the live screen during the to
 ---
 
 ### Beat 7: The Drill & Approval (0:44 – 0:56 | 12.0s)
-- **Visual:** Riff plays back take, goes dry, and pauses. Large HOLD TO APPROVE prompt appears. Close-up of foot pressing footswitch (Shot 3).
+- **Visual:** Riff plays back take, goes dry, and pauses. Large APPROVE prompt appears. Close-up of foot pressing footswitch (Shot 3).
 - **SFX / Music:** Filtered break; footswitch mechanical click, dry bypass click.
 - **Voice (Riff):**
   > *"I set up the drill, but I never touch your sound until you approve."*
-- **Stats:** 14 words | 1.17 words/sec | On-screen prompt: **HOLD TO APPROVE** (Human-in-the-loop)
+- **Stats:** 14 words | 1.17 words/sec | On-screen prompt: **APPROVE** (Human-in-the-loop)
 
 ---
 
