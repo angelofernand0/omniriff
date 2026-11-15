@@ -10,11 +10,13 @@ python -m vision --model models/hand_landmarker.task --relative --strum-guard \
   --rehearsal --strum-hand Right --metrics-json runs/gesture-rehearsal.json
 ```
 
-On the Windows demo laptop (PowerShell), use a single-line Python command:
+On the Windows demo laptop (PowerShell), run from the checkout root and use
+the project venv explicitly. `scripts/windows/setup.ps1` creates it but does not
+activate Python in the calling terminal:
 
 ```powershell
 New-Item -ItemType Directory -Force runs | Out-Null
-python -m vision --model models/hand_landmarker.task --relative --strum-guard --rehearsal --strum-hand Right --metrics-json runs/gesture-rehearsal.json
+.\.venv\Scripts\python.exe -m vision --model models/hand_landmarker.task --relative --strum-guard --rehearsal --strum-hand Right --metrics-json runs/gesture-rehearsal.json
 ```
 
 Use a new metrics filename each time. The command sends ordinary filter controls
@@ -22,6 +24,49 @@ to the local engine on UDP 47800; start the engine separately and set `--port` i
 it uses another port. Add `--dry-run` to print controls instead of sending them;
 the result clearly labels that choice. `--hand-log runs/hands.jsonl` can also
 capture the wrist metadata for R17, without saving images or audio.
+
+## Startup and handoff checks
+
+- Keep one vision sender active. Start the engine separately **without**
+  `--vision` when using this standalone rehearsal command; a second camera
+  process can contend for capture and send competing controls.
+- If startup says `Cannot open camera/video`, retain the exact command and
+  traceback. That failure occurs before the measurement cleanup, so no metrics
+  JSON is written. Close other camera users and select the intended device with
+  `--camera 1` (or its actual index); do not treat a missing report as a pass.
+- Confirm the model exists at the supplied `--model` path. For the direct
+  rehearsal command, quote paths with spaces. Use the checkout-relative model
+  path in launcher examples. The [setup guide](README.md#setup) links the
+  official model download.
+- `metrics file exists` means choose a new destination. `create the metrics
+  output folder` means create its parent before starting. Use a writable folder;
+  a write failure at shutdown can prevent the report from being saved. Keep the
+  overlay on and omit calibration/scenes/setlist/reverb options during rehearsal.
+
+**Carry the verified camera and hand label into the full demo.** `--camera` and
+`--strum-hand` apply only to that invocation; calibration stores the low/high
+range, not those choices. For example, if this check required `--camera 1
+--strum-hand Left`, include both in the full launcher's `--vision-args` along
+with its model/control options. A later launch otherwise defaults to camera 0
+and Right. Use the label the human actually confirmed, not this example.
+
+For coach wrist evidence, the full `engine.demo` command also needs top-level
+`--hand-log runs/hands.jsonl`, so the launcher gives **both** vision and coach
+the same path. Putting the flag only inside `--vision-args` does not configure
+the coach. See [engine launcher usage](../engine/README.md).
+
+The Windows [start-demo helper](../scripts/windows/start-demo.ps1) now exposes
+`-StrumHand Left|Right` and `-Camera N`. Carry the verified values into that
+helper too; its defaults are Right and the native default camera. With `-Coach`
+and the hand model present, it creates a fresh `runs/hand-<time>.jsonl` and gives
+both processes the same log. Without the model it warns and starts timing-only
+coaching, with no Eyes evidence. For example, append `-StrumHand Left -Camera 1`
+to the [documented helper launch](../docs/DEMO.md) only if those are the values
+this rehearsal verified. A created log still needs usable wrist tracking for
+take-window evidence.
+
+These are source-checked instructions; Windows execution and hardware acceptance
+remain manual.
 
 ## Walk through the overlay
 
@@ -58,7 +103,9 @@ and frame counts. Rate denominators include interframe waits. Processing spans
 frame availability to local send/print, excluding camera exposure and audio
 latency. Percentiles use the bounded most recent 2048-frame window.
 
-The rehearsal result passes only when all listed checks pass:
+Read the nested **`rehearsal.passed`** result. A normal process exit alone does
+not mean the qualification passed. The rehearsal result passes only when all
+listed checks pass:
 
 - Both human confirmations were made with the required visible wrist evidence.
 - The full interval finished using a webcam-device input.
