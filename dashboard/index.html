@@ -82,15 +82,15 @@
               <div class="readout"><span class="pct" id="pct-reverb">--</span><span class="sub" id="sub-reverb"></span></div>
               <div class="blocks" id="blocks-reverb"></div>
             </article>
-            <article class="card card-camera" id="card-camera" data-cam="off" data-riff-name="CAMERA">
-              <header><h3>CAMERA</h3><span class="tag live-cam-tag" id="camTag">OFF</span></header>
-              <div class="cam-viewport" id="camViewport">
-                <video id="cameraVideo" autoplay playsinline muted></video>
-                <div class="empty cam-empty" id="camEmpty">
-                  <i data-icon="cam" class="x4"></i>
-                  <b id="camEmptyWord">NO CAMERA</b>
-                  <span id="camEmptyHint">Start camera in Rig</span>
+            <article class="card card-hand" id="handPanel" data-hand="off" data-perch="bl" data-riff-name="your hand">
+              <header><h3><i data-icon="hand"></i>DETECTED HAND</h3><span class="tag hand-state-tag hand-state" id="handState" role="status">NO CAMERA</span></header>
+              <div class="hand-viewport" id="handViewport">
+                <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
+                <div class="swap-toast" id="swapToast" aria-live="assertive" hidden>
+                  <span class="swap-toast-dot"></span>
+                  <b id="swapToastText">SWAPPED TO REVERB</b>
                 </div>
+                <video id="cameraVideo" autoplay playsinline muted hidden style="display:none"></video>
               </div>
             </article>
           </div>
@@ -110,16 +110,6 @@
         <b>YOU</b><span id="youText" aria-live="polite"></span>
         <input id="youInput" type="text" maxlength="240" autocomplete="off" placeholder="Type it, Enter to send" hidden>
       </div>
-
-      <!-- FOURTH BOX: Hand tracking panel visible at all times -->
-      <section class="panel hand-box" id="handPanel" data-hand="off" data-perch="bl" data-riff-name="your hand">
-        <h2 class="label hand-head" id="h-hand"><i data-icon="hand"></i>DETECTED HAND<span class="grow"></span><span class="label-r hand-state" id="handState" role="status">NO CAMERA</span></h2>
-        <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
-        <div class="swap-toast" id="swapToast" aria-live="assertive" hidden>
-          <span class="swap-toast-dot"></span>
-          <b id="swapToastText">SWAPPED TO REVERB</b>
-        </div>
-      </section>
 
       <!-- ONE checklist: where you are (goal, drills, done) and what Riff is doing about it, in the same rows.
            Every row is: mark | label | what | result. The row you are on opens to show detail:

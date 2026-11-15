@@ -76,6 +76,7 @@ body[data-browser] #pedalNext[hidden] { display: none !important; }
   body[data-browser] .wave { min-height: 0; }
 }
 @media (max-width: 900px) {
+  body[data-browser] .card-hand,
   body[data-browser] .hand-box { min-width: 0; overflow: hidden; width: 100%; }
 }
 

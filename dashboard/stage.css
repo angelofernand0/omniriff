@@ -339,30 +339,68 @@
 .side-fx[data-on="true"] .fx-word { color: #22c55e; }
 .side-fx[data-on="false"] .fx-word { color: var(--dim); }
 
-/* Camera Card (actual webcam view) */
-.card-camera { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); background: var(--panel); border: var(--stroke) solid var(--line-2); box-shadow: 4px 4px 0 var(--shadow); overflow: hidden; min-height: 0; }
-.card-camera header { display: flex; justify-content: space-between; align-items: center; }
-.card-camera header h3 { font: var(--p3)/1 var(--font-pixel); color: var(--muted); }
-.live-cam-tag { font: var(--p1)/1 var(--font-pixel); color: var(--text); background: var(--bg); border: 1px solid var(--line); padding: 2px 6px; visibility: visible; }
-.card-camera[data-cam="live"] .live-cam-tag { color: var(--accent-ink); background: var(--ok); border-color: var(--ok); }
-.cam-viewport { position: relative; flex: 1; width: 100%; min-height: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-.cam-viewport video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); border-radius: 3px; display: block; }
-.card-camera[data-cam="off"] .cam-viewport video { display: none; }
-.cam-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: var(--bg); color: var(--dim); }
-.card-camera[data-cam="live"] .cam-empty { display: none; }
-
-/* Fourth box: Detected Hand in coach-col */
-.coach-col .hand-box { flex: 1; min-height: 200px; display: flex; flex-direction: column; background: var(--panel); border: var(--stroke) solid var(--line-2); position: relative; overflow: hidden; }
-.coach-col .hand-box .hand-head { height: 32px; padding: 0 var(--s3); display: flex; align-items: center; background: var(--panel); border-bottom: var(--stroke) solid var(--line-2); flex: none; font-size: 11px; font-family: var(--font-pixel); }
-.coach-col .hand-box canvas { flex: 1; width: 100%; height: calc(100% - 32px); display: block; background: var(--bg); min-height: 0; }
-.hand-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
-.steps:empty { display: none; }
-
-/* Coach AI slightly smaller in top */
-.coach-col .talk { display: flex; flex-direction: row; align-items: center; gap: var(--s3); flex: none; padding-bottom: var(--s2); }
-.coach-col .talk .riff-socket { width: 64px; height: 64px; flex: none; }
-.coach-col .bubble { flex: 1; font-size: 15px; line-height: 1.35; padding: 8px 12px; }
-.coach-col .bubble::before { left: -8px; top: 50%; transform: translateY(-50%) rotate(45deg); border-left: var(--stroke) solid var(--accent); border-bottom: var(--stroke) solid var(--accent); border-top: none; }
+/* Card 3: Detected Hand */
+.card-hand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s3);
+  background: var(--panel);
+  border: var(--stroke) solid var(--line-2);
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+.card-hand header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: none;
+}
+.card-hand header h3 {
+  font: var(--p3)/1 var(--font-pixel);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hand-state-tag {
+  display: inline-block !important;
+  font: var(--p1)/1 var(--font-pixel);
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 2px 6px;
+  visibility: visible;
+}
+.hand-viewport {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.hand-viewport canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.card-hand .swap-toast {
+  top: 16px;
+}
+.hand-state {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.steps:empty {
+  display: none;
+}
 
 /* tone cards: the sub-label always sits under the number, on the left edge */
 .readout { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; gap: var(--s2); }
