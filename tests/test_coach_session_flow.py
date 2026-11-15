@@ -21,7 +21,7 @@ from tools.ears.analyze import TakeReport
 
 def report(take_id: str, gap_ms: float, *, judgeable: bool = True) -> dict:
     return {"take_id": take_id, "judgeable": judgeable,
-            "intervals_ms": [gap_ms]}
+            "intervals_ms": [500, 500, 500, 500 + gap_ms]}   # steady beat + one strum gap_ms late
 
 
 def card(title: str, skill: str) -> dict:
@@ -60,14 +60,14 @@ class PracticeSessionFlowTests(unittest.TestCase):
 
             reports = [
                 TakeReport(take_id="base", judgeable=True, strum_count=4,
-                           intervals_ms=[200, 210, 430],
-                           findings=[{"type": "hesitation", "at_ms": 2000, "gap_ms": 430, "extra_ms": 220}]),
+                           intervals_ms=[500, 500, 930],
+                           findings=[{"type": "hesitation", "at_ms": 2000, "gap_ms": 930, "extra_ms": 430}]),
                 TakeReport(take_id="try1", judgeable=True, strum_count=4,
-                           intervals_ms=[200, 210, 350]),
+                           intervals_ms=[500, 500, 850]),
                 TakeReport(take_id="try2", judgeable=True, strum_count=4,
-                           intervals_ms=[200, 210, 280]),
+                           intervals_ms=[500, 500, 780]),
                 TakeReport(take_id="full", judgeable=True, strum_count=4,
-                           intervals_ms=[180, 185, 190]),
+                           intervals_ms=[500, 500, 690]),
             ]
             with patch("tools.ears.analyze.analyze_take", side_effect=reports):
                 for take_id in ("base", "try1", "try2", "full"):
@@ -78,7 +78,7 @@ class PracticeSessionFlowTests(unittest.TestCase):
                     runner.process_take(wav, sidecar)
                     if take_id == "base":
                         self.assertEqual(feed.frame["mark"],
-                                         {"start_s": 1.57, "end_s": 2.0, "label": "430 ms gap"})
+                                         {"start_s": 1.07, "end_s": 2.0, "label": "430 ms late"})
                     if take_id == "try1":
                         self.assertIsNone(feed.frame["mark"])
                         self.assertEqual(service.session.snapshot()["attempt"], {"n": 1, "of": 3})

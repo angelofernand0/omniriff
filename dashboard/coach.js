@@ -30,20 +30,33 @@
   try { muted = localStorage.getItem('omniriff.voiceMuted') === '1'; } catch (e) { /* storage blocked */ }
 
   // ---------- socket ----------
+  const REPLAY_URL = params.get('replay');   // ?replay=<file.jsonl>: play a recorded coach session (replay.js), no socket
+  function dispatch(m) {
+    if (m && m.version === 1 && m.type === 'coach.frame') onFrame(m);
+    else if (m && m.version === 1 && m.type === 'coach.audio') onAudio(m);
+  }
+  function startReplay() {
+    const s = document.createElement('script');
+    s.src = new URL('replay.js', document.currentScript ? document.currentScript.src : location.href).href;
+    s.onload = () => { joined = true; window.OmniReplay.play(REPLAY_URL, dispatch, { loop: params.get('replayloop') !== 'off' }); };
+    s.onerror = () => console.warn('replay.js could not be loaded');
+    document.body.append(s);
+  }
   function connect() {
-    try { ws = new WebSocket(URL_); } catch (e) { later(); return; }
+    if (REPLAY_URL) { startReplay(); return; }
+    // On the website, OmniCoachSocket opens the hosted coach (browser/coach/remote-coach.ts).
+    try { ws = window.OmniCoachSocket ? window.OmniCoachSocket() : new WebSocket(URL_); } catch (e) { later(); return; }
     ws.onopen = () => { retry = 0; joined = true; };
     ws.onmessage = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
-      if (m && m.version === 1 && m.type === 'coach.frame') onFrame(m);
-      else if (m && m.version === 1 && m.type === 'coach.audio') onAudio(m);
+      dispatch(m);
     };
     ws.onclose = () => { offline(); later(); };
     ws.onerror = () => { try { ws.close(); } catch (e) { /* closed */ } };
   }
   function later() { setTimeout(connect, Math.min(4000, 500 * 2 ** retry++)); }
   function send(type) {
-    if (!frame || !frame.awaiting_approval || !ws || ws.readyState !== 1) return false;
+    if (!frame || isReplay(frame) || !frame.awaiting_approval || !ws || ws.readyState !== 1) return false;  // a replay is read-only
     ws.send(JSON.stringify({ version: 1, type, timestamp_ms: Date.now(), approval_id: frame.awaiting_approval.id }));
     return true;
   }
@@ -56,9 +69,17 @@
     renderList(null); renderMark(null); renderMap();
   }
   function setLed(kind, word) {
-    if (led) { led.classList.toggle('online', kind === 'live'); led.classList.toggle('warn', kind === 'scripted'); led.querySelector('span').textContent = word; }
+    if (led) { led.classList.toggle('online', kind === 'live'); led.classList.toggle('warn', kind === 'scripted' || kind === 'replay'); led.querySelector('span').textContent = word; }
     if (app) app.dataset.coach = kind;
   }
+  // A recorded session played back by coach/replay.py: scripted=true and a replay- session id (agreed on the board,
+  // no schema change). It must say REPLAY the whole time, and nothing the player does can reach it.
+  const isReplay = (f) => !!f && f.scripted === true && typeof f.session_id === 'string' && f.session_id.startsWith('replay-');
+  const replayTag = document.createElement('div');
+  replayTag.className = 'replay-tag'; replayTag.hidden = true; replayTag.setAttribute('role', 'status');
+  replayTag.textContent = 'REPLAY · a recorded session, not live';
+  const coachCol = document.querySelector('.coach-col');
+  if (coachCol) coachCol.prepend(replayTag);
 
   // ---------- Riff: pose, place and bubble, always together with the voice ----------
   let marked = null;
@@ -99,7 +120,10 @@
   function onFrame(f) {
     const prevCue = frame && frame.cue;
     frame = f;
-    setLed(f.scripted ? 'scripted' : 'live', f.state === 'asleep' ? 'OFF' : f.scripted ? 'SCRIPTED' : 'LIVE');
+    const replay = isReplay(f);
+    replayTag.hidden = !replay;
+    setLed(replay ? 'replay' : f.scripted ? 'scripted' : 'live',
+      f.state === 'asleep' ? 'OFF' : replay ? 'REPLAY' : f.scripted ? 'SCRIPTED' : 'LIVE');
     const newLine = !!f.cue && f.cue !== prevCue;
     renderMark(f); renderMap();
     if (!newLine || joined) renderList(f);   // a new line changes the rows and steps when it starts (show)
@@ -110,11 +134,13 @@
       const ready = pendingAudio.get(f.cue);
       if (ready && !muted) { pendingAudio.delete(f.cue); enqueue(ready); return; }
       clearTimeout(waitTimer);
+      const isDemo = f && typeof f.session_id === 'string' && f.session_id.startsWith('demo-');
+      const delay = (hasCoachVoice && !f.scripted && !isDemo) ? 1200 : 150;
       waitTimer = setTimeout(() => {          // no audio in time: say it with the browser (or just type it)
         if (frame !== f || spoken === f.cue) return;
-        if (!muted && !hasCoachVoice && 'speechSynthesis' in window) enqueue({ text: f.cue, browser: true });
+        if (!muted && 'speechSynthesis' in window) enqueue({ text: f.cue, browser: true });
         else if (!busy()) { held = null; show(f, f.cue.split(' ').length / 2.6); }
-      }, muted ? 0 : 2500);
+      }, muted ? 0 : delay);
       return;
     }
     if (busy()) held = f; else show(f, 0);   // never move mid-sentence
@@ -410,7 +436,7 @@
       acts = [['TAP', loop === 'recording' ? 'close the loop' : loop === 'playing' ? 'clear the loop' : 'record a loop']];
       if (awake && loop !== 'recording') acts.push(['HOLD', 'practice with Riff', 'Y']);
     } else if (loop === 'recording') acts = [['TAP', 'stop, Riff listens']];
-    else if (f && f.awaiting_approval) acts = [['HOLD', 'approve the drill', 'Y'], ['', 'no', 'N']];
+    else if (f && f.awaiting_approval) acts = [['HOLD', 'approve the drill', window.OmniCoachSocket ? 'Y \u00b7 THUMB UP' : 'Y'], ['', 'no', 'N']];   // website: a held thumbs-up approves too
     else if (f && f.state === 'thinking') acts = [['WAIT', 'Riff is working on it']];
     else if (f && (busy() || (held && held === f && held.cue))) acts = [['WAIT', 'Riff is talking']];   // the real voice, not the frame's state: when Riff is done, you can tap
     else if (step === 4) acts = [['WAIT', 'Riff is wrapping up']];
@@ -622,6 +648,7 @@
   }
   function sendSay(text, via) {
     const msg = { version: 1, type: 'coach.say', timestamp_ms: Date.now(), text: text.slice(0, 240), via };
+    if (isReplay(frame)) { youMode('idle', 'This is a replay. Riff can\u2019t hear you.'); riffListens(false); talk.hide = setTimeout(hideYou, 3000); return; }
     if (!ws || ws.readyState !== 1) { youMode('idle', 'Riff isn\u2019t connected.'); riffListens(false); talk.hide = setTimeout(hideYou, 3000); return; }
     ws.send(JSON.stringify(msg));
     youMode('sent', msg.text);

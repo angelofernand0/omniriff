@@ -30,9 +30,14 @@
     else if (d.replay === 'true') [word, kind] = ['REPLAY', 'warn'];
     else if (d.sim) [word, kind] = [d.sim === 'guitar' ? 'SIM GUITAR' : 'SIMULATED', 'warn'];
     if (d.coach === 'scripted') { word += ' · SCRIPTED COACH'; kind = 'warn'; }
+    else if (d.coach === 'replay') { word += ' · REPLAY COACH'; kind = 'warn'; }   // a recorded real session, never live
     pill.textContent = word;
     pill.dataset.kind = kind;
-    fx.disabled = d.conn === 'offline';
+    if (document.body.dataset.browser === 'true') {
+      fx.disabled = false;
+    } else {
+      fx.disabled = d.conn === 'offline';
+    }
     flip(d.bypass !== 'true');
   }
 
@@ -64,5 +69,12 @@
   status();
 
   // ---------- FX power: the same control as BYPASS ----------
-  fx.addEventListener('click', () => $('btnBypass').click());
+  fx.addEventListener('click', () => {
+    $('btnBypass').click();
+    if (document.body.dataset.browser === 'true') {
+      const nowOn = fx.dataset.on === 'true';
+      show(!nowOn, true);
+      app.dataset.bypass = String(nowOn);
+    }
+  });
 })();

@@ -32,6 +32,11 @@ class CoachRunnerRefusalTests(unittest.TestCase):
     """B21: Budget refusal tests for CoachRunner."""
 
     def setUp(self):
+        # Synthetic round rates keep the "budget exhausted" fixtures meaningful; real rates: test_coach_budget.
+        for name, value in (("INPUT_USD_PER_M", 15.0), ("OUTPUT_USD_PER_M", 75.0), ("RUN_RESERVE_USD", 2.0)):
+            patcher = patch(f"coach.budget.{name}", value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
         # Keep optional fakes local to the test. Installing them at discovery
         # time shadows real, not-yet-imported packages in the full coach suite.
         modules = {}

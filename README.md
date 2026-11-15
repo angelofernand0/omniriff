@@ -7,39 +7,37 @@
 
 # OmniRiff
 
-**Never put the guitar down.** OmniRiff lets a guitarist shape their sound with a pinch of the hand and a tap of the foot, live, without taking their hands off the strings. HackPrinceton Fall 2026.
+**OmniRiff is an AI guitar teacher that lives in your signal chain.** It hears what you play, sees how your hands move when a camera is available, explains *why* you stumbled, and sets up the next drill—without making you put the guitar down.
 
-![The OmniRiff dashboard: loop, tone, hand and coach modules](docs/img/dashboard.png)
+**[Try OmniRiff in your browser](https://omniriff.vercel.app/)** — use the free simulator, or connect Riff with the team's passcode.
 
-*The dashboard running on the simulator (synthetic guitar and a scripted hand, no hardware). Brand rules: [BRAND_SPEC.md](BRAND_SPEC.md).*
+Built for guitarists practising alone, especially beginners and intermediates between lessons. A score tells you *that* you missed; a teacher helps you fix *why*. This is software built around an ordinary guitar and audio input, plus a laptop webcam when available—not a new guitar you have to buy. Gestures and an optional pedal keep the flow hands-free.
 
-**Team board:** https://github.com/angelofernand0/omniriff/issues/1
+Meet **Riff**, the little pink coach. While you play, Riff stays out of the audio path; after a take, it helps turn “something felt off” into one thing to practise next.
 
-## What it does
+![Riff proposing a drill beside a loop waveform in the OmniRiff practice dashboard](docs/media/gallery-01-coach.png)
 
-Guitar → Focusrite Scarlett Solo → laptop audio engine (filter sweep, reverb, looper, bypass, limiter) → speakers.
-- **Hand:** a pretrained MediaPipe hand-landmark model; pinch to engage, raise or lower to sweep (`vision/`).
-- **Foot:** an Arduino footswitch for loop and bypass (`firmware/arduino/`).
-- **Screen:** a live dashboard with levels, loop, effects, sensor health and the hand skeleton (`dashboard/`).
-- **Coach (in progress):** a practice coach that hears takes and sees the hand between performances (`docs/COACH.md`).
+*An illustrative practice session with synthetic guitar and hand input and a scripted coach, not a real-guitar or live-AI test. The simulation label is visible in the image. Brand rules: [BRAND_SPEC.md](BRAND_SPEC.md).*
 
-Every input can fail without stopping the music. Unsafe, stale or low-confidence controls never reach the audio.
+## The practice loop
+
+**The looper captures a take; the practice loop turns it into progress.** Each stumble becomes evidence, a specific exercise, and another take to check whether the fix worked. That feedback cycle—not changing effects with a gesture—is the core product.
+
+1. **Play a take.** The rig records a loop while the guitar audio keeps flowing through its real-time engine.
+2. **Find the cause.** Ears measures timing gaps; Eyes checks hand movement when camera data is available. Riff, the AI coach, uses that evidence to explain the stumble instead of merely scoring notes.
+3. **Work the fix.** Riff proposes a focused drill and prepares the looper/effects. The player approves rig changes by pedal or dashboard, plays again, and can compare the takes.
+
+The AI works **between** takes, never inside the audio callback. Guitar → interface → audio engine → speakers stays independent of the coach, camera, pedal and dashboard. Those controls have validation and manual bypass; losing the audio interface itself is not a supported fail-safe. [The coach design](docs/COACH.md) and [pitch](docs/PITCH.md) explain the experience; [architecture](docs/ARCHITECTURE.md) covers the instrument foundation.
 
 ## Try it
 
-```bash
-python -m pip install -r engine/requirements.txt -r vision/requirements.txt
-python -m tools.sim run --demo                  # no hardware: simulated rig + dashboard at http://127.0.0.1:8080
-python -m engine.demo --headless                # no hardware: the real engine processing silence
-python -m pip install -r coach/requirements.txt # optional: the practice coach (needs ANTHROPIC_API_KEY in .env)
-python -m engine --check                        # on the demo laptop: preflight (FAILs for missing devices are expected off-rig)
-python -m engine.demo --open --vision --vision-args "--model models/hand_landmarker.task" \
-  --in Focusrite --out Focusrite --hostapi WASAPI --input-channel 2 --serial-port COM3
-```
+**In a browser:** Open [omniriff.vercel.app](https://omniriff.vercel.app/) and choose **Start simulator**. The synthetic guitar and generated hand controls need no account, hardware or API key. To try the hosted AI coach, open **Riff, the AI coach** in settings and enter the team passcode, which the team shares privately. Riff runs on a separate server and may incur model usage; recorded takes and relevant hand/state data are sent for coaching. You can also choose **Live audio + camera** to test with a real guitar and webcam. [Browser modes and limitations](docs/BROWSER.md).
 
-The full bring-up and 2-minute demo are in [docs/DEMO.md](docs/DEMO.md). Module details: [audio/](audio/README.md), [engine/](engine/README.md), [vision/](vision/README.md), [dashboard/](dashboard/README.md), [tools/](tools/).
+**Locally:** The [virtual-guitar play room](tools/virtual_guitar/README.md) lets you test the Python audio path with a simulated guitar and your actual webcam, without an interface. For a real guitar/interface/pedal and the local coach, follow the [demo runbook](docs/DEMO.md) and [coach setup](coach/README.md). Keep simulated, replayed and live runs labeled distinctly.
 
-**Status:** software is complete and tested in CI (simulated and recorded inputs). The live Windows laptop + Scarlett + camera + pedal run happens Saturday night. Latency and gesture rates are reported only once measured (`tools/latency`).
+**Current boundary:** The hosted site has completed a synthetic-loop-to-Riff test, not a real-guitar/webcam or physical-pedal validation. It does not establish camera accuracy, coaching quality on real takes, or measured end-to-end latency. [Try a real coaching session](docs/PLAY-THIS.md) and report what Riff actually observes. Never present synthetic/replay footage as a real performance.
+
+**Team board:** https://github.com/angelofernand0/omniriff/issues/1
 
 ## Join the workspace
 

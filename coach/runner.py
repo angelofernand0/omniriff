@@ -32,8 +32,24 @@ class _OfflineUsageCollector:
         self._lock = threading.Lock()
 
 
+def _feel_mark(report: dict) -> dict | None:
+    """Mark the phrase a feel finding is about (straight / uneven), when there is no gap to mark.
+
+    Same label as the Dev demo's marker, e.g. "3rd phrase · straight"."""
+    for kind, word in (("straight_phrase", "straight"), ("uneven_attacks", "uneven")):
+        for f in report.get("findings") or []:
+            if (isinstance(f, dict) and f.get("type") == kind and isinstance(f.get("phrase"), int)
+                    and isinstance(f.get("at_ms"), (int, float)) and isinstance(f.get("end_ms"), (int, float))
+                    and f["end_ms"] > f["at_ms"] >= 0):
+                n = f["phrase"]
+                nth = {1: "1st", 2: "2nd", 3: "3rd"}.get(n, f"{n}th")
+                return {"start_s": round(f["at_ms"] / 1000, 3), "end_s": round(f["end_ms"] / 1000, 3),
+                        "label": f"{nth} phrase · {word}"[:24]}
+    return None
+
+
 def _hesitation_mark(report: dict) -> dict | None:
-    """Turn the strongest measured audio gap into a take-relative loop mark."""
+    """Turn the strongest measured audio gap into a take-relative loop mark (or the phrase a feel finding names)."""
     findings = report.get("findings") or []
     pauses = [item for item in findings if isinstance(item, dict) and item.get("type") == "hesitation"]
     pauses.sort(key=lambda item: item.get("extra_ms", 0), reverse=True)
@@ -43,10 +59,13 @@ def _hesitation_mark(report: dict) -> dict | None:
                 not isinstance(gap, (int, float)) or isinstance(gap, bool) or
                 not math.isfinite(at) or not math.isfinite(gap) or gap <= 0 or at < gap):
             continue
+        extra = finding.get("extra_ms")
+        label = (f"{round(extra):g} ms late" if isinstance(extra, (int, float)) and not isinstance(extra, bool)
+                 and extra > 0 else f"{gap:g} ms gap")
         return {"start_s": round((at - gap) / 1000, 3),
                 "end_s": round(at / 1000, 3),
-                "label": f"{gap:g} ms gap"[:24]}
-    return None
+                "label": label[:24]}   # same number Riff quotes and the practice card shows
+    return _feel_mark(report)
 
 
 def _todo_frame(result: dict) -> list[dict]:
@@ -80,7 +99,9 @@ def _pending_actions(result: dict) -> list[dict]:
         if control in {"bypass", "loop"} and any(item["control"] == control for item in actions):
             raise ValueError("duplicate toggle action in one approval batch")
         action = {"control": control}
-        if "value" in args and args["value"] is not None:
+        # bypass/loop only ever switch ON (dry bypass, start recording): a value the model attaches
+        # (e.g. bypass=true) means nothing, and must not throw away the whole take.
+        if control not in {"bypass", "loop"} and "value" in args and args["value"] is not None:
             action["value"] = args["value"]
         control_message(control, action.get("value"), 0, 0)
         actions.append(action)
@@ -138,6 +159,31 @@ def hand_report(log_path: Path | None, sidecar: dict, *, fixture_mode: bool) -> 
         return {"available": False}
 
 
+def technique_report(log_path: Path | None, sidecar: dict, ear: dict, *, fixture_mode: bool) -> dict | None:
+    """What each hand did at every chord change (vision/technique.py); None without a camera log."""
+    if fixture_mode or log_path is None or not log_path.is_file():
+        return None
+    try:
+        from vision.technique import report_for_take
+        return report_for_take(log_path, sidecar, ear)
+    except Exception as exc:   # never lose the take over the camera analysis
+        LOG.warning("technique report unavailable: %s", exc)
+        return {"available": False, "reason": "analysis failed"}
+
+
+# The diagnose step's choice of drill: the measured cause decides it, not habit.
+SKILL_MAP = (
+    "If the TakeReport has straight_phrase or uneven_attacks findings (feel: a phrase played straight "
+    "in a swung take, or attacks that jump around), use swing-the-phrase and name the phrase number. "
+    "Otherwise pick the drill skill from the top technique finding in get_hand_report: late_finger or pattern "
+    "-> lead-with-the-last-finger, late_start -> move-on-the-and, slow_change or finger_wander -> "
+    "shortest-path, picking_stop -> keep-the-hand-moving; no camera cause -> isolate-the-change. "
+    "Call a change by its time; name chords only if the player said which change it is. "
+    "Write pass_rule as 'worst gap under N ms' (the session judges that number); put the finger or "
+    "timing cue in the passage. "
+)
+
+
 class CoachRunner:
     """Owns take processing; injected agent/feed/state permit no-network tests."""
 
@@ -145,7 +191,7 @@ class CoachRunner:
         self, agent, service: CoachTools, feed: CoachFeed, state: RigStateReader,
         budget: BudgetGuard, *, hand_log: Path | None = None,
         fixture_mode: bool = False, auto_approve_fixtures: bool = False,
-        approval_timeout_s: float = 60.0,
+        approval_timeout_s: float = 60.0, quiet_until_asked: bool = False,
     ):
         if auto_approve_fixtures and not fixture_mode:
             raise ValueError("automatic approval is allowed only for synthetic fixtures")
@@ -154,6 +200,9 @@ class CoachRunner:
         self.fixture_mode = fixture_mode
         self.auto_approve_fixtures = auto_approve_fixtures
         self.approval_timeout_s = approval_timeout_s
+        # Live rig: stay in quiet free play (no model calls) until the player starts practice with Y / the
+        # pedal hold, or says or types a goal. Loops made while jamming are not coached.
+        self.quiet_until_asked = quiet_until_asked
         self.session_id = feed.frame["session_id"]
         self.previous_take_id: str | None = None
         self.seen: set[Path] = set()
@@ -161,6 +210,23 @@ class CoachRunner:
         self._session_active = False
         self._last_practice_count = 0
         self._last_recording_count = state.recording_counter()
+
+    def _speak(self, text: str) -> None:
+        """Voice a runner-written cue (live rig only) without ever blocking the take loop."""
+        if not self.quiet_until_asked or not text:
+            return
+
+        def work() -> None:
+            try:
+                import asyncio
+                from .voice import Voice
+                audio = asyncio.run(Voice.from_env().render(text))
+                if audio is not None:
+                    self.feed.broadcast_audio(audio)
+            except Exception as exc:  # voice is optional
+                LOG.warning("coach voice for a short cue failed: %s: %s", type(exc).__name__, exc)
+
+        threading.Thread(target=work, name="omniriff-cue-voice", daemon=True).start()
 
     def _poll_player_input(self) -> None:
         """Consume bounded player words outside recording and keep them as data."""
@@ -185,19 +251,22 @@ class CoachRunner:
             self.service.session.plan(
                 goal=goal, next_step="Isolate the measured trouble spot",
                 drill_count=2, attempt_count=3,
-                drill_titles=["Isolate the trouble spot", "Full pattern over your loop"],
+                drill_titles=["Fix the measured cause", "Full pattern over your loop"],
             )
             (journal / "goal.md").write_text(f"# Player's practice goal\n\n{goal}\n")
             self.feed.publish(session=self.service.session.snapshot(), state="speaking",
                               mood="encouraging", target="player",
                               cue="Got it, we'll work on that. Tap the pedal, play it for me, then tap again.")
+            self._speak("Got it, we'll work on that. Tap the pedal, play it for me, then tap again.")
             self.feed.publish_activity("coach", "write /journal/goal.md", "done")
         else:
             self.player_note = text
             with (journal / "notes.md").open("a") as stream:
                 stream.write(text + "\n")
+            cue = "Got it, I'll keep that in mind for the next take."
             self.feed.publish(state="speaking", mood="encouraging", target="player",
-                              cue="Got it, I'll keep that in mind for the next take.")
+                              cue=cue)
+            self._speak(cue)
             self.feed.publish_activity("coach", "write /journal/notes.md", "done")
 
     def _poll_practice_action(self) -> None:
@@ -284,8 +353,59 @@ class CoachRunner:
             callback = UsageMetadataCallbackHandler()
         if gate is not None:
             gate.bind(callback)
+        callbacks = [callback]
+        try:
+            from langchain_core.callbacks import BaseCallbackHandler
+
+            runner = self
+            live = self.quiet_until_asked
+
+            class _ToolLog(BaseCallbackHandler):
+                """One terminal line per tool call, and (live rig) the real plan and harness steps on the
+                dashboard as they happen: the todo list, subagent runs, skill reads, memory writes."""
+                def __init__(self):
+                    self._subagents: dict = {}
+
+                def _show(self, who, what, status):
+                    try:
+                        runner.feed.publish_activity(who, what[:60], status)
+                    except Exception:  # the dashboard strip must never break the coach
+                        LOG.debug("activity not shown", exc_info=True)
+
+                def on_tool_start(self, serialized, input_str, **kw):
+                    name = (serialized or {}).get("name") or kw.get("name")
+                    LOG.info("coach tool -> %s %s", name, str(input_str)[:160])
+                    if not live:
+                        return
+                    args = kw.get("inputs") if isinstance(kw.get("inputs"), dict) else {}
+                    try:
+                        if name == "write_todos":
+                            todos = _todo_frame(args)
+                            if todos:
+                                runner.feed.publish(todos=todos)
+                        elif name == "task":
+                            sub = str(args.get("subagent_type") or "subagent")
+                            self._subagents[kw.get("run_id")] = sub
+                            self._show("coach", f"subagent {sub}", "running")
+                        elif name == "read_file" and str(args.get("file_path", "")).startswith("/skills/"):
+                            skill = str(args["file_path"]).split("/")[2]
+                            self._show("coach", f"open skill {skill}", "done")
+                        elif name == "edit_file" and str(args.get("file_path", "")).startswith("/memories/"):
+                            self._show("coach", "write /memories/player.md", "done")
+                    except Exception:
+                        LOG.debug("plan/activity frame skipped", exc_info=True)
+
+                def on_tool_end(self, output, **kw):
+                    LOG.info("coach tool <- %s", str(getattr(output, "content", output))[:160])
+                    sub = self._subagents.pop(kw.get("run_id"), None)
+                    if live and sub:
+                        self._show("coach", f"subagent {sub}", "done")
+
+            callbacks.append(_ToolLog())
+        except ImportError:
+            pass
         config = {"configurable": {"thread_id": self.session_id},
-                  "recursion_limit": 40, "callbacks": [callback]}
+                  "recursion_limit": 60, "callbacks": callbacks}
         start = time.monotonic()
         try:
             result = self.agent.invoke({"messages": [("user", message)]}, config=config)
@@ -298,6 +418,11 @@ class CoachRunner:
                     self.feed.publish_activity("coach", "write_todos", "done")
                 actions = _pending_actions(result)
                 if not actions:
+                    try:
+                        last = result["messages"][-1]
+                        LOG.info("coach final message: %s", str(getattr(last, "content", last))[:400])
+                    except Exception:
+                        pass
                     return result
                 approved = self._await_approval(actions)
                 decisions = ([{"type": "approve"}] * len(actions) if approved else
@@ -310,7 +435,9 @@ class CoachRunner:
                 if gate is not None and gate.refused:
                     raise BudgetExhausted("coach budget guard refused a resumed model call")
             raise RuntimeError("too many consecutive approval requests")
-        except BudgetExhausted:
+        except BudgetExhausted as exc:
+            LOG.warning("coach budget guard stopped this run (%s): estimated spend $%.2f of $%.2f cap in %s",
+                        exc, self.budget.spent_usd(), self.budget.limit_usd, self.budget.path)
             self.feed.publish(state="asleep", mood="sleepy", target=None,
                               cue="Coach is out of credit; keep playing without me.")
             raise
@@ -343,9 +470,13 @@ class CoachRunner:
         if self.service.session.mode == "play":
             return {"skipped": "free_play", "take_id": take_id}
         self._session_active = True
+        # Live rig: answer at once (text + cached voice) so the ~20 s of model work isn't dead silence.
+        ack = "Okay, let me listen back to that." if self.quiet_until_asked else None
         self.feed.publish(take_id=take_id, state="listening", mood="concentrating",
-                          target="loop", cue=None, todos=[],
+                          target="loop", cue=ack, todos=[],
                           before_after=None, awaiting_approval=None, activity=[], mark=None)
+        if ack:
+            self._speak(ack)
         self.feed.publish_activity("ears", "analyze_take", "running")
         ear = analyze_take(wav, sidecar_path)
         self.feed.publish_activity("ears", "analyze_take", "done")
@@ -353,6 +484,11 @@ class CoachRunner:
         if self.fixture_mode:
             log_path = wav.with_name(f"{take_id}.hands.jsonl")
         hand = hand_report(log_path, sidecar, fixture_mode=self.fixture_mode)
+        technique = technique_report(log_path, sidecar, json.loads(ear.to_json()), fixture_mode=self.fixture_mode)
+        if technique is not None:
+            hand = {**hand, "technique": technique}
+            self.feed.publish_activity("eyes", "technique: fingers + picking hand",
+                                       "done" if technique.get("available") else "failed")
         self.feed.publish_activity("eyes", "report_for_window", "done" if hand.get("available", True) else "failed")
         folder = self.service.workspace / "takes" / take_id
         folder.mkdir(parents=True, exist_ok=True)
@@ -363,9 +499,16 @@ class CoachRunner:
         if ear.judgeable:
             self.service.session.record_take(report)
         mark = _hesitation_mark(report) if ear.judgeable else None
-        self.feed.publish(state="thinking", mood="aha" if ear.findings else "curious",
-                          target="loop" if mark else "coach", mark=mark,
-                          session=self.service.session.snapshot())
+        if self.quiet_until_asked:
+            # Live rig: show the gap marker together with Riff's explanation (when it speaks), not before it
+            # has said anything, so the marker never appears unexplained.
+            self.service.pending_mark = mark
+            self.feed.publish(state="thinking", mood="aha" if ear.findings else "curious",
+                              target="coach", session=self.service.session.snapshot())
+        else:
+            self.feed.publish(state="thinking", mood="aha" if ear.findings else "curious",
+                              target="loop" if mark else "coach", mark=mark,
+                              session=self.service.session.snapshot())
         print(f"Take {take_id}: {ear.summary}; hand: {hand.get('summary', 'unavailable')}")
         if not ear.judgeable:
             self.feed.publish(state="idle", mood="neutral", target="player",
@@ -395,7 +538,7 @@ class CoachRunner:
                   "Read measured reports before naming numbers. ")
         if action["action"] == "diagnose":
             prompt += ("Diagnose with Ears and Eyes, set_practice_goal only if the player has not "
-                       "provided a goal, then write a measured first drill card and cue. ")
+                       "provided a goal, then write a measured first drill card and cue. " + SKILL_MAP)
         elif action["action"] == "retry":
             prompt += "Assess the measured attempt and give one brief adjustment; keep the current drill card. "
         elif action["action"] == "advance":
@@ -427,18 +570,26 @@ class CoachRunner:
     def open_session(self) -> None:
         """Show the most recent verified practice result before a new take."""
         cue = last_time_cue(self.service.workspace)
+        if self.quiet_until_asked:
+            self.service.session.stop()
+            self._session_active = False
+            cue = ("Free play, I'm just listening. Press Y or hold the pedal when you want to practice with me."
+                   if not cue else cue)
         self.feed.publish(state="idle", mood="neutral", target="player",
                           cue=cue or "What are you working on? Hold TALK or type it, then play.",
                           session=self.service.session.snapshot())
+        self._speak(cue or "What are you working on? Hold TALK or type it, then play.")
 
-    def run_directory(self, take_dir: Path, *, once: bool = False) -> None:
-        """Poll completed sidecars; a coach failure never stops the instrument."""
+    def run_directory(self, take_dir: Path, *, once: bool = False, stop: threading.Event | None = None) -> None:
+        """Poll completed sidecars; a coach failure never stops the instrument.
+
+        `stop` ends the loop (the hosted coach ends a session when its browser disconnects)."""
         take_dir = Path(take_dir)
         self.open_session()
         if not once:
             # Do not silently coach old takes left in --take-dir from a prior run.
             self.seen.update(take_dir.glob("*.json"))
-        while True:
+        while stop is None or not stop.is_set():
             self._poll_practice_action()
             self._poll_player_input()
             recording_count = self.state.recording_counter()
@@ -458,15 +609,20 @@ class CoachRunner:
                     self.seen.add(sidecar)
                     self.process_take(wav, sidecar)
                 except BudgetExhausted:
+                    if self.quiet_until_asked:
+                        continue  # live rig: stay alive so a raised cap works without restarting everything
                     return
                 except Exception:
                     if not self.budget.allow_new_run():
                         self.feed.publish(state="asleep", mood="sleepy", target=None,
                                           cue="Coach is out of credit.")
+                        if self.quiet_until_asked:
+                            continue
                         return
                     LOG.exception("coach could not process %s", sidecar.name)
-                    self.feed.publish(state="asleep", mood="sleepy", target=None,
-                                      cue="Coach hit a problem; the rig is fine.")
+                    # Plain-words reason; the full traceback is in the terminal log above.
+                    self.feed.publish(state="idle", mood="neutral", target="player",
+                                      cue="I couldn't finish that take. Your rig is fine, play another take.")
             if once:
                 return
             time.sleep(0.5)

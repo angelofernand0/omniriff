@@ -1,6 +1,9 @@
 import { SourceManager, type OperatingMode } from './source-manager';
 import type { StateFrame, HandFrame } from './protocol/types';
 import './controls.css';
+import { RemoteCoach, coachConfig, saveCoachConfig } from './coach/remote-coach';
+import { DemoCoach, resetDemoMemory } from './coach/demo-coach';
+import { devDemoUnlocked, lockDevDemo, unlockDevDemo } from './coach/dev-demo-lock';
 
 type BrowserSource = {
   onState(cb: (frame: StateFrame) => void): void;
@@ -8,7 +11,7 @@ type BrowserSource = {
   sendControl(control: string, value?: number): boolean;
   isConnected(): boolean;
 };
-declare global { interface Window { OmniBrowserSource?: BrowserSource; } }
+declare global { interface Window { OmniBrowserSource?: BrowserSource; OmniCoachSocket?: () => WebSocket; } }
 
 const manager = new SourceManager();
 let connected = false;
@@ -31,7 +34,6 @@ window.OmniBrowserSource = {
     if ((control === 'filter' || control === 'reverb') && manager.activeMode === 'simulator') {
       manager.simulator.choreography.enabled = false;
       manager.simulator.controller.rearm();
-      autoHand.checked = false;
     }
     return manager.sendControl(control, value);
   },
@@ -52,6 +54,26 @@ await loadClassic('brand.js');
 await import('../app.js');
 for (const file of ['juice.js', 'riff.js', 'stage.js', 'tape.js']) await loadClassic(file);
 
+// Riff, the real AI coach, hosted (coach/server.py). The instrument stays in this browser.
+// ?coach=demo: the pitch's scripted session in the browser (coach/demo-coach.ts), no server.
+// Dev demo (?coach=demo): only in a browser unlocked with the team password (coach/dev-demo-lock.ts).
+const devUnlocked = await devDemoUnlocked();
+const demoCoach = params.get('coach') === 'demo' && devUnlocked ? new DemoCoach(manager, params.get('fresh') === '1') : null;
+if (params.get('fresh') === '1') {   // applied once; a later reload keeps whatever the demo remembers
+  const clean = new URL(location.href); clean.searchParams.delete('fresh'); history.replaceState(null, '', clean);
+}
+const hosted = params.get('coach') === 'off' || demoCoach ? null : coachConfig(params);
+const remoteCoach = hosted ? new RemoteCoach(hosted, manager) : null;
+if (demoCoach) {
+  window.OmniCoachSocket = demoCoach.socketFactory;
+  // @ts-expect-error This existing classic script is loaded for its side effects.
+  await import('../coach.js'); coachLoaded = true;
+} else if (remoteCoach) {
+  window.OmniCoachSocket = remoteCoach.socket;
+  // @ts-expect-error This existing classic script is loaded for its side effects.
+  await import('../coach.js'); coachLoaded = true;
+}
+
 const sourceButton = document.createElement('button');
 sourceButton.type = 'button';
 sourceButton.className = 'browser-source-button';
@@ -65,66 +87,70 @@ dialog.setAttribute('aria-labelledby', 'browserTitle');
 dialog.innerHTML = `
   <form method="dialog" class="browser-settings-heading"><h1 id="browserTitle">PLAY OMNIRIFF</h1><button aria-label="Close sound settings">×</button></form>
   <p class="browser-intro">A guitar, effects, and hand control. Right in your browser.</p>
-  <label>Source<select id="browserMode"><option value="simulator">Browser simulator</option><option value="live">Live audio + camera</option><option value="python">Python bridge</option></select></label>
+  <label>Source<select id="browserMode"><option value="simulator">Browser simulator</option><option value="live">Live audio + camera</option></select></label>
   <p id="browserDescription"></p>
   <p id="browserStatus" role="status" aria-live="polite">Ready. Sound starts when you press Start.</p>
   <div class="browser-actions"><button type="button" id="browserStart">Start simulator</button><button type="button" id="browserMute" disabled>Mute instrument</button><button type="button" id="browserStop" disabled>Stop</button></div>
-  <details id="browserAdvanced"><summary>Sound & hand settings</summary>
-  <fieldset id="browserLive"><legend>Live input</legend>
-    <button type="button" id="browserRefresh">Refresh device list</button>
+  <fieldset id="browserLive"><legend>Live audio input & output</legend>
     <label>Audio input<select id="browserInput"><option value="">System default</option></select></label>
     <label>Input channel<select id="browserChannel"><option value="0">Channel 1 / mono</option><option value="1">Channel 2 / instrument</option></select></label>
+    <label>Audio output<select id="browserOutput"><option value="">System default</option></select></label>
     <label>Camera<select id="browserCamera"><option value="">System default</option></select></label>
-    <p>Starting requests microphone and camera access. Camera failure leaves the audio and manual controls available.</p>
+    <button type="button" id="browserRefresh" style="margin-top: 10px;">Refresh device list</button>
+    <p>Starting requests microphone and camera access. Camera failure leaves audio and manual controls available.</p>
   </fieldset>
-  <fieldset id="browserSim"><legend>Simulated guitar + hand</legend>
-    <label class="browser-check"><input id="browserAutoHand" type="checkbox" checked>Automatic hand demo</label>
-    <label class="browser-check"><input id="browserAutoGuitar" type="checkbox" checked>Play a riff</label>
-    <label>Tempo <input id="browserBpm" type="number" min="40" max="240" step="1" value="92"></label>
-    <button type="button" id="browserPluck">Pluck guitar</button>
-  </fieldset>
-  <fieldset id="browserGesture"><legend>Hand control</legend>
-    <label>Pinch controls<select id="browserTarget"><option value="filter">Filter</option><option value="reverb">Reverb</option><option value="scene">Scene morph</option></select></label>
-    <label id="browserSceneLabel">Scene<select id="browserScene"></select></label>
-    <p>Open your hand to arm. Pinch and move up or down. Release to hold the sound. Open RIG to see the hand view and manual controls.</p>
-  </fieldset>
-
+  <details id="browserCoach" open><summary>Riff, the AI coach <span id="coachMode"></span></summary>
+    <p>Riff listens to each loop you record (and watches your hand if the camera is on), then picks one thing to practice. Your sound stays in this browser; finished loops go to the coach server.</p>
+    <label>Coach server<input id="coachServer" type="url" placeholder="wss://…/coach" autocomplete="off"></label>
+    <label>Team passcode<input id="coachKey" type="password" autocomplete="off"></label>
+    <div class="browser-actions"><button type="button" id="coachConnect">Connect Riff</button><button type="button" id="coachForget">Disconnect Riff</button></div>
+    <p id="coachStatus" role="status" aria-live="polite"></p>
   </details>
-  <p class="browser-footnote">Browser modes run filter, reverb and looping locally. Live coaching is available through the Python bridge.</p>`;
+  <details id="browserPedal"><summary>USB Pedal (Arduino footswitch) <span id="pedalMode"></span></summary>
+    <p>Connect your USB Arduino footswitch (115200 baud). Tap to loop, hold to practice or approve.</p>
+    <div class="browser-actions"><button type="button" id="pedalConnect">Connect USB pedal</button></div>
+    <p id="pedalStatus" role="status" aria-live="polite"></p>
+  </details>
+  <details id="devDemo"><summary>Dev demo <span id="devMode"></span></summary>
+    <div id="devLocked">
+      <label>Password<input id="devPass" type="password" autocomplete="off"></label>
+      <div class="browser-actions"><button type="button" id="devUnlock">Unlock</button></div>
+    </div>
+    <div id="devOpen" hidden>
+      <div class="browser-actions"><button type="button" id="devLive">My guitar + camera</button><button type="button" id="devSim">Simulated guitar</button></div>
+      <div class="browser-actions"><button type="button" id="demoReset">Reset for the pitch</button><button type="button" id="demoLeave">Leave dev demo</button><button type="button" id="devLock">Lock</button></div>
+      <p>The pitch session, scripted. <strong>Simulated guitar</strong> is the backup when the real rig fails: the computer plays the riff and you take it from the keyboard. <strong>L</strong> starts and stops a take, <strong>V</strong> (hold) talks to Riff, <strong>Y</strong> approves.</p>
+    </div>
+    <p id="devStatus" role="status" aria-live="polite"></p>
+  </details>
+  <p class="browser-footnote">Filter, reverb and looping run in your browser. Riff, the coach, runs on the coach server.</p>`;
 document.body.append(dialog);
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const mode = $<HTMLSelectElement>('browserMode');
-const autoHand = $<HTMLInputElement>('browserAutoHand');
-const autoGuitar = $<HTMLInputElement>('browserAutoGuitar');
-const bpm = $<HTMLInputElement>('browserBpm');
-const target = $<HTMLSelectElement>('browserTarget');
-const scene = $<HTMLSelectElement>('browserScene');
 const input = $<HTMLSelectElement>('browserInput');
+const output = $<HTMLSelectElement>('browserOutput');
 const camera = $<HTMLSelectElement>('browserCamera');
 const channel = $<HTMLSelectElement>('browserChannel');
 const start = $<HTMLButtonElement>('browserStart');
 const stop = $<HTMLButtonElement>('browserStop');
 const mute = $<HTMLButtonElement>('browserMute');
 const status = $('browserStatus');
-mode.value = initialMode;
-for (const [i, item] of manager.simulator.setlist.scenes.entries()) scene.add(new Option(item.name, String(i)));
+mode.value = initialMode === 'live' ? 'live' : 'simulator';
 
 function selectedMode(): OperatingMode { return mode.value as OperatingMode; }
 function browserAdapter() { return manager.activeMode === 'live' ? manager.live : manager.simulator; }
 function describe() {
   const selected = selectedMode();
-  $('browserLive').hidden = selected !== 'live';
-  $('browserSim').hidden = selected !== 'simulator';
-  $('browserGesture').hidden = selected === 'python';
-  $('browserSceneLabel').hidden = target.value !== 'scene';
+  const liveEl = $('browserLive');
+  if (liveEl) liveEl.hidden = selected !== 'live';
   $('browserDescription').textContent = {
     simulator: 'SIMULATED · A generated guitar and hand run entirely in your browser.',
     live: 'Your audio input, browser effects and webcam hand tracking. Choose the instrument channel for your interface.',
     python: 'Connect to your running local engine and coach. The Python engine owns the sound; this page is its dashboard.',
-  }[selected];
-  start.textContent = connected && manager.activeMode === selected ? 'Keep playing' : { simulator: 'Start simulator', live: 'Start live input', python: 'Connect Python bridge' }[selected];
+  }[selected] || '';
+  start.textContent = connected && manager.activeMode === selected ? 'Keep playing' : { simulator: 'Start simulator', live: 'Start live input', python: 'Connect Python bridge' }[selected] || 'Start';
   start.disabled = busy;
-  mode.disabled = busy; input.disabled = camera.disabled = channel.disabled = busy;
+  mode.disabled = busy; input.disabled = output.disabled = camera.disabled = channel.disabled = busy;
 }
 function label() {
   const active = manager.activeMode;
@@ -143,13 +169,37 @@ function label() {
     sourceButton.textContent = connected ? 'PYTHON · SOUND' : 'PYTHON · OFF';
   } else sourceButton.textContent = 'START SOUND';
   if (connected && active && active !== 'python' && browserAdapter().audio.isMuted) sourceButton.textContent = active === 'simulator' ? 'SIMULATED · MUTED' : 'LIVE INPUT · MUTED';
-  $('pedalNext').hidden = active !== 'python';
+  $('pedalNext').hidden = active !== 'python' && !(remoteCoach || demoCoach);
   stop.disabled = !active && !busy;
   if (typeof loopControl !== 'undefined') loopControl.disabled = !connected;
   stop.textContent = active === 'python' ? 'Disconnect' : 'Stop';
   mute.disabled = !active || active === 'python' || !browserAdapter().audio.isRunning;
   mute.textContent = active && active !== 'python' && browserAdapter().audio.isMuted ? 'Unmute instrument' : 'Mute instrument';
+  updateSimGuitarBtn();
 }
+const simGuitarBtn = $('simGuitarBtn') as HTMLButtonElement | null;
+function updateSimGuitarBtn() {
+  if (!simGuitarBtn) return;
+  const isSim = manager.activeMode === 'simulator' && connected;
+  simGuitarBtn.hidden = !isSim;
+  if (!isSim) return;
+  const playing = manager.simulator.isGuitarPlaying;
+  simGuitarBtn.dataset.playing = String(playing);
+  const icon = simGuitarBtn.querySelector('.sim-play-icon');
+  const text = simGuitarBtn.querySelector('.sim-play-text');
+  if (icon) icon.textContent = playing ? '⏸' : '▶';
+  if (text) text.textContent = playing ? 'GUITAR' : 'PLAY';
+  simGuitarBtn.title = playing ? 'Pause simulated guitar' : 'Play simulated guitar';
+}
+if (simGuitarBtn) {
+  simGuitarBtn.addEventListener('click', () => {
+    if (manager.activeMode === 'simulator') {
+      manager.simulator.toggleGuitar();
+      updateSimGuitarBtn();
+    }
+  });
+}
+manager.simulator.onGuitarState(() => updateSimGuitarBtn());
 let loopControl: HTMLButtonElement | undefined;
 manager.onConnection(info => {
   connected = info.status === 'connected';
@@ -170,12 +220,16 @@ manager.onState(frame => {
     const emptyHint = document.querySelector('#waveEmpty > span');
     if (emptyHint) emptyHint.textContent = 'Tap Record loop. Play. Tap Finish.';
   }
-  if (manager.activeMode === 'simulator' && autoHand.checked) scene.value = String(manager.simulator.setlist.index);
+  updateSimGuitarBtn();
 });
 
 async function refreshDevices() {
   await manager.live.devices.enumerate();
-  for (const [select, devices] of [[input, manager.live.devices.audioInputs], [camera, manager.live.devices.videoInputs]] as const) {
+  for (const [select, devices] of [
+    [input, manager.live.devices.audioInputs],
+    [output, manager.live.devices.audioOutputs],
+    [camera, manager.live.devices.videoInputs],
+  ] as const) {
     const previous = select.value;
     select.replaceChildren(new Option('System default', ''));
     for (const device of devices) select.add(new Option(device.label, device.deviceId));
@@ -183,7 +237,13 @@ async function refreshDevices() {
   }
 }
 $('browserRefresh').addEventListener('click', () => { void refreshDevices().catch(error => { status.textContent = String(error); }); });
-mode.addEventListener('change', () => { if (selectedMode() === 'live') ($('browserAdvanced') as HTMLDetailsElement).open = true; describe(); });
+output.addEventListener('change', async () => {
+  const deviceId = output.value;
+  manager.live.devices.selectedAudioOutputId = deviceId || null;
+  await manager.live.audio.setAudioOutput(deviceId);
+  await manager.simulator.audio.setAudioOutput(deviceId);
+});
+mode.addEventListener('change', () => { describe(); });
 function openSettings() {
   if (!document.getElementById('drawer')!.hidden) document.getElementById('drawerClose')!.click();
   describe(); dialog.showModal();
@@ -201,7 +261,7 @@ start.addEventListener('click', async () => {
   busy = true; describe(); label();
   const requested = selectedMode();
   try {
-    if (coachLoaded && requested !== 'python') {
+    if (coachLoaded && !(remoteCoach || demoCoach) && requested !== 'python') {
       await manager.stop();
       if (request !== startupRequest) return;
       const url = new URL(location.href); url.searchParams.set('source', requested);
@@ -210,9 +270,13 @@ start.addEventListener('click', async () => {
       return;
     }
     manager.live.devices.selectedAudioInputId = input.value || null;
+    manager.live.devices.selectedAudioOutputId = output.value || null;
     manager.live.devices.selectedVideoInputId = camera.value || null;
     manager.live.devices.selectedChannel = Number(channel.value);
-    manager.simulator.gestureTarget = manager.live.gestureTarget = target.value as 'filter' | 'reverb' | 'scene';
+    await manager.live.audio.setAudioOutput(output.value);
+    await manager.simulator.audio.setAudioOutput(output.value);
+    manager.simulator.gestureTarget = manager.live.gestureTarget = 'filter';
+    if (requested === 'python' && remoteCoach) throw new Error('Disconnect Riff (the hosted coach) before using the Python bridge.');
     if (requested === 'python' && !coachLoaded) {
       // @ts-expect-error This existing classic script is loaded for its side effects.
       await import('../coach.js'); coachLoaded = true;
@@ -225,15 +289,15 @@ start.addEventListener('click', async () => {
     const address = new URL(location.href); address.searchParams.set('source', requested); history.replaceState(null, '', address);
     if (requested !== 'python') {
       const adapter = browserAdapter();
-      adapter.setlist.select(Number(scene.value)); adapter.controller.rearm();
+      adapter.controller.rearm();
       adapter.audio.setInputChannel(Number(channel.value));
       if (requested === 'simulator') {
-        manager.simulator.choreography.enabled = autoHand.checked;
-        if (!autoHand.checked) manager.simulator.hand.present = false;
-        adapter.audio.setSynthAuto(autoGuitar.checked);
-        adapter.audio.setSynthBpm(Number(bpm.value));
+        manager.simulator.choreography.enabled = !demoCoach;   // dev demo: no automatic hand, you drive it
+        if (demoCoach) manager.simulator.hand.present = false;
+        adapter.audio.setSynthAuto(true);
+        adapter.audio.setSynthBpm(92);
       }
-      $('coachLine').textContent = 'Play freely. Connect the Python bridge for live coaching.';
+      if (!remoteCoach && !demoCoach) $('coachLine').textContent = 'Play freely. Open settings to connect Riff, the coach.';
     }
     dialog.close();
   } catch (error) {
@@ -243,29 +307,122 @@ start.addEventListener('click', async () => {
   } finally { if (request === startupRequest) { busy = false; describe(); label(); } }
 });
 stop.addEventListener('click', async () => {
-  const python = manager.activeMode === 'python' || coachLoaded || (busy && selectedMode() === 'python');
+  const python = manager.activeMode === 'python' || (coachLoaded && !(remoteCoach || demoCoach)) || (busy && selectedMode() === 'python');
   ++startupRequest; busy = false; describe();
   await manager.stop(); connected = false; label();
   if (python) location.reload(); // unload the coach socket too; the Python instrument keeps playing
 });
 mute.addEventListener('click', () => { if (manager.activeMode !== 'python') browserAdapter().audio.toggleMute(); label(); });
-autoHand.addEventListener('change', () => {
-  manager.simulator.choreography.enabled = autoHand.checked;
-  manager.simulator.controller.rearm();
-  if (autoHand.checked) manager.simulator.choreography.reset(); else manager.simulator.hand.present = false;
-});
-autoGuitar.addEventListener('change', () => manager.simulator.audio.setSynthAuto(autoGuitar.checked));
-bpm.addEventListener('change', () => { const value = Math.min(240, Math.max(40, Number(bpm.value) || 92)); bpm.value = String(value); manager.simulator.audio.setSynthBpm(value); });
-$('browserPluck').addEventListener('click', () => manager.simulator.audio.pluck());
-target.addEventListener('change', () => {
-  for (const adapter of [manager.simulator, manager.live]) { adapter.gestureTarget = target.value as 'filter' | 'reverb' | 'scene'; adapter.controller.rearm(); }
-  describe();
-});
-scene.addEventListener('change', () => {
-  for (const adapter of [manager.simulator, manager.live]) { adapter.setlist.select(Number(scene.value)); adapter.controller.rearm(); }
-});
 const pendingControls = setInterval(() => { if (busy) label(); }, 200);
 window.addEventListener('pagehide', () => { clearInterval(pendingControls); ++startupRequest; busy = false; void manager.stop(); });
+const coachServer = $<HTMLInputElement>('coachServer');
+const coachKey = $<HTMLInputElement>('coachKey');
+coachServer.value = hosted?.url ?? '';
+coachKey.value = hosted?.key ?? '';
+const coachStatus = $('coachStatus');
+coachStatus.textContent = demoCoach ? 'Dev demo: the pitch session, scripted in this browser.' : remoteCoach ? 'Connecting to Riff…' : 'Not connected. Ask your team for the server address and passcode.';
+if (remoteCoach) remoteCoach.status = text => { coachStatus.textContent = text; };
+function reloadWithCoach(url: string, key: string) {
+  saveCoachConfig(url, key);
+  const next = new URL(location.href);
+  next.searchParams.delete('coachserver'); next.searchParams.delete('coachkey'); next.searchParams.delete('coach');
+  if (manager.activeMode && manager.activeMode !== 'python') next.searchParams.set('source', manager.activeMode);
+  location.assign(next);
+}
+$('coachConnect').addEventListener('click', () => {
+  if (!/^wss?:\/\//.test(coachServer.value.trim())) { coachStatus.textContent = 'The server address starts with wss:// (or ws:// on this computer).'; return; }
+  reloadWithCoach(coachServer.value, coachKey.value);
+});
+$('coachForget').addEventListener('click', () => reloadWithCoach('', ''));
+
+// Dev demo: password, then the two ways to run the pitch session (same as ?coach=demo&source=...).
+function reloadDemo(demo: boolean, source?: 'live' | 'simulator') {
+  const next = new URL(location.href);
+  for (const key of ['coach', 'fresh', 'coachserver', 'coachkey']) next.searchParams.delete(key);
+  if (demo) next.searchParams.set('coach', 'demo');
+  next.searchParams.set('source', source ?? (selectedMode() === 'live' ? 'live' : 'simulator'));
+  location.assign(next);
+}
+const devStatus = $('devStatus');
+function showDev(open: boolean) {
+  $('devLocked').hidden = open;
+  $('devOpen').hidden = !open;
+  $('demoReset').hidden = $('demoLeave').hidden = !demoCoach;
+  $('devMode').textContent = demoCoach ? '· ON' : '';
+}
+showDev(devUnlocked);
+if (demoCoach) ($('devDemo') as HTMLDetailsElement).open = true;
+if (params.get('coach') === 'demo' && !devUnlocked) {
+  ($('devDemo') as HTMLDetailsElement).open = true;
+  devStatus.textContent = 'Enter the password to open the dev demo.';
+}
+async function tryUnlock() {
+  const ok = await unlockDevDemo($<HTMLInputElement>('devPass').value);
+  $<HTMLInputElement>('devPass').value = '';
+  devStatus.textContent = ok ? '' : 'Wrong password.';
+  if (ok) showDev(true);
+}
+$('devUnlock').addEventListener('click', () => { void tryUnlock(); });
+$('devPass').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); void tryUnlock(); } });
+$('devLive').addEventListener('click', () => reloadDemo(true, 'live'));
+$('devSim').addEventListener('click', () => reloadDemo(true, 'simulator'));
+$('demoReset').addEventListener('click', () => { resetDemoMemory(); reloadDemo(true); });   // the pitch opening
+$('demoLeave').addEventListener('click', () => reloadDemo(false));
+$('devLock').addEventListener('click', () => { lockDevDemo(); if (demoCoach) reloadDemo(false); else showDev(false); });
+$('coachMode').textContent = demoCoach ? '· DEV DEMO' : remoteCoach ? '· LIVE' : '';
+for (const id of ['coachServer', 'coachKey', 'coachConnect', 'coachForget']) {
+  const el = document.getElementById(id);
+  const row = el?.closest('label') ?? el;
+  if (row && demoCoach) (row as HTMLElement).hidden = true;   // the demo needs no server
+}
+
+const pedalConnect = $<HTMLButtonElement>('pedalConnect');
+const pedalStatus = $('pedalStatus');
+const pedalMode = $('pedalMode');
+
+function updatePedalUi() {
+  const isConn = manager.pedal.isConnected;
+  pedalConnect.textContent = isConn ? 'Disconnect pedal' : 'Connect USB pedal';
+  pedalMode.textContent = isConn ? '· ON' : manager.pedal.status === 'error' ? '· ERROR' : '';
+  if (!manager.pedal.isSupported()) {
+    pedalConnect.disabled = true;
+    pedalStatus.textContent = 'Web Serial is not supported in this browser (available in Chrome/Edge).';
+  } else if (isConn) {
+    pedalStatus.textContent = `Connected at 115200 baud. Events: ${manager.pedal.accepted} ok, ${manager.pedal.dropped} dropped.`;
+  } else if (manager.pedal.lastError) {
+    pedalStatus.textContent = manager.pedal.lastError;
+  } else {
+    pedalStatus.textContent = 'Not connected. Connect your Arduino footswitch via USB.';
+  }
+}
+
+manager.pedal.onStatus(() => updatePedalUi());
+manager.pedal.onAction(() => updatePedalUi());
+
+pedalConnect.addEventListener('click', async () => {
+  if (manager.pedal.isConnected) {
+    await manager.pedal.disconnect();
+    updatePedalUi();
+  } else {
+    try {
+      await manager.pedal.requestAndConnect();
+      updatePedalUi();
+    } catch {
+      updatePedalUi();
+    }
+  }
+});
+updatePedalUi();
+
+const pedalLed = document.getElementById('st-arduino');
+if (pedalLed) {
+  pedalLed.style.cursor = 'pointer';
+  pedalLed.setAttribute('title', 'Click to connect USB Arduino pedal');
+  pedalLed.addEventListener('click', () => {
+    dialog.showModal();
+    const pedalDetails = $('browserPedal') as HTMLDetailsElement | null;
+    if (pedalDetails) pedalDetails.open = true;
+  });
+}
 describe();
-if (initialMode === 'live') ($('browserAdvanced') as HTMLDetailsElement).open = true;
 dialog.showModal();

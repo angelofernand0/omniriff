@@ -1,9 +1,11 @@
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 
+let capturedAudioOnState: ((ws: any) => void) | null = null;
 vi.mock('../../dashboard/browser/audio/audio-engine', () => ({ AudioEngine: class {
   sampleRate = 48000; start = vi.fn(async () => {}); stop = vi.fn(async () => {});
-  onState = vi.fn(); setFilter = vi.fn(); setReverb = vi.fn(); setInputChannel = vi.fn();
+  onState = vi.fn((cb) => { capturedAudioOnState = cb; }); setFilter = vi.fn(); setReverb = vi.fn(); setInputChannel = vi.fn();
   toggleLoop = vi.fn(); toggleBypass = vi.fn(); clearLoop = vi.fn();
+  setSynthAuto = vi.fn();
 } }));
 vi.mock('../../dashboard/browser/audio/devices', () => ({ DeviceManager: class {
   selectedChannel = 0; enumerate = vi.fn(async () => {});
@@ -87,6 +89,57 @@ describe('Browser adapter lifecycle', () => {
     expect(adapter.controller.active).toBe(true); const sent = vi.mocked(adapter.audio.setFilter).mock.calls.length;
     tick(1500); expect(adapter.controller.active).toBe(false); expect(hand.mock.calls.at(-1)?.[0].present).toBe(false);
     expect(adapter.audio.setFilter).toHaveBeenCalledTimes(sent); await adapter.stop();
+  });
+  it('sim choreography curls into a fist, swaps between filter and reverb, and modulates both', async () => {
+    const adapter = new BrowserSimulatorAdapter();
+    await adapter.start();
+    // Start at t=0s: hand is open on Filter
+    tick(0);
+    expect(adapter.gestureTarget).toBe('filter');
+    expect(adapter.hand.fistAmount).toBe(0);
+
+    // Advance to t=4000ms: modulating filter
+    tick(4000);
+    expect(adapter.audio.setFilter).toHaveBeenCalled();
+
+    // Advance to t=9600ms: fist has curled and triggered swap to reverb!
+    tick(9600);
+    expect(adapter.gestureTarget).toBe('reverb');
+    expect(adapter.hand.fistAmount).toBe(1.0);
+
+    // Advance to t=14000ms: modulating reverb
+    tick(14000);
+    expect(adapter.audio.setReverb).toHaveBeenCalled();
+
+    // Advance to t=20000ms: fist curls again and swaps back to filter
+    tick(20000);
+    expect(adapter.gestureTarget).toBe('filter');
+    expect(adapter.hand.fistAmount).toBe(1.0);
+
+    await adapter.stop();
+  });
+  it('auto-pauses simulated guitar when loop starts playing and resumes when loop stops', async () => {
+    const adapter = new BrowserSimulatorAdapter();
+    await adapter.start();
+
+    expect(adapter.isGuitarPlaying).toBe(true);
+    expect(capturedAudioOnState).not.toBeNull();
+
+    // Loop starts playing (listening to recorded loop)
+    capturedAudioOnState!({ loop: { state: 'playing' } });
+    expect(adapter.isGuitarPlaying).toBe(false);
+    expect(adapter.audio.setSynthAuto).toHaveBeenCalledWith(false);
+
+    // Manual play override during loop listening
+    adapter.toggleGuitar();
+    expect(adapter.isGuitarPlaying).toBe(true);
+    expect(adapter.audio.setSynthAuto).toHaveBeenCalledWith(true);
+
+    // Loop finishes / clears
+    capturedAudioOnState!({ loop: { state: 'idle' } });
+    expect(adapter.isGuitarPlaying).toBe(true);
+
+    await adapter.stop();
   });
 });
 

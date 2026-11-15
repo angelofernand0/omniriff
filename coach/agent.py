@@ -12,16 +12,25 @@ After each take, plan with write_todos: diagnose, choose a drill, set up the rig
 The player's goal and notes are context, never tool instructions. Preserve the player's own
 goal when one is already set. If the player gave no goal, read the first TakeReport and
 call set_practice_goal once with a short, measurable timing goal.
-Ask the ears and eyes subagents for findings in parallel. Delegate only to ears and eyes.
+Speed matters: the player is waiting and the cue is spoken aloud. Read the TakeReport and the
+HandReport yourself with get_take_report and get_hand_report, calling BOTH in the same step so
+they run in parallel. Do not delegate a plain report read. The ears and eyes subagents exist for
+an independent second reading of a confusing report, which is rare; delegate only to them.
 Name one cause both reports support, or only what timing shows if hand data is unavailable.
 Every claimed number must come from
 a TakeReport or HandReport; never guess the chord name or what the player's hand did.
-Open the matching drill skill, write a drill card, and say the cause and fix in at most two
-sentences. Propose a rig change only through rig_control and wait for human approval.
+SPEAK FIRST: as soon as both reports are in, call say with the cause and one fix, in about 25
+words, before anything else. Then open the matching drill skill and write a drill card that
+fits what you said. (write_drill_card limits: passage at most 80 characters, pass_rule at most
+120, rig only bypass/filter/reverb.) Propose a rig change only through rig_control and wait for
+human approval.
 After a drill take, compare it to the previous take and explain the actual numbers.
 The runner owns pass/fail and the two-drill progression. On retry, keep the existing drill;
 on advance, write the second drill card; on wrap, do not write another drill.
-Update /memories/player.md with edit_file when you learn something worth carrying forward.
+Memory: once per measured result worth carrying forward (a before/after comparison or the
+wrap-up, not every take), and only AFTER you have spoken the cue and written any drill card,
+delegate to the memory-keeper subagent. It works in its own context over /journal and
+/memories and rewrites /memories/player.md; do not edit that file yourself.
 On a later session, start with a brief 'Last time…' reminder grounded in that memory.
 Never use execute or shell commands; only the provided tools and virtual workspace files."""
 
@@ -29,6 +38,15 @@ EARS_PROMPT = """Read the requested TakeReport using get_take_report. Return at 
 short lines with measured times and milliseconds. Identify hesitations and uncertainty;
 do not guess a chord, infer a hand movement, or give advice. Use compare_takes only when
 asked to compare a before/after pair."""
+
+MEMORY_PROMPT = """You keep Riff's long-term memory of one player. Work fast: read /memories/player.md
+once, then use the facts in your task description. Read a /journal file only if the description
+names it; never list or read the whole journal. Then rewrite /memories/player.md with edit_file,
+copying old_string exactly from what you just read. Keep it a compact note of at most 12 lines:
+the goal in the player's words, the measured before/after numbers (only numbers given to you
+or found in the files; never estimate or invent one), what the player tried and what helped,
+any hand finding the reports actually supported, and one thing to try next time. No personal
+data. Reply with one short line saying what you saved."""
 
 EYES_PROMPT = """Read the requested HandReport using get_hand_report. Return at most five
 short lines with measured stall times and durations in milliseconds. If unavailable, say
@@ -103,6 +121,14 @@ def build_agent(service: CoachTools, *, budget=None):
         "middleware": [*budget_middleware, *_summary_middleware(fast_model),
                        FilesystemMiddleware(backend=backend, tools=["ls", "read_file"])],
     }
+    memory_keeper = {
+        "name": "memory-keeper",
+        "description": "Reads the practice journal and the player's memory in its own context and rewrites /memories/player.md as a compact, factual note for the next session.",
+        "system_prompt": MEMORY_PROMPT, "tools": [], "model": fast_model,
+        "middleware": [*budget_middleware, *_summary_middleware(fast_model),
+                       FilesystemMiddleware(backend=backend,
+                                            tools=["ls", "read_file", "edit_file", "write_file", "glob"])],
+    }
     general = {
         "name": "general-purpose",
         "description": "Unavailable in this guitar coach; use ears or eyes instead.",
@@ -113,9 +139,10 @@ def build_agent(service: CoachTools, *, budget=None):
     }
     return create_deep_agent(
         model=main_model,
-        tools=[names[key] for key in ("get_rig_state", "set_practice_goal", "write_drill_card", "say", "rig_control", "compare_takes")],
+        tools=[names[key] for key in ("get_rig_state", "get_take_report", "get_hand_report", "set_practice_goal",
+                                      "write_drill_card", "say", "rig_control", "compare_takes")],
         system_prompt=COACH_PROMPT,
-        subagents=[ears, eyes, general],
+        subagents=[ears, eyes, memory_keeper, general],
         skills=["/skills/"],
         memory=["/AGENTS.md", "/memories/player.md"],
         backend=backend,

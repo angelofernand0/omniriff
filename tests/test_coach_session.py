@@ -24,7 +24,7 @@ class PracticeSessionTests(unittest.TestCase):
         self.assertEqual(snapshot["drill"]["step"], 2)
         self.assertEqual(snapshot["drill"]["of"], 3)
         self.assertEqual(snapshot["attempt"], {"n": 2, "of": 3})
-        self.assertEqual(snapshot["metric"]["history"], [900.0, 620.0])
+        self.assertEqual(snapshot["metric"]["history"], [400.0, 120.0])  # late vs the 500 ms beat
         self.assertEqual(snapshot["metric"]["target"], 700.0)
         self.assertEqual(snapshot["next"], "Full pattern at tempo")
         feed = CoachFeed("session-test")
@@ -40,7 +40,7 @@ class PracticeSessionTests(unittest.TestCase):
                                               "intervals_ms": [float("nan")]}))
         for n in range(14):
             self.assertTrue(session.record_take({"take_id": f"take-{n}", "judgeable": True,
-                                                 "intervals_ms": [n + 1.0]}))
+                                                 "intervals_ms": [500, 500, 500 + n + 1.0]}))
         session.set_drill_card({"title": "Dry check", "skill": "dry-check",
                                 "pass_rule": "worst gap under 150 ms"})
         snapshot = session.snapshot()
@@ -50,3 +50,16 @@ class PracticeSessionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LateNumberTests(unittest.TestCase):
+    def test_one_number_for_one_moment(self):
+        """Ears' extra_ms is what Riff says, what the loop marker shows and what the card tracks."""
+        from coach.session import late_ms
+        from coach.runner import _hesitation_mark
+        report = {"intervals_ms": [500, 500, 1305, 500], "median_interval_ms": 500,
+                  "findings": [{"type": "hesitation", "at_ms": 6300, "gap_ms": 1305, "extra_ms": 805}]}
+        self.assertEqual(late_ms(report), 805.0)
+        self.assertEqual(_hesitation_mark(report)["label"], "805 ms late")
+        # no flagged hesitation: lateness against the player's own beat
+        self.assertEqual(late_ms({"intervals_ms": [500, 500, 530, 500]}), 30.0)

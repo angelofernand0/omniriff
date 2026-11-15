@@ -11,6 +11,8 @@ import { SimulatedHandModel } from '../simulation/simulated-hand';
 import { SimulatorChoreography } from '../simulation/choreography';
 import type { StateFrame, HandFrame } from '../protocol/types';
 import { absentHand, type ConnectionCallback } from './connection';
+import { showSwapToast } from './browser-live';
+import type { WebSerialPedalAdapter } from './web-serial';
 
 export class BrowserSimulatorAdapter {
   public readonly modeId = 'simulator' as const;
@@ -21,6 +23,7 @@ export class BrowserSimulatorAdapter {
   public readonly setlist: Setlist;
   public readonly hand: SimulatedHandModel;
   public readonly choreography: SimulatorChoreography;
+  public pedal: WebSerialPedalAdapter | null = null;
 
   private onStateCb: ((frame: StateFrame) => void) | null = null;
   private onHandCb: ((frame: HandFrame) => void) | null = null;
@@ -36,6 +39,50 @@ export class BrowserSimulatorAdapter {
     this.target = value;
     this.controller.control = value === 'reverb' ? 'reverb' : 'filter';
     this.controller.rearm();
+  }
+
+  public swapTarget(): void {
+    const next = this.target === 'filter' ? 'reverb' : 'filter';
+    this.setTarget(next);
+  }
+
+  public setTarget(next: 'filter' | 'reverb'): void {
+    this.gestureTarget = next;
+    showSwapToast(next);
+    const select = typeof document !== 'undefined' ? document.getElementById('browserTarget') as HTMLSelectElement | null : null;
+    if (select) {
+      select.value = next;
+      select.dispatchEvent(new Event('change'));
+    }
+  }
+
+  private isGuitarAutoPlucking: boolean = true;
+  private isGuitarPausedForLoop: boolean = false;
+  private lastLoopState: 'idle' | 'recording' | 'playing' = 'idle';
+  private onGuitarStateCb: ((playing: boolean) => void) | null = null;
+
+  public onGuitarState(cb: (playing: boolean) => void): void {
+    this.onGuitarStateCb = cb;
+  }
+
+  public get isGuitarPlaying(): boolean {
+    return this.isGuitarAutoPlucking && !this.isGuitarPausedForLoop;
+  }
+
+  public toggleGuitar(): boolean {
+    const next = !this.isGuitarPlaying;
+    this.isGuitarAutoPlucking = next;
+    this.isGuitarPausedForLoop = false; // manual override cancels auto-pause latch
+    this.audio.setSynthAuto(next);
+    this.onGuitarStateCb?.(next);
+    return next;
+  }
+
+  public setGuitarPlaying(playing: boolean): void {
+    this.isGuitarAutoPlucking = playing;
+    this.isGuitarPausedForLoop = false;
+    this.audio.setSynthAuto(playing);
+    this.onGuitarStateCb?.(playing);
   }
 
   private animFrameId: number | null = null;
@@ -69,10 +116,33 @@ export class BrowserSimulatorAdapter {
     });
     this.setlist = new Setlist();
     this.hand = new SimulatedHandModel();
-    this.choreography = new SimulatorChoreography(this.hand, this.controller, this.setlist);
+    this.choreography = new SimulatorChoreography(this.hand, this.controller, this.setlist, (target) => {
+      if (this.target !== target) {
+        this.setTarget(target);
+      }
+    });
 
     this.audio.onState((ws) => {
       this.latestWorkletState = ws;
+      if (ws.loop.state !== this.lastLoopState) {
+        const prev = this.lastLoopState;
+        this.lastLoopState = ws.loop.state;
+        if (ws.loop.state === 'playing') {
+          // Auto-pause guitar playback while listening to the loop
+          if (this.isGuitarAutoPlucking && !this.isGuitarPausedForLoop) {
+            this.isGuitarPausedForLoop = true;
+            this.audio.setSynthAuto(false);
+            this.onGuitarStateCb?.(false);
+          }
+        } else if (prev === 'playing') {
+          // Loop stopped or cleared; auto-resume if it was paused for the loop
+          if (this.isGuitarPausedForLoop) {
+            this.isGuitarPausedForLoop = false;
+            this.audio.setSynthAuto(true);
+            this.onGuitarStateCb?.(true);
+          }
+        }
+      }
     });
   }
 
@@ -95,6 +165,10 @@ export class BrowserSimulatorAdapter {
     this.lastAcceptedMs = null;
     this.lastStateEmitMs = 0;
     this.hand.present = false;
+    this.isGuitarPausedForLoop = false;
+    this.lastLoopState = 'idle';
+    this.isGuitarAutoPlucking = true;
+    this.onGuitarStateCb?.(true);
     try {
       await this.audio.start('synth');
       if (generation !== this.generation) { await this.audio.stop(); return; }
@@ -198,12 +272,14 @@ export class BrowserSimulatorAdapter {
           dropped: 0,
           session: 0,
         },
+        ...(this.pedal?.sourcesArduino ? { arduino: this.pedal.sourcesArduino } : {}),
       },
       adapters: {
         udp: { status: 'disabled', errors: 0, last_error: null },
-        serial: { status: 'disabled', errors: 0, last_error: null },
+        serial: this.pedal?.adapterStatus ?? { status: 'disabled', errors: 0, last_error: null },
         websocket: { status: 'disabled', errors: 0, last_error: null },
       },
+      ...(this.pedal?.pedalTelemetry ? { pedal: this.pedal.pedalTelemetry } : {}),
     };
   }
 
@@ -261,6 +337,8 @@ export class BrowserSimulatorAdapter {
   public async stop(): Promise<void> {
     ++this.generation;
     this.isRunning = false;
+    this.isGuitarPausedForLoop = false;
+    this.lastLoopState = 'idle';
     this.controller.rearm();
     this.onHandCb?.(absentHand());
     if (this.animFrameId !== null) {

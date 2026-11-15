@@ -29,6 +29,7 @@
   // ---------- build repeated elements ----------
   function fill(el, n, cls) {
     const out = [];
+    if (!el) return out;
     for (let i = 0; i < n; i++) { const b = document.createElement('i'); if (cls) b.className = cls(i); b.style.setProperty('--i', i); el.appendChild(b); out.push(b); }
     return out;
   }
@@ -40,6 +41,7 @@
   // ---------- state ----------
   let ws = null, retry = 500, lastFrameAt = 0, state = null;
   let seq = 0;
+  let activeTarget = 'filter';
   const meters = { in: { hold: METER_FLOOR, holdAt: 0 }, out: { hold: METER_FLOOR, holdAt: 0 } };
   let clipUntil = 0, lastClipped = null;
   const fx = { filter: { prev: null, liveUntil: 0, movedAt: 0 }, reverb: { prev: null, liveUntil: 0, movedAt: 0 } };
@@ -189,7 +191,10 @@
       const vision = s.sources && s.sources.vision;
       const visionAccAge = vision && vision.last_accepted_ms != null ? s.timestamp_ms - vision.last_accepted_ms : Infinity;
       const visionSeenAge = vision && vision.last_seen_ms != null ? s.timestamp_ms - vision.last_seen_ms : Infinity;
-      const target = fx.reverb.movedAt > fx.filter.movedAt ? 'reverb' : 'filter';
+      if (hand.frame && hand.frame.control && (hand.frame.control === 'filter' || hand.frame.control === 'reverb')) {
+        activeTarget = hand.frame.control;
+      }
+      const target = activeTarget || (fx.reverb.movedAt > fx.filter.movedAt ? 'reverb' : 'filter');
       const engaged = visionAccAge < ENGAGED_MS && conn === 'live';
       app.dataset.fx = engaged ? 'engaged' : 'idle';
 
@@ -199,7 +204,7 @@
         const lit = Math.round(v * BLOCKS);
         blocks[k].forEach((b, i) => { b.className = i < lit ? 'on' : ''; });
         const card = $('card-' + k);
-        card.classList.toggle('target', k === target && (fx[k].movedAt > 0));
+        card.classList.toggle('target', k === target);
         card.classList.toggle('live', now < fx[k].liveUntil);
       }
       $('sub-filter').textContent = s.filter ? (s.filter.value >= 0.995 ? 'Open' : 'Low-pass ' + Math.round(s.filter.cutoff_hz) + ' Hz') : '';
@@ -207,8 +212,8 @@
 
       if (engaged) {
         const v = s[target].value;
-        $('engName').textContent = target.toUpperCase();
-        $('engPct').textContent = Math.round(v * 100) + '%';
+        if ($('engName')) $('engName').textContent = target.toUpperCase();
+        if ($('engPct')) $('engPct').textContent = Math.round(v * 100) + '%';
         const lit = Math.round(v * TOWER);
         tower.forEach((b, i) => { b.className = i < lit - 1 ? 'on' : i === lit - 1 ? 'top' : ''; });
       }
@@ -319,21 +324,128 @@
   const view = { cx: 0.5, cy: 0.5, size: 0.4 };  // smoothed follow-zoom around the hand
   const handCanvas = $('handCanvas');
   const hctx = handCanvas.getContext('2d');
+  let lastHandControl = null;
+  let swapBanner = null;
+
+  function drawGhostHand(ctx, w, h, now) {
+    const size = Math.min(w, h) * 0.50;
+    const cx = w / 2;
+    const cy = h / 2 - 10;
+    const pulse = 0.75 + 0.25 * Math.sin(now * 0.0035);
+
+    const strokeCol = `rgba(0, 229, 255, ${0.45 * pulse})`;
+    const glowCol = `rgba(0, 229, 255, ${0.85 * pulse})`;
+
+    const pts = [
+      [0, 0.40 * size],              // 0: wrist
+      [-0.18 * size, 0.24 * size],   // 1: thumb CMC
+      [-0.30 * size, 0.14 * size],   // 2: thumb MCP
+      [-0.38 * size, 0.03 * size],   // 3: thumb IP
+      [-0.44 * size, -0.09 * size],  // 4: thumb tip
+      [-0.16 * size, -0.06 * size],  // 5: index MCP
+      [-0.19 * size, -0.22 * size],  // 6: index PIP
+      [-0.20 * size, -0.34 * size],  // 7: index DIP
+      [-0.21 * size, -0.46 * size],  // 8: index tip
+      [-0.01 * size, -0.08 * size],  // 9: middle MCP
+      [-0.01 * size, -0.25 * size],  // 10: middle PIP
+      [-0.01 * size, -0.38 * size],  // 11: middle DIP
+      [-0.01 * size, -0.52 * size],  // 12: middle tip
+      [0.15 * size, -0.06 * size],   // 13: ring MCP
+      [0.17 * size, -0.22 * size],   // 14: ring PIP
+      [0.18 * size, -0.34 * size],   // 15: ring DIP
+      [0.19 * size, -0.46 * size],   // 16: ring tip
+      [0.28 * size, -0.02 * size],   // 17: pinky MCP
+      [0.32 * size, -0.15 * size],   // 18: pinky PIP
+      [0.34 * size, -0.26 * size],   // 19: pinky DIP
+      [0.36 * size, -0.38 * size],   // 20: pinky tip
+    ];
+
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = strokeCol;
+    ctx.setLineDash([4, 4]);
+
+    ctx.beginPath();
+    for (const [a, b] of BONES) {
+      ctx.moveTo(cx + pts[a][0], cy + pts[a][1]);
+      ctx.lineTo(cx + pts[b][0], cy + pts[b][1]);
+    }
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    ctx.fillStyle = glowCol;
+    for (const [px, py] of pts) {
+      ctx.fillRect(Math.round(cx + px) - 2, Math.round(cy + py) - 2, 4, 4);
+    }
+    for (const i of [4, 8, 12, 16, 20]) {
+      ctx.strokeStyle = glowCol;
+      ctx.strokeRect(Math.round(cx + pts[i][0]) - 5, Math.round(cy + pts[i][1]) - 5, 10, 10);
+    }
+
+    ctx.font = 'bold 10px monospace';
+    ctx.fillStyle = glowCol;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('NO HAND DETECTED', cx, cy + 0.48 * size + 20);
+    ctx.restore();
+  }
+
+  function triggerSwapToast(control) {
+    const toast = $('swapToast');
+    const text = $('swapToastText');
+    if (!toast || !text) return;
+    if (toast._timer) clearTimeout(toast._timer);
+    text.textContent = `SWAPPED TO ${(control || 'EFFECT').toUpperCase()}`;
+    toast.hidden = false;
+    toast.classList.remove('swap-toast-pop');
+    void toast.offsetWidth;
+    toast.classList.add('swap-toast-pop');
+    toast._timer = setTimeout(() => {
+      toast.hidden = true;
+      toast.classList.remove('swap-toast-pop');
+      toast._timer = null;
+    }, 1400);
+  }
+
   function drawHand(now) {
     const fresh = hand.frame && now - hand.at < HAND_STALE_MS;
     if (!fresh) hand.frame = null;  // stale or disconnected: never keep an old hand on screen
     const f = hand.frame;
+    if (f && f.control) {
+      if (f.swapTriggered || (lastHandControl !== null && f.control !== lastHandControl)) {
+        swapBanner = { control: f.control, start: now, until: now + 1400 };
+        triggerSwapToast(f.control);
+      }
+      lastHandControl = f.control;
+    }
+
+    const inSwap = !!(swapBanner && now < swapBanner.until);
+    const fistActive = inSwap;
+
     let mode = 'off', label = HAND_URL ? 'NO CAMERA' : 'OFF';
     if (f && !f.present) { mode = 'none'; label = 'NO HAND'; }
-    else if (f && f.engaged) {
+    else if (fistActive) {
+      mode = 'seen';
+      label = inSwap ? `✦ SWAPPED TO ${(f.control || 'EFFECT').toUpperCase()}` : 'FIST';
+    } else if (f && f.engaged) {
       mode = 'engaged';
       const pct = typeof f.value === 'number' ? Math.round(f.value * 100) + '%' : '';
       label = (f.control ? f.control.toUpperCase() : 'MORPH') + ' ' + pct;
-    } else if (f) { mode = 'seen'; label = 'SEEN'; }  // not "armed": may be waiting for an open-hand re-arm
-    $('handPanel').dataset.hand = mode;
-    $('handState').textContent = label;
-    $('handEmptyWord').textContent = mode === 'none' ? 'NO HAND' : HAND_URL ? 'NO CAMERA' : 'HAND VIEW OFF';
-    $('handEmptyHint').textContent = mode === 'none' ? 'Show one hand to the camera.' : HAND_URL ? 'Start vision to see your hand.' : 'Remove ?hand=off to turn it on.';
+    } else if (f) {
+      mode = 'seen';
+      label = f.control ? f.control.toUpperCase() : 'SEEN';
+    }
+    const handPanel = $('handPanel');
+    if (handPanel) handPanel.dataset.hand = mode;
+    const handState = $('handState');
+    if (handState) {
+      handState.textContent = label;
+      handState.style.color = fistActive ? '#22c55e' : '';
+    }
+    const handEmptyWord = $('handEmptyWord');
+    if (handEmptyWord) handEmptyWord.textContent = mode === 'none' ? 'NO HAND' : HAND_URL ? 'NO CAMERA' : 'HAND VIEW OFF';
+    const handEmptyHint = $('handEmptyHint');
+    if (handEmptyHint) handEmptyHint.textContent = mode === 'none' ? 'Show one hand to the camera.' : HAND_URL ? 'Start vision to see your hand.' : 'Remove ?hand=off to turn it on.';
 
     const dpr = window.devicePixelRatio || 1;
     const w = handCanvas.clientWidth, h = handCanvas.clientHeight;
@@ -352,7 +464,10 @@
       hctx.fillStyle = color('--off'); hctx.fillRect(w - 10, 4, 6, h - 8);
       hctx.fillStyle = color('--accent'); hctx.fillRect(w - 10, h - 4 - rh, 6, rh);
     }
-    if (!f || !f.present || f.landmarks.length !== 21) return;
+    if (!f || !f.present || f.landmarks.length !== 21) {
+      drawGhostHand(hctx, w, h, now);
+      return;
+    }
 
     // mirrored like a mirror, then follow-zoomed so the hand fills the panel; the rail shows the value
     const Q = f.landmarks.map(([x, y]) => [(1 - x) * CAM_ASPECT, y]);
@@ -364,13 +479,20 @@
     const sc = (0.72 * Math.min(w, h)) / view.size;
     const P = Q.map(([x, y]) => [(x - view.cx) * sc + w / 2, (y - view.cy) * sc + h / 2]);
     hctx.lineWidth = 3; hctx.lineCap = 'square';
-    hctx.strokeStyle = engaged ? color('--accent') : color('--muted');
+    hctx.strokeStyle = fistActive ? '#22c55e' : engaged ? color('--accent') : color('--muted');
     hctx.beginPath();
     for (const [a, b] of BONES) { hctx.moveTo(P[a][0], P[a][1]); hctx.lineTo(P[b][0], P[b][1]); }
     hctx.stroke();
-    hctx.fillStyle = color('--text');
+    hctx.fillStyle = fistActive ? '#4ade80' : color('--text');
     for (const [x, y] of P) hctx.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
-    if (engaged) {  // the pinch: thumb tip + index tip
+    if (fistActive) {
+      // Highlight knuckles in bright green to indicate fist swap
+      hctx.strokeStyle = '#4ade80';
+      hctx.lineWidth = 2;
+      for (const i of [8, 12, 16, 20]) {
+        hctx.strokeRect(Math.round(P[i][0]) - 6, Math.round(P[i][1]) - 6, 12, 12);
+      }
+    } else if (engaged) {  // the pinch: thumb tip + index tip
       hctx.strokeStyle = color('--accent'); hctx.lineWidth = 2;
       for (const i of [4, 8]) hctx.strokeRect(Math.round(P[i][0]) - 7, Math.round(P[i][1]) - 7, 14, 14);
     }

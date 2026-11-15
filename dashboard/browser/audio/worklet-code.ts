@@ -167,6 +167,7 @@ class Looper {
     this.length = 0;
     this.pos = 0;
     this.state = 'idle';
+    this.finished = false;
   }
   toggle() {
     if (this.state === 'idle') {
@@ -202,6 +203,7 @@ class Looper {
     }
     this.pos = 0;
     this.state = 'playing';
+    this.finished = true;
   }
   process(dry, out, offset, count) {
     if (this.state === 'recording') {
@@ -500,6 +502,13 @@ class OmniRiffDSPProcessor extends AudioWorkletProcessor {
 
     // 2. Looper processing
     this.looper.process(this.dryBuf, this.loopBuf, 0, count);
+    if (this.looper.finished) {
+      // A finished take (the dry input exactly as the looper recorded it) for the coach.
+      // One copy per recording, off the hot path of every other block.
+      this.looper.finished = false;
+      const samples = this.looper.buf.slice(0, this.looper.length);
+      this.port.postMessage({ type: 'take', samplerate: sr, samples }, [samples.buffer]);
+    }
 
     // 3. Mix = dry + loop
     for (let i = 0; i < count; i++) {

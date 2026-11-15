@@ -35,8 +35,9 @@
 .loop-len { font-size: var(--p3); font-family: var(--font-pixel); font-weight: 400; margin-left: -0.125em; }   /* the pixel font has side bearing: pull the ink onto the dot's axis */
 .loop-state .hint { margin-left: -1px; }
 
-/* tone: two big readouts and the power button */
-.tone-row { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 296px; min-height: 0; }
+/* tone: three cards (filter, reverb, camera) and the side power button */
+.tone-row { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.tone-head-bar { display: flex; align-items: center; justify-content: space-between; height: 32px; margin-bottom: var(--s2); padding: 0 4px; box-sizing: border-box; max-width: 100%; }
 .card .tag { display: none; }
 .card h3 { font-size: var(--p2); color: var(--muted); }
 .card.target h3, .card.live h3 { color: var(--accent); }
@@ -163,10 +164,9 @@
   .spot-ba b { font-size: var(--p1); }
   .spot-ba span { font-size: 12px; }
 }
-}
 
-/* the pinch readout replaces the cards completely, FX on or off */
-.app[data-fx="engaged"] .cards { opacity: 0 !important; }
+/* cards remain visible at all times */
+.cards { opacity: 1 !important; visibility: visible !important; }
 
 /* ---------- sizing that can't overflow (measured review, SM 2026-11-14) ----------
    Every big readout sizes itself to its own box (container query units), so a 3-digit value or a
@@ -228,7 +228,6 @@
 .coach-col[data-ask="true"] .plan, .coach-col:has(#coachBA:not([hidden])) .plan { display: none; }
 .coach-col { overflow: hidden; }
 @media (max-height: 820px) { .booth .riff-socket { width: 88px; height: 88px; } .steps li { padding: 2px var(--s1); } }
-.app[data-fx="engaged"] .cards { visibility: hidden; transition: none; }
 
 /* session map + mode (ROADMAP §1 "How you use it") */
 .steps-head { display: flex; justify-content: flex-end; }
@@ -261,21 +260,199 @@
 .app[data-fx="engaged"] .engaged { border: var(--stroke) solid var(--accent); box-shadow: none; }
 .spot-target { outline: var(--stroke) solid var(--accent); outline-offset: calc(var(--stroke) * -1); }
 
-/* tone row: the effects fill the width; one fixed slot on the right holds the FX button, or the hand while you adjust */
-.fx-zone { grid-column: 1; }
-.fx-power, .hand-inset { grid-column: 2; grid-row: 1; }
-.fx-power { box-shadow: inset 0 -6px 0 var(--shadow); }
-.fx-power:active, .fx-power.pressed { transform: none; box-shadow: inset 0 -2px 0 var(--shadow); }
-.fx-led, .fx-power[data-on="true"] .fx-led { box-shadow: none; }
-.hand-inset { display: none; width: auto; min-height: 0; }
-.app[data-fx="engaged"] .hand-inset { display: flex; animation: none; }
-.app[data-fx="engaged"] .fx-power { display: none; }
-.hand-inset .hand { flex: 1; min-height: 0; }
-.hand-head { position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 32px; padding: 0 var(--s3); box-sizing: border-box; background: var(--panel); border-bottom: var(--stroke) solid var(--line-2); }
-.hand-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hand canvas { top: 32px; height: calc(100% - 32px); }
-.hand-empty { top: 32px; }
-@media (max-height: 820px) { .tone-row { grid-template-columns: minmax(0, 1fr) 264px; } }
+/* tone row: three equal cards (Filter, Reverb, Camera) and side FX power button */
+.tone-row { width: 100%; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.fx-zone { width: 100%; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.cards { width: 100%; height: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gutter); min-height: 0; }
+
+.tone-head-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sim-play-btn {
+  height: 28px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 1px 1px 0 var(--shadow);
+  color: var(--text);
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  user-select: none;
+  flex: none;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.sim-play-btn[hidden] {
+  display: none !important;
+}
+.sim-play-btn:hover {
+  border-color: var(--text);
+}
+.sim-play-btn[data-playing="true"] {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+.sim-play-btn[data-playing="false"] {
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--dim);
+}
+.sim-play-btn[data-playing="false"]:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.sim-play-btn .sim-play-icon {
+  font-size: 10px;
+  line-height: 1;
+}
+.sim-play-btn .sim-play-text {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-pixel);
+}
+
+.side-fx {
+  height: 28px;
+  padding: 0 8px 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 1px 1px 0 var(--shadow);
+  color: var(--text);
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  user-select: none;
+  flex: none;
+  margin-right: 6px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.side-fx:hover { border-color: var(--text); }
+.side-fx .fx-label-text { font-size: 11px; font-weight: 700; font-family: var(--font-pixel); color: var(--text); }
+
+/* Basic side-to-side left-to-right toggle switch matching reference */
+.side-fx .fx-slider-switch {
+  width: 38px;
+  height: 20px;
+  border-radius: 999px;
+  background: #2a2b35;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  flex: none;
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease;
+}
+.side-fx .fx-slider-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  position: absolute;
+  left: 3px;
+  transform: translateX(0);
+  transition: transform 0.22s cubic-bezier(0.25, 1, 0.5, 1), background-color 0.2s ease;
+}
+/* ON state (data-on="true"): thumb slides to the right, track turns green */
+.side-fx[data-on="true"] .fx-slider-switch {
+  background: #22c55e;
+  border-color: #16a34a;
+}
+.side-fx[data-on="true"] .fx-slider-thumb {
+  transform: translateX(18px);
+  background: #ffffff;
+}
+/* OFF state (data-on="false"): thumb on the left */
+.side-fx[data-on="false"] .fx-slider-switch {
+  background: #2a2b35;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.side-fx[data-on="false"] .fx-slider-thumb {
+  transform: translateX(0);
+  background: #94a3b8;
+}
+.side-fx .fx-word {
+  font-size: 11px;
+  font-family: var(--font-pixel);
+  min-width: 24px;
+  text-align: left;
+}
+.side-fx[data-on="true"] .fx-word { color: #22c55e; }
+.side-fx[data-on="false"] .fx-word { color: var(--dim); }
+
+/* Card 3: Detected Hand */
+.card-hand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s3);
+  background: var(--panel);
+  border: var(--stroke) solid var(--line-2);
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+.card-hand header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: none;
+}
+.card-hand header h3 {
+  font: var(--p3)/1 var(--font-pixel);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hand-state-tag {
+  display: inline-block !important;
+  font: var(--p1)/1 var(--font-pixel);
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 2px 6px;
+  visibility: visible;
+}
+.hand-viewport {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.hand-viewport canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.card-hand .swap-toast {
+  top: 16px;
+}
+.hand-state {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.steps:empty {
+  display: none;
+}
 
 /* tone cards: the sub-label always sits under the number, on the left edge */
 .readout { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; gap: var(--s2); }

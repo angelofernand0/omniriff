@@ -3,6 +3,7 @@ import { BrowserSimulatorAdapter } from './adapters/browser-simulator';
 import { BrowserLiveAdapter } from './adapters/browser-live';
 import { PythonBridgeAdapter } from './adapters/python-bridge';
 import { absentHand, type AdapterConnection } from './adapters/connection';
+import { WebSerialPedalAdapter } from './adapters/web-serial';
 import type { StateFrame, HandFrame } from './protocol/types';
 
 export type OperatingMode = 'simulator' | 'live' | 'python';
@@ -16,6 +17,7 @@ export class SourceManager {
   public readonly simulator: BrowserSimulatorAdapter;
   public readonly live: BrowserLiveAdapter;
   public readonly python: PythonBridgeAdapter;
+  public readonly pedal: WebSerialPedalAdapter;
   public activeMode: OperatingMode | null = null;
   private activeAdapter: Adapter | null = null;
   private ready = false;
@@ -31,6 +33,18 @@ export class SourceManager {
     this.simulator = adapters.simulator ?? new BrowserSimulatorAdapter();
     this.live = adapters.live ?? new BrowserLiveAdapter();
     this.python = adapters.python ?? new PythonBridgeAdapter();
+    this.pedal = new WebSerialPedalAdapter();
+    this.live.pedal = this.pedal;
+    this.simulator.pedal = this.pedal;
+    this.pedal.onAction(action => {
+      if (action === 'loop') this.sendControl('loop');
+      else if (action === 'bypass') this.sendControl('bypass');
+      else if (action === 'practice') {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new KeyboardEvent('keydown', { key: 'y' }));
+        }
+      }
+    });
     for (const mode of ['simulator', 'live', 'python'] as const) {
       const adapter = this[mode];
       adapter.onState(frame => {

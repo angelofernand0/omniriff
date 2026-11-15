@@ -290,3 +290,7 @@
 @media (prefers-reduced-motion: reduce) {
   .step[data-new="true"], .work li[data-new="true"], .step[data-just="true"], .step[data-just="true"] .mark, .metric[data-flash="true"] { animation: none; }
 }
+
+/* REPLAY: a recorded coach session; always labelled, never mistaken for live */
+.replay-tag { margin: 0 0 var(--s3); padding: var(--s2) var(--s3); font: var(--p1)/1.2 var(--font-pixel); color: var(--bg); background: var(--warn); border: var(--stroke) solid var(--warn); letter-spacing: .04em; }
+.replay-tag[hidden] { display: none; }

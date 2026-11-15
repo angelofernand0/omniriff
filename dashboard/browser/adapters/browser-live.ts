@@ -10,6 +10,26 @@ import { GestureController } from '../vision/gesture-controller';
 import { Setlist } from '../vision/setlist';
 import type { StateFrame, HandFrame } from '../protocol/types';
 import { absentHand, type ConnectionCallback } from './connection';
+import type { WebSerialPedalAdapter } from './web-serial';
+
+export function showSwapToast(control: 'filter' | 'reverb'): void {
+  if (typeof document === 'undefined') return;
+  const toast = document.getElementById('swapToast');
+  const text = document.getElementById('swapToastText');
+  if (toast && text) {
+    text.textContent = `SWAPPED TO ${control.toUpperCase()}`;
+    toast.hidden = false;
+    toast.classList.remove('swap-toast-pop');
+    void toast.offsetWidth; // re-flow to restart CSS animation
+    toast.classList.add('swap-toast-pop');
+    if ((toast as any)._timer) clearTimeout((toast as any)._timer);
+    (toast as any)._timer = setTimeout(() => {
+      toast.hidden = true;
+      toast.classList.remove('swap-toast-pop');
+      (toast as any)._timer = null;
+    }, 1400);
+  }
+}
 
 export class BrowserLiveAdapter {
   public readonly modeId = 'live' as const;
@@ -20,6 +40,7 @@ export class BrowserLiveAdapter {
   public readonly tracker: LiveHandTracker;
   public readonly controller: GestureController;
   public readonly setlist: Setlist;
+  public pedal: WebSerialPedalAdapter | null = null;
 
   private onStateCb: ((frame: StateFrame) => void) | null = null;
   private onHandCb: ((frame: HandFrame) => void) | null = null;
@@ -35,6 +56,17 @@ export class BrowserLiveAdapter {
     this.target = value;
     this.controller.control = value === 'reverb' ? 'reverb' : 'filter';
     this.controller.rearm();
+  }
+
+  public swapTarget(): void {
+    const next = this.target === 'filter' ? 'reverb' : 'filter';
+    this.gestureTarget = next;
+    const select = document.getElementById('browserTarget') as HTMLSelectElement | null;
+    if (select) {
+      select.value = next;
+      select.dispatchEvent(new Event('change'));
+    }
+    showSwapToast(next);
   }
 
   private animFrameId: number | null = null;
@@ -62,6 +94,9 @@ export class BrowserLiveAdapter {
     this.audio = new AudioEngine();
     this.devices = new DeviceManager();
     this.tracker = new LiveHandTracker();
+    this.tracker.onFistSwap = () => {
+      this.swapTarget();
+    };
     this.controller = new GestureController({
       low: 0.8,
       high: 0.2,
@@ -218,12 +253,14 @@ export class BrowserLiveAdapter {
           dropped: 0,
           session: 0,
         },
+        ...(this.pedal?.sourcesArduino ? { arduino: this.pedal.sourcesArduino } : {}),
       },
       adapters: {
         udp: { status: 'disabled', errors: 0, last_error: null },
-        serial: { status: 'disabled', errors: 0, last_error: null },
+        serial: this.pedal?.adapterStatus ?? { status: 'disabled', errors: 0, last_error: null },
         websocket: { status: 'disabled', errors: 0, last_error: null },
       },
+      ...(this.pedal?.pedalTelemetry ? { pedal: this.pedal.pedalTelemetry } : {}),
     };
   }
 

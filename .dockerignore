@@ -1,0 +1,20 @@
+# coach/Dockerfile: never bake keys, player memory, takes or recordings into the image
+.env
+.env.*
+**/.venv
+node_modules
+dist
+runs
+recordings
+models
+.git
+.claude
+coach/workspace/takes
+coach/workspace/journal
+coach/workspace/usage.jsonl*
+coach/workspace/memories/player.md
+coach/workspace-fixtures
+coach/fixtures/generated
+**/__pycache__
+*.wav
+*.mp3
