@@ -309,13 +309,49 @@ class CoachRunner:
         try:
             from langchain_core.callbacks import BaseCallbackHandler
 
+            runner = self
+            live = self.quiet_until_asked
+
             class _ToolLog(BaseCallbackHandler):
-                """One terminal line per tool call, so a stuck coach is diagnosable."""
+                """One terminal line per tool call, and (live rig) the real plan and harness steps on the
+                dashboard as they happen: the todo list, subagent runs, skill reads, memory writes."""
+                def __init__(self):
+                    self._subagents: dict = {}
+
+                def _show(self, who, what, status):
+                    try:
+                        runner.feed.publish_activity(who, what[:60], status)
+                    except Exception:  # the dashboard strip must never break the coach
+                        LOG.debug("activity not shown", exc_info=True)
+
                 def on_tool_start(self, serialized, input_str, **kw):
-                    LOG.info("coach tool -> %s %s", (serialized or {}).get("name") or kw.get("name"), str(input_str)[:160])
+                    name = (serialized or {}).get("name") or kw.get("name")
+                    LOG.info("coach tool -> %s %s", name, str(input_str)[:160])
+                    if not live:
+                        return
+                    args = kw.get("inputs") if isinstance(kw.get("inputs"), dict) else {}
+                    try:
+                        if name == "write_todos":
+                            todos = _todo_frame(args)
+                            if todos:
+                                runner.feed.publish(todos=todos)
+                        elif name == "task":
+                            sub = str(args.get("subagent_type") or "subagent")
+                            self._subagents[kw.get("run_id")] = sub
+                            self._show("coach", f"subagent {sub}", "running")
+                        elif name == "read_file" and str(args.get("file_path", "")).startswith("/skills/"):
+                            skill = str(args["file_path"]).split("/")[2]
+                            self._show("coach", f"open skill {skill}", "done")
+                        elif name == "edit_file" and str(args.get("file_path", "")).startswith("/memories/"):
+                            self._show("coach", "write /memories/player.md", "done")
+                    except Exception:
+                        LOG.debug("plan/activity frame skipped", exc_info=True)
 
                 def on_tool_end(self, output, **kw):
                     LOG.info("coach tool <- %s", str(getattr(output, "content", output))[:160])
+                    sub = self._subagents.pop(kw.get("run_id"), None)
+                    if live and sub:
+                        self._show("coach", f"subagent {sub}", "done")
 
             callbacks.append(_ToolLog())
         except ImportError:
