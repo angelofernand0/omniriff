@@ -261,8 +261,10 @@ class CoachRunner:
             self.player_note = text
             with (journal / "notes.md").open("a") as stream:
                 stream.write(text + "\n")
+            cue = "Got it, I'll keep that in mind for the next take."
             self.feed.publish(state="speaking", mood="encouraging", target="player",
-                              cue="Got it, I'll keep that in mind for the next take.")
+                              cue=cue)
+            self._speak(cue)
             self.feed.publish_activity("coach", "write /journal/notes.md", "done")
 
     def _poll_practice_action(self) -> None:

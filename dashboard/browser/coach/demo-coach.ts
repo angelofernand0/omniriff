@@ -21,12 +21,36 @@ import type { TrackedHand } from '../vision/hand-tracker';
 import { isThumbsUp, ThumbsUpHold } from '../vision/thumbs-up';
 import { DEMO_MEMORY, LINES, SEED_MEMORY, type LineId } from './demo-script';
 
+export function generateCoachReply(text: string): string {
+  const lower = text.toLowerCase();
+  if (/speed|fast|tempo|bpm|quick|slow|accelerat/.test(lower)) {
+    return "Got it, shifting focus to speed and tempo. Keep your fretting hand relaxed and let's push the pace on your next take.";
+  }
+  if (/tim(ing|e)|rhythm|groove|drift|metronome|sync|beat|pocket/.test(lower)) {
+    return "Understood, locked in on timing and rhythm. Focus on tight, even attacks right on the beat.";
+  }
+  if (/chord|transition|fret|finger|progression|barre|shape/.test(lower)) {
+    return "Heard loud and clear. Focus on clean finger placement and smooth transitions between chords.";
+  }
+  if (/strum|pick|wrist|pluck|attack|dynamics/.test(lower)) {
+    return "Got it! Keep your wrist loose and aim for consistent attack and dynamic control on every stroke.";
+  }
+  if (/tone|sound|clean|mute|buzz|clarity|crisp/.test(lower)) {
+    return "Dialing in your tone. Keep your notes articulate and focus on muting any unplayed strings.";
+  }
+  if (/scale|solo|riff|lead|phrasing|improv|bend/.test(lower)) {
+    return "Nice, working on phrasing and melodic flow. Keep your notes deliberate and expressive.";
+  }
+  return `Understood! Updated your goal to focus on "${text.slice(0, 50)}". Show me what you've got on your next take.`;
+}
+
 type Msg = Record<string, unknown>;
 const MEMORY_KEY = 'omniriff.demo.lastTime';
 const voiceFiles = import.meta.glob('./demo-voice/*.mp3', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 
 function remember(value?: string | null): string {
   try {
+    if (typeof localStorage === 'undefined') return '';
     if (value === undefined) return localStorage.getItem(MEMORY_KEY) || '';
     if (value === null) localStorage.removeItem(MEMORY_KEY); else localStorage.setItem(MEMORY_KEY, value);
   } catch { /* private window: the seeded memory still shows */ }
@@ -75,11 +99,13 @@ export class DemoCoach {
     };
     manager.onState(frame => this.onState(frame));
     manager.live.tracker.onAllHands = hands => this.onHands(hands);
-    window.addEventListener('keydown', event => {
-      if (event.key.toLowerCase() !== 'y' || event.repeat) return;
-      if (event.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
-      if (this.step === 'play') this.startPractice();   // with an approval pending, coach.js sends coach.approve
-    });
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', event => {
+        if (event.key.toLowerCase() !== 'y' || event.repeat) return;
+        if (event.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
+        if (this.step === 'play') this.startPractice();   // with an approval pending, coach.js sends coach.approve
+      });
+    }
     void this.loadVoice();
   }
 
@@ -132,13 +158,34 @@ export class DemoCoach {
   }
 
   private heard(text: string): void {
-    if (this.step !== 'play' && this.step !== 'goal') return;
-    const goal = text.trim().replace(/\s+/g, ' ').slice(0, 80) || 'Get my timing right';
+    const clean = text.trim().replace(/\s+/g, ' ');
+    if (!clean) return;
+    const goal = clean.slice(0, 80) || 'Get my timing right';
     this.goal = goal;
-    this.step = 'take1';
-    this.publish({ session: this.session({ goal }), before_after: null, drill_card: null, mark: null, todos: [] });
-    this.say('goalTiming', { state: 'speaking', mood: 'encouraging', target: 'player' });
+
+    if (this.step === 'play' || this.step === 'goal') {
+      this.step = 'take1';
+      this.publish({ session: this.session({ goal }), before_after: null, drill_card: null, mark: null, todos: [] });
+      this.say('goalTiming', { state: 'speaking', mood: 'encouraging', target: 'player' });
+      this.activity('coach', 'write /journal/goal.md', 'done');
+      return;
+    }
+
+    // Subsequent voice / text input: update session goal and reply conversationally like an AI coach
+    const isDrill = this.step === 'drill' || this.step === 'approval';
+    const isDone = this.step === 'done';
+    const history = isDone ? [118, 31] : isDrill ? [118] : undefined;
+    this.publish({ session: this.session({ goal: this.goal, drill: isDrill, history, done: isDone }) });
     this.activity('coach', 'write /journal/goal.md', 'done');
+
+    const reply = generateCoachReply(clean);
+    this.sayText(reply, { state: 'speaking', mood: 'encouraging', target: 'player' });
+    const replyDuration = Math.max(2500, reply.split(' ').length * 350);
+    this.later(replyDuration, () => {
+      if (this.frame.cue === reply) {
+        this.publish({ state: 'idle', mood: 'neutral' });
+      }
+    });
   }
   private goal = 'Get my timing right';
 
@@ -263,9 +310,13 @@ export class DemoCoach {
     if (b64) this.socket?.deliver({ version: 1, type: 'coach.audio', timestamp_ms: Date.now(), text, mime: 'audio/mpeg', audio_b64: b64 });
   }
 
+  private sayText(text: string, frame: Msg): void {
+    this.publish({ ...frame, cue: text });
+  }
+
   private lineMs(id: LineId): number { return LINES[id].ms; }
 
-  private later(ms: number, fn: () => void): void { this.timers.push(window.setTimeout(fn, ms)); }
+  private later(ms: number, fn: () => void): void { this.timers.push(Number(setTimeout(fn, ms))); }
 
   private async loadVoice(): Promise<void> {
     await Promise.all((Object.keys(LINES) as LineId[]).map(async id => {

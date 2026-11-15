@@ -134,11 +134,13 @@
       const ready = pendingAudio.get(f.cue);
       if (ready && !muted) { pendingAudio.delete(f.cue); enqueue(ready); return; }
       clearTimeout(waitTimer);
+      const isDemo = f && typeof f.session_id === 'string' && f.session_id.startsWith('demo-');
+      const delay = (hasCoachVoice && !f.scripted && !isDemo) ? 1200 : 150;
       waitTimer = setTimeout(() => {          // no audio in time: say it with the browser (or just type it)
         if (frame !== f || spoken === f.cue) return;
-        if (!muted && !hasCoachVoice && 'speechSynthesis' in window) enqueue({ text: f.cue, browser: true });
+        if (!muted && 'speechSynthesis' in window) enqueue({ text: f.cue, browser: true });
         else if (!busy()) { held = null; show(f, f.cue.split(' ').length / 2.6); }
-      }, muted ? 0 : 2500);
+      }, muted ? 0 : delay);
       return;
     }
     if (busy()) held = f; else show(f, 0);   // never move mid-sentence
