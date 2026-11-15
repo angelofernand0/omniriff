@@ -23,6 +23,7 @@ class FakeContext {
   audioWorklet = { addModule: vi.fn(() => loadModule()) };
   resume = vi.fn(async () => { await resumeContext(); this.state = 'running'; });
   close = vi.fn(async () => { this.state = 'closed'; });
+  setSinkId = vi.fn(async (_sinkId: string) => {});
   constructor() { contexts.push(this); }
   createGain() { const gain = new FakeGain(); this.gains.push(gain); return gain; }
   createMediaStreamSource(_stream: MediaStream) {
@@ -212,6 +213,16 @@ describe('AudioEngine resource and source lifecycle', () => {
       { type: 'set-synth-bpm', bpm: 240 },
       { type: 'pluck', freqHz: 110, ampScale: 0 },
     ]);
+    await audio.stop();
+  });
+
+  it('updates audio output device sink ID', async () => {
+    const audio = new AudioEngine();
+    await audio.start('synth');
+    const result = await audio.setAudioOutput('headphones-device-id');
+    expect(result).toBe(true);
+    expect(contexts[0].setSinkId).toHaveBeenCalledWith('headphones-device-id');
+    expect(audio.outputDeviceId).toBe('headphones-device-id');
     await audio.stop();
   });
 });

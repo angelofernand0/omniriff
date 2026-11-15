@@ -16,6 +16,7 @@ declare global { interface Window { OmniBrowserSource?: BrowserSource; OmniCoach
 
 installVoiceMic();
 const manager = new SourceManager();
+(window as any).OmniRiff.pedal = { connected: () => manager.pedal.isConnected };
 let connected = false;
 let coachLoaded = false;
 let busy = false;
@@ -93,9 +94,10 @@ dialog.innerHTML = `
   <p id="browserDescription"></p>
   <p id="browserStatus" role="status" aria-live="polite">Ready. Sound starts when you press Start.</p>
   <div class="browser-actions"><button type="button" id="browserStart">Start simulator</button><button type="button" id="browserMute" disabled>Mute instrument</button><button type="button" id="browserStop" disabled>Stop</button></div>
-  <fieldset id="browserLive"><legend>Live audio input</legend>
+  <fieldset id="browserLive"><legend>Live audio input & output</legend>
     <label>Audio input<select id="browserInput"><option value="">System default</option></select></label>
     <label>Input channel<select id="browserChannel"><option value="0">Channel 1 / mono</option><option value="1">Channel 2 / instrument</option></select></label>
+    <label>Audio output<select id="browserOutput"><option value="">System default</option></select></label>
     <label>Camera<select id="browserCamera"><option value="">System default</option></select></label>
     <button type="button" id="browserRefresh" style="margin-top: 10px;">Refresh device list</button>
     <p>Starting requests microphone and camera access. Camera failure leaves audio and manual controls available.</p>
@@ -121,7 +123,7 @@ dialog.innerHTML = `
     <div id="devOpen" hidden>
       <div class="browser-actions"><button type="button" id="devLive">My guitar + camera</button><button type="button" id="devSim">Simulated guitar</button></div>
       <div class="browser-actions"><button type="button" id="demoReset">Reset for the pitch</button><button type="button" id="demoLeave">Leave dev demo</button><button type="button" id="devLock">Lock</button></div>
-      <p>The pitch session, scripted. <strong>Simulated guitar</strong> is the backup when the real rig fails: the computer plays the riff and you take it from the keyboard. <strong>L</strong> starts and stops a take, <strong>V</strong> (hold) talks to Riff, <strong>Y</strong> approves.</p>
+      <p>The pitch session, scripted. <strong>Simulated guitar</strong> is the backup when the real rig fails: the computer plays the riff and you take it from the keyboard. <strong>L</strong> starts and stops a take, <strong>V</strong> (hold) or a pedal double-tap talks to Riff, <strong>Y</strong> or a pedal hold approves.</p>
     </div>
     <p id="devStatus" role="status" aria-live="polite"></p>
   </details>
@@ -130,6 +132,7 @@ document.body.append(dialog);
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const mode = $<HTMLSelectElement>('browserMode');
 const input = $<HTMLSelectElement>('browserInput');
+const output = $<HTMLSelectElement>('browserOutput');
 const camera = $<HTMLSelectElement>('browserCamera');
 const channel = $<HTMLSelectElement>('browserChannel');
 const start = $<HTMLButtonElement>('browserStart');
@@ -151,7 +154,7 @@ function describe() {
   }[selected] || '';
   start.textContent = connected && manager.activeMode === selected ? 'Keep playing' : { simulator: 'Start simulator', live: 'Start live input', python: 'Connect Python bridge' }[selected] || 'Start';
   start.disabled = busy;
-  mode.disabled = busy; input.disabled = camera.disabled = channel.disabled = busy;
+  mode.disabled = busy; input.disabled = output.disabled = camera.disabled = channel.disabled = busy;
 }
 function label() {
   const active = manager.activeMode;
@@ -228,7 +231,12 @@ const voiceMic = $<HTMLSelectElement>('voiceMic');
 voiceMic.addEventListener('change', () => saveVoiceMic(voiceMic.value));
 async function refreshDevices() {
   await manager.live.devices.enumerate();
-  for (const [select, devices] of [[input, manager.live.devices.audioInputs], [camera, manager.live.devices.videoInputs], [voiceMic, manager.live.devices.audioInputs]] as const) {
+  for (const [select, devices] of [
+    [input, manager.live.devices.audioInputs],
+    [output, manager.live.devices.audioOutputs],
+    [camera, manager.live.devices.videoInputs],
+    [voiceMic, manager.live.devices.audioInputs],
+  ] as const) {
     const previous = select === voiceMic ? savedVoiceMic() : select.value;
     select.replaceChildren(new Option(select === voiceMic ? 'Laptop mic (automatic)' : 'System default', ''));
     for (const device of devices) select.add(new Option(device.label, device.deviceId));
@@ -236,6 +244,12 @@ async function refreshDevices() {
   }
 }
 $('browserRefresh').addEventListener('click', () => { void refreshDevices().catch(error => { status.textContent = String(error); }); });
+output.addEventListener('change', async () => {
+  const deviceId = output.value;
+  manager.live.devices.selectedAudioOutputId = deviceId || null;
+  await manager.live.audio.setAudioOutput(deviceId);
+  await manager.simulator.audio.setAudioOutput(deviceId);
+});
 mode.addEventListener('change', () => { describe(); });
 function openSettings() {
   if (!document.getElementById('drawer')!.hidden) document.getElementById('drawerClose')!.click();
@@ -264,8 +278,11 @@ start.addEventListener('click', async () => {
       return;
     }
     manager.live.devices.selectedAudioInputId = input.value || null;
+    manager.live.devices.selectedAudioOutputId = output.value || null;
     manager.live.devices.selectedVideoInputId = camera.value || null;
     manager.live.devices.selectedChannel = Number(channel.value);
+    await manager.live.audio.setAudioOutput(output.value);
+    await manager.simulator.audio.setAudioOutput(output.value);
     manager.simulator.gestureTarget = manager.live.gestureTarget = 'filter';
     if (requested === 'python' && remoteCoach) throw new Error('Disconnect Riff (the hosted coach) before using the Python bridge.');
     if (requested === 'python' && !coachLoaded) {

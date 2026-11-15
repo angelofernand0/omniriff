@@ -442,6 +442,8 @@
     else if (step === 4) acts = [['WAIT', 'Riff is wrapping up']];
     else if (step === 1) acts = [['TAP', 'play what you\u2019re working on']];
     else acts = [['TAP', loop === 'playing' ? 'clear, then record a fresh take' : 'record a fresh drill take']];
+    // a plugged-in pedal talks with a double tap (browser/adapters/pedal-taps.ts)
+    if (awake && loop !== 'recording' && !(f && f.state === 'thinking') && window.OmniRiff.pedal && window.OmniRiff.pedal.connected()) acts.push(['TAP\u00d72', 'talk to Riff', 'V']);
     if (ui.pedal) {
       const key = JSON.stringify(acts);
       if (ui.pedal.dataset.acts !== key) {
@@ -462,6 +464,9 @@
       ui.talkBtn.hidden = !awake || loop === 'recording' || (f && f.state === 'thinking');
       const ask = !play && step === 1 && !(ses && ses.goal);
       ui.talkBtn.dataset.ask = String(ask);   // Riff is asking what you're working on: the button leads
+      const key = $('talkKey'), pedalOn = !!(window.OmniRiff.pedal && window.OmniRiff.pedal.connected());
+      if (key) key.textContent = pedalOn ? 'TAP\u00d72' : 'HOLD V';
+      ui.talkBtn.title = pedalOn ? 'Double-tap the pedal (or hold V) to talk to Riff' : 'Hold to talk to Riff (V)';
     }
     if (ui.line) ui.line.dataset.empty = play ? (awake ? 'Free play. I\u2019ll stay quiet.' : 'Riff is asleep. You can still play.')
       : step === 1 ? 'Play me what you\u2019re working on.' : '';
@@ -619,7 +624,7 @@
     talk.heard = '';
     riffListens(true);
     if (!SR) { openTyping(); return; }
-    youMode('listening', '');
+    youMode('listening', talk.handsFree ? 'Listening\u2026 pause or tap the pedal to send.' : '');
     if (talk.handsFree) armQuiet(HANDS_FREE_FIRST_WORD_MS);
     const mic = window.OmniRiff.voiceMic;
     if (mic && mic.track) {
