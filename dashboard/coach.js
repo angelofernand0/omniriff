@@ -138,7 +138,8 @@
       const delay = (hasCoachVoice && !f.scripted && !isDemo) ? 1200 : 150;
       waitTimer = setTimeout(() => {          // no audio in time: say it with the browser (or just type it)
         if (frame !== f || spoken === f.cue) return;
-        if (!muted && 'speechSynthesis' in window) enqueue({ text: f.cue, browser: true });
+        // the Dev demo has Riff's recorded voice for every line: never a robot voice there, just the text
+        if (!muted && !isDemo && 'speechSynthesis' in window) enqueue({ text: f.cue, browser: true });
         else if (!busy()) { held = null; show(f, f.cue.split(' ').length / 2.6); }
       }, muted ? 0 : delay);
       return;

@@ -21,28 +21,19 @@ import type { TrackedHand } from '../vision/hand-tracker';
 import { isThumbsUp, ThumbsUpHold } from '../vision/thumbs-up';
 import { DEMO_MEMORY, LINES, SEED_MEMORY, type LineId } from './demo-script';
 
-export function generateCoachReply(text: string): string {
+/** Which recorded reply fits what you said (every reply has a clip, so Riff keeps its voice). */
+export function replyFor(text: string): LineId {
   const lower = text.toLowerCase();
-  if (/speed|fast|tempo|bpm|quick|slow|accelerat/.test(lower)) {
-    return "Got it, shifting focus to speed and tempo. Keep your fretting hand relaxed and let's push the pace on your next take.";
-  }
-  if (/tim(ing|e)|rhythm|groove|drift|metronome|sync|beat|pocket/.test(lower)) {
-    return "Understood, locked in on timing and rhythm. Focus on tight, even attacks right on the beat.";
-  }
-  if (/chord|transition|fret|finger|progression|barre|shape/.test(lower)) {
-    return "Heard loud and clear. Focus on clean finger placement and smooth transitions between chords.";
-  }
-  if (/strum|pick|wrist|pluck|attack|dynamics/.test(lower)) {
-    return "Got it! Keep your wrist loose and aim for consistent attack and dynamic control on every stroke.";
-  }
-  if (/tone|sound|clean|mute|buzz|clarity|crisp/.test(lower)) {
-    return "Dialing in your tone. Keep your notes articulate and focus on muting any unplayed strings.";
-  }
-  if (/scale|solo|riff|lead|phrasing|improv|bend/.test(lower)) {
-    return "Nice, working on phrasing and melodic flow. Keep your notes deliberate and expressive.";
-  }
-  return `Understood! Updated your goal to focus on "${text.slice(0, 50)}". Show me what you've got on your next take.`;
+  if (/speed|fast|tempo|bpm|quick|slow|accelerat/.test(lower)) return 'replySpeed';
+  if (/tim(ing|e)|rhythm|groove|drift|metronome|sync|beat|pocket/.test(lower)) return 'replyTiming';
+  if (/chord|transition|fret|finger|progression|barre|shape/.test(lower)) return 'replyChords';
+  if (/strum|pick|wrist|pluck|attack|dynamics/.test(lower)) return 'replyStrum';
+  if (/tone|sound|clean|mute|buzz|clarity|crisp/.test(lower)) return 'replyTone';
+  if (/scale|solo|riff|lead|phrasing|improv|bend/.test(lower)) return 'replyPhrasing';
+  return 'replyOther';
 }
+
+export function generateCoachReply(text: string): string { return LINES[replyFor(text)].text; }
 
 type Msg = Record<string, unknown>;
 const MEMORY_KEY = 'omniriff.demo.lastTime';
@@ -178,10 +169,9 @@ export class DemoCoach {
     this.publish({ session: this.session({ goal: this.goal, drill: isDrill, history, done: isDone }) });
     this.activity('coach', 'write /journal/goal.md', 'done');
 
-    const reply = generateCoachReply(clean);
-    this.sayText(reply, { state: 'speaking', mood: 'encouraging', target: 'player' });
-    const replyDuration = Math.max(2500, reply.split(' ').length * 350);
-    this.later(replyDuration, () => {
+    const id = replyFor(clean), reply = LINES[id].text;
+    this.say(id, { state: 'speaking', mood: 'encouraging', target: 'player' });
+    this.later(this.lineMs(id), () => {
       if (this.frame.cue === reply) {
         this.publish({ state: 'idle', mood: 'neutral' });
       }
@@ -308,10 +298,6 @@ export class DemoCoach {
     this.publish({ ...frame, cue: text });
     const b64 = this.audio.get(id);
     if (b64) this.socket?.deliver({ version: 1, type: 'coach.audio', timestamp_ms: Date.now(), text, mime: 'audio/mpeg', audio_b64: b64 });
-  }
-
-  private sayText(text: string, frame: Msg): void {
-    this.publish({ ...frame, cue: text });
   }
 
   private lineMs(id: LineId): number { return LINES[id].ms; }
