@@ -231,15 +231,16 @@ export class LiveHandTracker {
     const centerCurl = (d(8, 9) + d(12, 9) + d(16, 9) + d(20, 9)) / (4 * palmWidth);
     const curl = (fingerCurl + centerCurl) / 2;
 
-    // Closed fist swaps between Filter and Reverb with 2-second anti-flicker cooldown and latching
+    // Closed fist swaps between Filter and Reverb with 2.2-second anti-flicker cooldown and latching
+    const SWAP_COOLDOWN_MS = 2200;
     const isFist = curl <= 0.60;
     const isOpenHand = curl >= 0.78;
 
-    if (nowMs - this.lastSwapTimeMs >= 2000 && isOpenHand) {
+    if (nowMs - this.lastSwapTimeMs >= SWAP_COOLDOWN_MS && isOpenHand) {
       this.fistLatched = false;
     }
 
-    if (isFist && !this.fistLatched && (nowMs - this.lastSwapTimeMs >= 2000)) {
+    if (isFist && !this.fistLatched && (nowMs - this.lastSwapTimeMs >= SWAP_COOLDOWN_MS)) {
       this.fistLatched = true;
       this.lastSwapTimeMs = nowMs;
       this.onFistSwap?.();
@@ -270,7 +271,8 @@ export class LiveHandTracker {
       control,
       value,
       landmarks,
-    };
+      isFist,
+    } as any;
   }
 
   private onMissedFrame(nowMs: number): void {

@@ -41,6 +41,7 @@
   // ---------- state ----------
   let ws = null, retry = 500, lastFrameAt = 0, state = null;
   let seq = 0;
+  let activeTarget = 'filter';
   const meters = { in: { hold: METER_FLOOR, holdAt: 0 }, out: { hold: METER_FLOOR, holdAt: 0 } };
   let clipUntil = 0, lastClipped = null;
   const fx = { filter: { prev: null, liveUntil: 0, movedAt: 0 }, reverb: { prev: null, liveUntil: 0, movedAt: 0 } };
@@ -190,7 +191,10 @@
       const vision = s.sources && s.sources.vision;
       const visionAccAge = vision && vision.last_accepted_ms != null ? s.timestamp_ms - vision.last_accepted_ms : Infinity;
       const visionSeenAge = vision && vision.last_seen_ms != null ? s.timestamp_ms - vision.last_seen_ms : Infinity;
-      const target = fx.reverb.movedAt > fx.filter.movedAt ? 'reverb' : 'filter';
+      if (hand.frame && hand.frame.control && (hand.frame.control === 'filter' || hand.frame.control === 'reverb')) {
+        activeTarget = hand.frame.control;
+      }
+      const target = activeTarget || (fx.reverb.movedAt > fx.filter.movedAt ? 'reverb' : 'filter');
       const engaged = visionAccAge < ENGAGED_MS && conn === 'live';
       app.dataset.fx = engaged ? 'engaged' : 'idle';
 
@@ -200,7 +204,7 @@
         const lit = Math.round(v * BLOCKS);
         blocks[k].forEach((b, i) => { b.className = i < lit ? 'on' : ''; });
         const card = $('card-' + k);
-        card.classList.toggle('target', k === target && (fx[k].movedAt > 0));
+        card.classList.toggle('target', k === target);
         card.classList.toggle('live', now < fx[k].liveUntil);
       }
       $('sub-filter').textContent = s.filter ? (s.filter.value >= 0.995 ? 'Open' : 'Low-pass ' + Math.round(s.filter.cutoff_hz) + ' Hz') : '';
@@ -386,45 +390,63 @@
     ctx.restore();
   }
 
+  function triggerSwapToast(control) {
+    const toast = $('swapToast');
+    const text = $('swapToastText');
+    if (!toast || !text) return;
+    if (toast._timer) clearTimeout(toast._timer);
+    text.textContent = `SWAPPED TO ${(control || 'EFFECT').toUpperCase()}`;
+    toast.hidden = false;
+    toast.classList.remove('swap-toast-pop');
+    void toast.offsetWidth;
+    toast.classList.add('swap-toast-pop');
+    toast._timer = setTimeout(() => {
+      toast.hidden = true;
+      toast.classList.remove('swap-toast-pop');
+      toast._timer = null;
+    }, 1400);
+  }
+
   function drawHand(now) {
     const fresh = hand.frame && now - hand.at < HAND_STALE_MS;
     if (!fresh) hand.frame = null;  // stale or disconnected: never keep an old hand on screen
     const f = hand.frame;
     if (f && f.control) {
       if (lastHandControl !== null && f.control !== lastHandControl) {
-        swapBanner = { control: f.control, start: now, until: now + 2000 };
+        swapBanner = { control: f.control, start: now, until: now + 1400 };
+        triggerSwapToast(f.control);
       }
       lastHandControl = f.control;
     }
+
+    const isFist = !!(f && f.isFist);
+    const inSwap = !!(swapBanner && now < swapBanner.until);
+    const fistActive = isFist || inSwap;
+
     let mode = 'off', label = HAND_URL ? 'NO CAMERA' : 'OFF';
     if (f && !f.present) { mode = 'none'; label = 'NO HAND'; }
-    else if (f && f.engaged) {
+    else if (fistActive) {
+      mode = 'seen';
+      label = inSwap ? `✦ SWAPPED TO ${(f.control || 'EFFECT').toUpperCase()}` : 'FIST';
+    } else if (f && f.engaged) {
       mode = 'engaged';
       const pct = typeof f.value === 'number' ? Math.round(f.value * 100) + '%' : '';
       label = (f.control ? f.control.toUpperCase() : 'MORPH') + ' ' + pct;
     } else if (f) {
       mode = 'seen';
-      label = (swapBanner && now < swapBanner.until) ? `✦ ${f.control ? f.control.toUpperCase() : 'SWAPPED'}` : (f.control ? f.control.toUpperCase() : 'SEEN');
+      label = f.control ? f.control.toUpperCase() : 'SEEN';
     }
     const handPanel = $('handPanel');
     if (handPanel) handPanel.dataset.hand = mode;
     const handState = $('handState');
-    if (handState) handState.textContent = label;
+    if (handState) {
+      handState.textContent = label;
+      handState.style.color = fistActive ? '#22c55e' : '';
+    }
     const handEmptyWord = $('handEmptyWord');
     if (handEmptyWord) handEmptyWord.textContent = mode === 'none' ? 'NO HAND' : HAND_URL ? 'NO CAMERA' : 'HAND VIEW OFF';
     const handEmptyHint = $('handEmptyHint');
     if (handEmptyHint) handEmptyHint.textContent = mode === 'none' ? 'Show one hand to the camera.' : HAND_URL ? 'Start vision to see your hand.' : 'Remove ?hand=off to turn it on.';
-
-    const swapToast = $('swapToast');
-    const swapToastText = $('swapToastText');
-    if (swapToast && swapToastText) {
-      if (swapBanner && now < swapBanner.until) {
-        swapToast.hidden = false;
-        swapToastText.textContent = `SWAPPED TO ${(swapBanner.control || 'REVERB').toUpperCase()}`;
-      } else {
-        swapToast.hidden = true;
-      }
-    }
 
     const dpr = window.devicePixelRatio || 1;
     const w = handCanvas.clientWidth, h = handCanvas.clientHeight;
@@ -458,50 +480,22 @@
     const sc = (0.72 * Math.min(w, h)) / view.size;
     const P = Q.map(([x, y]) => [(x - view.cx) * sc + w / 2, (y - view.cy) * sc + h / 2]);
     hctx.lineWidth = 3; hctx.lineCap = 'square';
-    hctx.strokeStyle = engaged ? color('--accent') : color('--muted');
+    hctx.strokeStyle = fistActive ? '#22c55e' : engaged ? color('--accent') : color('--muted');
     hctx.beginPath();
     for (const [a, b] of BONES) { hctx.moveTo(P[a][0], P[a][1]); hctx.lineTo(P[b][0], P[b][1]); }
     hctx.stroke();
-    hctx.fillStyle = color('--text');
+    hctx.fillStyle = fistActive ? '#4ade80' : color('--text');
     for (const [x, y] of P) hctx.fillRect(Math.round(x) - 3, Math.round(y) - 3, 6, 6);
-    if (engaged) {  // the pinch: thumb tip + index tip
+    if (fistActive) {
+      // Highlight knuckles in bright green to indicate fist swap
+      hctx.strokeStyle = '#4ade80';
+      hctx.lineWidth = 2;
+      for (const i of [8, 12, 16, 20]) {
+        hctx.strokeRect(Math.round(P[i][0]) - 6, Math.round(P[i][1]) - 6, 12, 12);
+      }
+    } else if (engaged) {  // the pinch: thumb tip + index tip
       hctx.strokeStyle = color('--accent'); hctx.lineWidth = 2;
       for (const i of [4, 8]) hctx.strokeRect(Math.round(P[i][0]) - 7, Math.round(P[i][1]) - 7, 14, 14);
-    }
-
-    // Animated swap popup badge on canvas
-    if (swapBanner && now < swapBanner.until) {
-      const elapsed = now - swapBanner.start;
-      const alpha = elapsed > 1600 ? Math.max(0, (2000 - elapsed) / 400) : 1.0;
-      const scale = elapsed < 200 ? 0.8 + 0.2 * (elapsed / 200) : 1.0;
-
-      hctx.save();
-      hctx.globalAlpha = alpha;
-      const bw = Math.min(w - 20, 190 * scale);
-      const bh = 28 * scale;
-      const bx = (w - bw) / 2;
-      const by = 12;
-
-      hctx.fillStyle = 'rgba(10, 10, 20, 0.94)';
-      hctx.strokeStyle = color('--accent');
-      hctx.lineWidth = 2;
-      hctx.beginPath();
-      if (hctx.roundRect) hctx.roundRect(bx, by, bw, bh, 6 * scale);
-      else hctx.rect(bx, by, bw, bh);
-      hctx.fill();
-      hctx.stroke();
-
-      hctx.fillStyle = color('--accent');
-      hctx.beginPath();
-      hctx.arc(bx + 14 * scale, by + bh / 2, 4 * scale, 0, Math.PI * 2);
-      hctx.fill();
-
-      hctx.font = `bold ${Math.round(11 * scale)}px var(--mono, "JetBrains Mono", monospace)`;
-      hctx.fillStyle = '#ffffff';
-      hctx.textAlign = 'center';
-      hctx.textBaseline = 'middle';
-      hctx.fillText(`SWAPPED TO ${swapBanner.control.toUpperCase()}`, bx + bw / 2 + 6 * scale, by + bh / 2);
-      hctx.restore();
     }
   }
   connectHand();

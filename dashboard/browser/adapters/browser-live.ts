@@ -24,7 +24,9 @@ export function showSwapToast(control: 'filter' | 'reverb'): void {
     if ((toast as any)._timer) clearTimeout((toast as any)._timer);
     (toast as any)._timer = setTimeout(() => {
       toast.hidden = true;
-    }, 2000);
+      toast.classList.remove('swap-toast-pop');
+      (toast as any)._timer = null;
+    }, 1400);
   }
 }
 
