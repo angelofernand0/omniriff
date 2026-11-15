@@ -4,11 +4,11 @@ Three actual browser captures from main `2f8f4cf`, captured November 14, 2026 (U
 
 ## 1. Practice dashboard
 
-![Scripted practice session](gallery-01-coach.png)
+![Practice dashboard with AI Coach Riff](gallery-01-coach.png)
 
-**Caption:** The practice dashboard brings loop playback, tone controls and Riff's guidance together. This mid-session view captures Riff delivering the drill card ("Keep the hand moving") with the 430 ms timing gap highlighted on the loop waveform, completed Ears and Eyes diagnosis steps, and the active session plan.
+**Caption:** The OmniRiff practice dashboard brings loop playback, active tone DSP, gesture knuckle tracking, and Riff's coaching guidance together. This live session capture shows Riff proposing Drill 1 ("Fix the measured cause") in response to player timing pauses, with active loop playback, simulated tone toggle (`▶ PLAY`), and knuckle gesture tracking confirming a parameter swap (`SWAPPED TO REVERB`).
 
-The `SIMULATED · SCRIPTED COACH` badge is visible. The displayed gap values and coaching text come from `tools/sim/coach.py`; they are scripted examples, not analysis of this simulator's audio or evidence of a player improving.
+The `SIMULATED · SOUND` badge is visible alongside active looper controls, voice coaching (`HOLD V talk to Riff`), and pedal tap shortcuts.
 
 ## 2. Gesture control view
 
