@@ -29,7 +29,6 @@
       "end_s": 3.0,
       "kind": "motion",
       "scene": "hook",
-      "asset": "runs/promo/raw/motion_beat01_hook.mp4",
       "source_start_s": 0.0,
       "shot_number": null,
       "description": "Black screen. Audio waveform freezes on stumble gap; red marker slams down. Riff pops in with speech bubble."
@@ -41,7 +40,6 @@
       "end_s": 10.0,
       "kind": "motion",
       "scene": "collage",
-      "asset": "runs/promo/raw/motion_beat02_collage.mp4",
       "source_start_s": 0.0,
       "shot_number": null,
       "description": "Fast kinetic collage: tapping phone app, rewinding video lesson, metronome swinging. No commercial brand logos."
@@ -53,7 +51,6 @@
       "end_s": 16.0,
       "kind": "motion",
       "scene": "logo",
-      "asset": "runs/promo/raw/motion_beat03_logo.mp4",
       "source_start_s": 0.0,
       "shot_number": null,
       "description": "Animated OmniRiff mascot hop + letter shockwave (#141). Tagline types on in pixel font: NEVER PUT THE GUITAR DOWN."
@@ -156,7 +153,6 @@
       "end_s": 92.0,
       "kind": "motion",
       "scene": "architecture",
-      "asset": "runs/promo/raw/motion_beat11_architecture.mp4",
       "source_start_s": 0.0,
       "shot_number": null,
       "description": "Rapid motion-graphics assembly of the 12 system blocks from architecture.svg (audio, vision, firmware, router, dashboard, coach)."
@@ -168,7 +164,6 @@
       "end_s": 96.0,
       "kind": "motion",
       "scene": "end",
-      "asset": "runs/promo/raw/motion_beat12_endcard.mp4",
       "source_start_s": 0.0,
       "shot_number": 9,
       "description": "OmniRiff logo, identity line, and GitHub repository URL. Riff mascot waves goodbye. Optional team wave (Shot 9)."

@@ -127,6 +127,13 @@ def compile_plan(edl, assets_root=None):
         scene = raw.get('scene')
         if scene is not None and (not isinstance(scene, str) or len(scene) > 80):
             raise ValueError(f'Segment {ident} scene must be a string up to 80 chars')
+        if kind == 'motion':
+            if not scene and not raw.get('asset'):
+                raise ValueError(f'Segment {ident} of kind "motion" requires a scene or asset')
+            if scene is not None and scene not in SCENES:
+                raise ValueError(f'Segment {ident} motion scene {scene!r} not in approved scenes: {SCENES}')
+        elif kind == 'video' and not raw.get('asset'):
+            raise ValueError(f'Segment {ident} of kind "video" requires an asset')
 
         asset = raw.get('asset')
         if asset is not None:

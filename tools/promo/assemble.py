@@ -316,7 +316,10 @@ def assemble(edl_or_plan, assets_root='.', output_path='runs/promo/omniriff.mp4'
         print(f"Captions:   {captions_path or 'None (skipped)'}")
         print(f"\n--- Segments ({len(plan['segments'])}) ---")
         for s in plan['segments']:
-            print(f"  [{s['start_s']:5.1f}s - {s['end_s']:5.1f}s] {s['id']:<20} ({s['kind']}) scene={s.get('scene')} asset={s.get('asset')}")
+            resolved = resolve_segment_asset(s, root, allow_fallbacks=allow_fallbacks)
+            disp_asset = s.get('asset') or (f"runs/promo/scenes/{s['scene']}.mp4" if s.get('scene') else None)
+            status_tag = " [PRESENT]" if (resolved and resolved.is_file()) else " [MISSING]"
+            print(f"  [{s['start_s']:5.1f}s - {s['end_s']:5.1f}s] {s['id']:<20} ({s['kind']}) scene={s.get('scene')} asset={disp_asset}{status_tag}")
         print(f"\n--- Audio Tracks ({len(plan['audio'])}) ---")
         for a in plan['audio']:
             duck_info = f", duck={a['ducked_gain']}" if a.get('ducked_gain') is not None else ""
