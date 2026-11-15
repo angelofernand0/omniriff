@@ -27,6 +27,8 @@ coach/workspace-fixtures/
 models/
 *.task
 runs/
+.vercel
+.env*
 
 # recorded coach sessions (private coaching text + voice audio); add one deliberately if it is meant to ship
 dashboard/replays/*.jsonl
