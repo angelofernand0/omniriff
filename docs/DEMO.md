@@ -51,6 +51,8 @@ Engine keys: `b` bypass, `l` loop, `f 0.3` filter, `r 0.3` reverb, `s` status, `
 ## 3. The 2-minute demo (rehearse to time)
 From [ROADMAP.md §7](ROADMAP.md). The coach is the centrepiece; pedal and pinch are how player and coach share the rig.
 
+**How to say it** (identity-first talk track, openers by track, prepared answers, roles and the rehearsal plan): [PITCH.md](PITCH.md).
+
 | Time | Beat |
 |---|---|
 | 0:00–0:15 | **Problem.** "Practising alone, you know you messed up but not why, and every tool makes you stop playing. Never put the guitar down." |
