@@ -179,7 +179,9 @@
       app.dataset.loop = loop.state;
       $('loopWord').textContent = { idle: 'READY', recording: 'REC', playing: 'PLAY' }[loop.state] || '—';
       $('loopLen').textContent = loop.state === 'idle' ? '--' : loop.seconds.toFixed(1) + ' s';
-      $('loopHint').textContent = { idle: 'Press pedal to record', recording: 'Press again to close', playing: 'Press to clear' }[loop.state] || '';
+      $('loopHint').textContent = (browserSource
+        ? { idle: 'Tap Record loop to begin', recording: 'Tap Finish to hear your loop', playing: 'Your loop is playing' }
+        : { idle: 'Press pedal to record', recording: 'Press again to close', playing: 'Press to clear' })[loop.state] || '';
       $('loopMeta').textContent = s.loop && s.loop.max_seconds ? Math.round(s.loop.max_seconds) + ' S MAX' : '';
       $('waveNote').textContent = loop.partial ? 'Recorded before this page opened. Shape not shown.' : '';
 

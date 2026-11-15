@@ -94,6 +94,9 @@ export class AudioEngine {
       if (this.ctx !== ctx || generation !== this.generation) throw new Error('Audio startup was stopped.');
     };
     try {
+      if (!ctx.audioWorklet || typeof AudioWorkletNode !== 'function') {
+        throw new Error('This browser cannot run AudioWorklet. Open the simulator in a current browser over HTTPS.');
+      }
       if (ctx.state === 'suspended') await ctx.resume();
       checkCurrent();
 
