@@ -27,8 +27,8 @@ Upload files from `docs/media/` in this exact sequence:
    - File: `docs/media/cover.png` (1500×1000, 3:2)
    - Visual: Big pixel Riff, OMNIRIFF wordmark, pink tagline, and an illustrated waveform with a red GAP marker (labeled ILLUSTRATION: a designed graphic, not a capture of the rig).
 2. **Gallery Image 1:**
-   - File: `docs/media/gallery-01-coach-3x2.png` (1024×683, padded 3:2)
-   - Caption: *The OmniRiff practice dashboard mid-session: active loop playback (3.0s), real-time tone controls with simulated tone toggle, gesture knuckle tracking with parameter swap ('SWAPPED TO REVERB'), and AI Coach Riff assigning targeted Drill 1 ('Fix the measured cause') with pedal and voice controls.*
+   - File: `docs/media/gallery-01-coach-3x2.png` (1920×1280, padded 3:2)
+   - Caption: *The practice dashboard mid-session (SIMULATED · SCRIPTED COACH): synthetic guitar input, a scripted coaching session, its drill card and session checklist. The 430 ms gap is a scripted example, not a measurement.*
 3. **Gallery Image 2:**
    - File: `docs/media/gallery-02-hand-3x2.png` (1920×1280, padded 3:2)
    - Caption: *Gesture control view (SIMULATED): generated hand landmarks engaging the filter sweep alongside the coach column. Synthetic hand feed, not webcam detection.*
