@@ -84,9 +84,9 @@ dialog.innerHTML = `
     <button type="button" id="browserPluck">Pluck guitar</button>
   </fieldset>
   <fieldset id="browserGesture"><legend>Hand control</legend>
-    <label>Pinch controls<select id="browserTarget"><option value="filter">Filter</option><option value="reverb">Reverb</option><option value="scene">Scene morph</option></select></label>
+    <label>Active effect<select id="browserTarget"><option value="filter">Filter</option><option value="reverb">Reverb</option><option value="scene">Scene morph</option></select></label>
     <label id="browserSceneLabel">Scene<select id="browserScene"></select></label>
-    <p>Open your hand to arm. Pinch and move up or down. Release to hold the sound. Open RIG to see the hand view and manual controls.</p>
+    <p>Pinch thumb & index and move up or down to adjust value. Release to hold. Close fist to swap Filter / Reverb (2s cooldown).</p>
   </fieldset>
 
   </details>

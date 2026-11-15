@@ -56,6 +56,46 @@ describe('GestureController parity tests', () => {
     const ev = ctrl.update(0.4, 0.20, 0.9, 1.2, 1200);
     expect(ev).toBeNull();
   });
+
+  it('disengages crisply on pinch release (pinch >= 0.32) without dragging down', () => {
+    const ctrl = new GestureController({ low: 0.8, high: 0.2, rate: 20 });
+    let t = 1.0;
+
+    // Arm with open hand
+    ctrl.update(0.5, 0.50, 0.9, t++, 1000);
+    // Engage with pinch
+    let ev = ctrl.update(0.35, 0.20, 0.9, t++, 1100);
+    expect(ev).not.toBeNull();
+    expect(ctrl.active).toBe(true);
+
+    // Release pinch slightly (pinch = 0.33 >= 0.32): must disengage immediately
+    ev = ctrl.update(0.35, 0.33, 0.9, t++, 1200);
+    expect(ev).toBeNull();
+    expect(ctrl.active).toBe(false);
+
+    // Hand lowers down to guitar (y = 0.5, 0.7, 0.9): must NEVER emit downward drag events
+    ev = ctrl.update(0.50, 0.35, 0.9, t++, 1300);
+    expect(ev).toBeNull();
+    ev = ctrl.update(0.70, 0.38, 0.9, t++, 1400);
+    expect(ev).toBeNull();
+    ev = ctrl.update(0.90, 0.45, 0.9, t++, 1500);
+    expect(ev).toBeNull();
+  });
+
+  it('detects downward motion while relaxing pinch (pinch > 0.27 && dy > 0) and releases immediately', () => {
+    const ctrl = new GestureController({ low: 0.8, high: 0.2, rate: 20 });
+    let t = 1.0;
+
+    // Arm & engage
+    ctrl.update(0.5, 0.50, 0.9, t++, 1000);
+    let ev = ctrl.update(0.30, 0.20, 0.9, t++, 1100);
+    expect(ctrl.active).toBe(true);
+
+    // Hand starts moving downward to guitar while relaxing grip (y: 0.30 -> 0.35, pinch: 0.28)
+    ev = ctrl.update(0.35, 0.28, 0.9, t++, 1200);
+    expect(ev).toBeNull();
+    expect(ctrl.active).toBe(false);
+  });
 });
 
 describe('SceneMorph and Setlist tests', () => {

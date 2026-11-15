@@ -38,6 +38,16 @@ export class BrowserSimulatorAdapter {
     this.controller.rearm();
   }
 
+  public swapTarget(): void {
+    const next = this.target === 'filter' ? 'reverb' : 'filter';
+    this.gestureTarget = next;
+    const select = document.getElementById('browserTarget') as HTMLSelectElement | null;
+    if (select) {
+      select.value = next;
+      select.dispatchEvent(new Event('change'));
+    }
+  }
+
   private animFrameId: number | null = null;
   private isRunning: boolean = false;
   private acceptedEvents: number = 0;

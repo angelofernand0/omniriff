@@ -11,6 +11,23 @@ import { Setlist } from '../vision/setlist';
 import type { StateFrame, HandFrame } from '../protocol/types';
 import { absentHand, type ConnectionCallback } from './connection';
 
+export function showSwapToast(control: 'filter' | 'reverb'): void {
+  if (typeof document === 'undefined') return;
+  const toast = document.getElementById('swapToast');
+  const text = document.getElementById('swapToastText');
+  if (toast && text) {
+    text.textContent = `SWAPPED TO ${control.toUpperCase()}`;
+    toast.hidden = false;
+    toast.classList.remove('swap-toast-pop');
+    void toast.offsetWidth; // re-flow to restart CSS animation
+    toast.classList.add('swap-toast-pop');
+    if ((toast as any)._timer) clearTimeout((toast as any)._timer);
+    (toast as any)._timer = setTimeout(() => {
+      toast.hidden = true;
+    }, 2000);
+  }
+}
+
 export class BrowserLiveAdapter {
   public readonly modeId = 'live' as const;
   public readonly modeLabel = 'LIVE RIG';
@@ -35,6 +52,17 @@ export class BrowserLiveAdapter {
     this.target = value;
     this.controller.control = value === 'reverb' ? 'reverb' : 'filter';
     this.controller.rearm();
+  }
+
+  public swapTarget(): void {
+    const next = this.target === 'filter' ? 'reverb' : 'filter';
+    this.gestureTarget = next;
+    const select = document.getElementById('browserTarget') as HTMLSelectElement | null;
+    if (select) {
+      select.value = next;
+      select.dispatchEvent(new Event('change'));
+    }
+    showSwapToast(next);
   }
 
   private animFrameId: number | null = null;
@@ -62,6 +90,9 @@ export class BrowserLiveAdapter {
     this.audio = new AudioEngine();
     this.devices = new DeviceManager();
     this.tracker = new LiveHandTracker();
+    this.tracker.onFistSwap = () => {
+      this.swapTarget();
+    };
     this.controller = new GestureController({
       low: 0.8,
       high: 0.2,

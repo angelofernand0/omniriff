@@ -35,4 +35,61 @@ describe('Live hand tracker guards without camera access', () => {
     const pending = tracker.start(stream); await Promise.resolve(); tracker.stop(); await pending;
     expect(track.stop).toHaveBeenCalledOnce(); expect(video.play).not.toHaveBeenCalled(); expect(tracker.isRunning).toBe(false);
   });
+  it('detects closed fist and triggers onFistSwap with 2-second cooldown and anti-flicker protection', () => {
+    const tracker: any = new LiveHandTracker();
+    let swapCount = 0;
+    tracker.onFistSwap = () => { swapCount++; };
+
+    // Fist: fingertips curled into MCPs
+    const fist = result();
+    fist.landmarks[0][5] = { x: 0.4, y: 0.5 };
+    fist.landmarks[0][17] = { x: 0.6, y: 0.5 }; // palmWidth = 0.2
+    fist.landmarks[0][9] = { x: 0.5, y: 0.45 };
+    fist.landmarks[0][8] = { x: 0.42, y: 0.48 }; // index tip curled
+    fist.landmarks[0][12] = { x: 0.50, y: 0.46 }; // middle tip curled
+    fist.landmarks[0][16] = { x: 0.56, y: 0.48 }; // ring tip curled
+    fist.landmarks[0][20] = { x: 0.60, y: 0.50 }; // pinky tip curled
+
+    tracker.processResult(fist, 1000, false, 'filter', 0.5);
+    expect(swapCount).toBe(1);
+
+    // Repeated fist frame at 1500ms (within 2s cooldown) must NOT trigger swap (anti-flicker)
+    tracker.processResult(fist, 1500, false, 'filter', 0.5);
+    expect(swapCount).toBe(1);
+
+    // Frame at 3100ms (>2s cooldown) but WITHOUT opening hand first must NOT trigger swap (latching)
+    tracker.processResult(fist, 3100, false, 'filter', 0.5);
+    expect(swapCount).toBe(1);
+
+    // Open hand: fingers extended
+    const openHand = result();
+    openHand.landmarks[0][5] = { x: 0.4, y: 0.5 };
+    openHand.landmarks[0][17] = { x: 0.6, y: 0.5 };
+    openHand.landmarks[0][9] = { x: 0.5, y: 0.45 };
+    openHand.landmarks[0][8] = { x: 0.4, y: 0.2 };
+    openHand.landmarks[0][12] = { x: 0.5, y: 0.15 };
+    openHand.landmarks[0][16] = { x: 0.58, y: 0.2 };
+    openHand.landmarks[0][20] = { x: 0.65, y: 0.25 };
+    tracker.processResult(openHand, 3200, false, 'filter', 0.5);
+    expect(swapCount).toBe(1);
+
+    // Now close fist again after cooldown and opening -> triggers second swap!
+    tracker.processResult(fist, 3300, false, 'filter', 0.5);
+    expect(swapCount).toBe(2);
+  });
+  it('tracks palm joint y and index-to-thumb pinch for vertical slider control', () => {
+    const tracker: any = new LiveHandTracker();
+    const handData = result();
+    handData.landmarks[0][5] = { x: 0.4, y: 0.5 };
+    handData.landmarks[0][17] = { x: 0.6, y: 0.5 }; // palmWidth = 0.2
+    handData.landmarks[0][9] = { x: 0.5, y: 0.42 }; // palm center
+    handData.landmarks[0][4] = { x: 0.48, y: 0.40 }; // thumb tip
+    handData.landmarks[0][8] = { x: 0.50, y: 0.40 }; // index tip (pinch = 0.02 / 0.2 = 0.1)
+
+    tracker.processResult(handData, 1000, false, 'filter', 0.5);
+    const obs = tracker.getObservation();
+    expect(obs.present).toBe(true);
+    expect(obs.y).toBe(0.42);
+    expect(obs.pinch).toBeCloseTo(0.10, 2);
+  });
 });

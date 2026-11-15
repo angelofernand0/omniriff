@@ -89,6 +89,10 @@
             <h2 class="label hand-head" id="h-hand"><i data-icon="hand"></i>HAND<span class="grow"></span><span class="label-r hand-state" id="handState" role="status">NO CAMERA</span></h2>
             <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
             <div class="empty hand-empty"><i data-icon="cam" class="x4 if-off"></i><i data-icon="hand" class="x4 if-none"></i><b id="handEmptyWord">NO CAMERA</b><span id="handEmptyHint">Start vision to see your hand.</span></div>
+            <div class="swap-toast" id="swapToast" aria-live="assertive" hidden>
+              <span class="swap-toast-dot"></span>
+              <b id="swapToastText">SWAPPED TO REVERB</b>
+            </div>
           </div>
         </section>
         <button type="button" class="fx-power" id="fxPower" data-reach="left" data-riff-name="FX" aria-pressed="true" title="Effects on/off (B)">

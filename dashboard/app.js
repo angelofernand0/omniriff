@@ -319,17 +319,28 @@
   const view = { cx: 0.5, cy: 0.5, size: 0.4 };  // smoothed follow-zoom around the hand
   const handCanvas = $('handCanvas');
   const hctx = handCanvas.getContext('2d');
+  let lastHandControl = null;
+  let swapBanner = null;
   function drawHand(now) {
     const fresh = hand.frame && now - hand.at < HAND_STALE_MS;
     if (!fresh) hand.frame = null;  // stale or disconnected: never keep an old hand on screen
     const f = hand.frame;
+    if (f && f.control) {
+      if (lastHandControl !== null && f.control !== lastHandControl) {
+        swapBanner = { control: f.control, start: now, until: now + 2000 };
+      }
+      lastHandControl = f.control;
+    }
     let mode = 'off', label = HAND_URL ? 'NO CAMERA' : 'OFF';
     if (f && !f.present) { mode = 'none'; label = 'NO HAND'; }
     else if (f && f.engaged) {
       mode = 'engaged';
       const pct = typeof f.value === 'number' ? Math.round(f.value * 100) + '%' : '';
       label = (f.control ? f.control.toUpperCase() : 'MORPH') + ' ' + pct;
-    } else if (f) { mode = 'seen'; label = 'SEEN'; }  // not "armed": may be waiting for an open-hand re-arm
+    } else if (f) {
+      mode = 'seen';
+      label = (swapBanner && now < swapBanner.until) ? `✦ ${f.control ? f.control.toUpperCase() : 'SWAPPED'}` : (f.control ? f.control.toUpperCase() : 'SEEN');
+    }
     $('handPanel').dataset.hand = mode;
     $('handState').textContent = label;
     $('handEmptyWord').textContent = mode === 'none' ? 'NO HAND' : HAND_URL ? 'NO CAMERA' : 'HAND VIEW OFF';
@@ -373,6 +384,41 @@
     if (engaged) {  // the pinch: thumb tip + index tip
       hctx.strokeStyle = color('--accent'); hctx.lineWidth = 2;
       for (const i of [4, 8]) hctx.strokeRect(Math.round(P[i][0]) - 7, Math.round(P[i][1]) - 7, 14, 14);
+    }
+
+    // Animated swap popup badge on canvas
+    if (swapBanner && now < swapBanner.until) {
+      const elapsed = now - swapBanner.start;
+      const alpha = elapsed > 1600 ? Math.max(0, (2000 - elapsed) / 400) : 1.0;
+      const scale = elapsed < 200 ? 0.8 + 0.2 * (elapsed / 200) : 1.0;
+
+      hctx.save();
+      hctx.globalAlpha = alpha;
+      const bw = Math.min(w - 20, 190 * scale);
+      const bh = 28 * scale;
+      const bx = (w - bw) / 2;
+      const by = 12;
+
+      hctx.fillStyle = 'rgba(10, 10, 20, 0.94)';
+      hctx.strokeStyle = color('--accent');
+      hctx.lineWidth = 2;
+      hctx.beginPath();
+      if (hctx.roundRect) hctx.roundRect(bx, by, bw, bh, 6 * scale);
+      else hctx.rect(bx, by, bw, bh);
+      hctx.fill();
+      hctx.stroke();
+
+      hctx.fillStyle = color('--accent');
+      hctx.beginPath();
+      hctx.arc(bx + 14 * scale, by + bh / 2, 4 * scale, 0, Math.PI * 2);
+      hctx.fill();
+
+      hctx.font = `bold ${Math.round(11 * scale)}px var(--mono, "JetBrains Mono", monospace)`;
+      hctx.fillStyle = '#ffffff';
+      hctx.textAlign = 'center';
+      hctx.textBaseline = 'middle';
+      hctx.fillText(`SWAPPED TO ${swapBanner.control.toUpperCase()}`, bx + bw / 2 + 6 * scale, by + bh / 2);
+      hctx.restore();
     }
   }
   connectHand();
