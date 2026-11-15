@@ -70,7 +70,7 @@ def _run(a) -> int:
         if a.coach_sim:
             from .coach import run_scripted_coach
             coach_task = asyncio.create_task(run_scripted_coach(
-                a.coach_port, f'ws://127.0.0.1:{runtime.ws_port}', runtime.udp_port, voice=_voice(a)))
+                a.coach_port, f'ws://127.0.0.1:{runtime.ws_port}', runtime.udp_port, voice=_voice(a), start_round=a.coach_round))
             print(f'[sim] SCRIPTED coach session ws://127.0.0.1:{a.coach_port} (no AI)')
         start = time.monotonic()
         try:
@@ -123,6 +123,8 @@ def main(argv=None) -> int:
     r.add_argument('--coach-sim', action='store_true',
                    help='serve a SCRIPTED coach session on --coach-port (no AI; labelled on screen)')
     r.add_argument('--coach-port', type=int, default=47803)
+    r.add_argument('--coach-round', action='store_true',
+                   help='with --coach-sim: start a practice round at once (default: free play, Riff quiet until a long press / Y or you talk to it)')
     r.add_argument('--no-voice', action='store_true', help="with --coach-sim: browser voice only, no ElevenLabs")
     c = sub.add_parser('coach', help='SCRIPTED coach session against a running engine (no AI; labelled on screen)')
     c.add_argument('--port', type=int, default=47803)

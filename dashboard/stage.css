@@ -299,3 +299,10 @@
 .wave-note { left: calc(var(--wave-left, 12px)); }
 .wave-empty { left: var(--wave-left, 0); }
 .step[data-s="ctx"] .what { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* the wheel (tape.js) is centred on the record box's right edge: the record box sits above it (hiding its left half),
+   the waveform panel below it, so it pokes out across the gap into the panel */
+.loop-row { position: relative; }
+.loop-state { position: relative; z-index: 2; }
+.wave { z-index: 0; }
+.wheel { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; image-rendering: pixelated; }

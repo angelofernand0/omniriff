@@ -47,7 +47,11 @@ class ScriptedCoachTests(unittest.TestCase):
                         if pred(f):
                             return f
 
-                await until(lambda f: f['state'] == 'idle')
+                first = await until(lambda f: f['state'] == 'idle')
+                self.assertIsNone(first['cue'])                      # free play: Riff starts quiet
+                await ws.send(json.dumps({'version': 1, 'type': 'coach.approve', 'timestamp_ms': 1,
+                                          'approval_id': first['awaiting_approval']['id']}))   # a long pedal press (Y): start a round
+                await until(lambda f: f['cue'] is not None and f['session'] is None)
                 for s in ('idle', 'recording', 'playing'):          # take 1 by pedal
                     await q.put(state(s))
                 ask = await until(lambda f: f['awaiting_approval'] is not None)
@@ -76,6 +80,37 @@ class ScriptedCoachTests(unittest.TestCase):
         finally:
             udp.close()
         return frames, ask, done, sent
+
+    def test_free_play_is_quiet_until_asked(self):
+        """Recording and playing in free play does not make Riff speak: it waits to be woken (long press or talking)."""
+        async def go():
+            from websockets.asyncio.client import connect
+            q: asyncio.Queue = asyncio.Queue()
+
+            async def states():
+                while True:
+                    yield await q.get()
+
+            port = asyncio.get_running_loop().create_future()
+            task = asyncio.create_task(run_scripted_coach(0, udp_port=None, pace=0, states=states(), ready=port.set_result))
+            frames = []
+            async with connect(f'ws://127.0.0.1:{await port}') as ws:
+                for s in ('idle', 'recording', 'playing', 'idle'):
+                    await q.put(state(s))
+                try:
+                    while True:
+                        frames.append(json.loads(await asyncio.wait_for(ws.recv(), 0.5)))
+                except asyncio.TimeoutError:
+                    pass
+            task.cancel()
+            return frames
+        frames = asyncio.run(go())
+        self.assertTrue(frames)
+        for f in frames:
+            COACH.validate(f)
+            self.assertIsNone(f['cue'])
+            self.assertEqual(f['state'], 'idle')
+            self.assertEqual(f['session']['mode'], 'play')
 
     def check(self, frames, ask, done, sent):
         for f in frames:
@@ -128,6 +163,9 @@ class ScriptedCoachTests(unittest.TestCase):
                             return f
                 take = lambda: [q.put_nowait(state(s)) for s in ('recording', 'playing')]  # noqa: E731
                 q.put_nowait(state('idle'))
+                await until(lambda f: f['state'] == 'idle' and (f.get('session') or {}).get('mode') == 'play')   # starts in free play
+                await ws.send(json.dumps({'version': 1, 'type': 'coach.approve', 'timestamp_ms': 1, 'approval_id': 'again'}))
+                await until(lambda f: f.get('session') is None and f['cue'])        # a long press wakes Riff: a round starts
                 take()
                 await until(lambda f: f['awaiting_approval'])                       # drill 1 proposed
                 take()                                                              # pedal = yes, drill 1 take

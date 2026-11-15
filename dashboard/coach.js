@@ -157,7 +157,10 @@
     const rows = [];
     const play = !!ses && ses.mode === 'play';
     let carry = null;                              // a session that is over: it becomes LAST TIME, and the next one starts fresh
-    if (play) { carry = ses.summary || ses.last_time || null; ses = null; }
+    if (play) {                                    // free play: nothing is planned, so no road ahead; only what happened last time
+      carry = ses.summary || ses.last_time || null;
+      return carry ? [{ k: 'last', s: 'ctx', label: 'LAST TIME', text: carry }] : [];
+    }
     const working = !!f && f.state === 'thinking' && !play;
     const plan = ses && ses.plan && ses.plan.length ? ses.plan : ses && ses.drill ? [{ title: ses.drill.title, status: 'now' }] : [];
     const m = ses && ses.metric, hist = m && m.history ? m.history : [];
@@ -247,9 +250,10 @@
     const L = ui.list;
     if (!L) return;
     const show = !!f && f.state !== 'asleep';
-    L.hidden = !show;
-    if (!show) { seenRows = new Set(); seenSteps = new Set(); doneKeys = new Set(); gapKey = null; return; }
-    const rows = listModel(f), now = performance.now(), keys = new Set(), done = new Set();
+    const rows = show ? listModel(f) : [];
+    L.hidden = !rows.length;
+    if (!rows.length) { seenRows = new Set(); seenSteps = new Set(); doneKeys = new Set(); gapKey = null; return; }
+    const now = performance.now(), keys = new Set(), done = new Set();
     if (!rows.some((r) => r.metric)) gapKey = null;
     L.replaceChildren(...rows.map((r) => {
       keys.add(r.k); if (r.s === 'done') done.add(r.k);

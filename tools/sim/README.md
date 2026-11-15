@@ -24,6 +24,8 @@ The sim reuses `engine.runtime.Runtime` unchanged, so the dashboard sees exactly
 
 `python -m tools.sim run --demo --coach-sim` (or `python -m tools.sim coach` against any running engine, sim or real) serves the coach feed on `ws://127.0.0.1:47803` (`protocol/coach.schema.json`) with a **scripted** session. It reacts to real events (the loop pedal, `coach.approve`/`coach.reject` from the dashboard), but the diagnosis, numbers and drill are written in advance. Every frame has `scripted: true`, and the dashboard must label it. On approval it toggles bypass as `source: "coach"` and restores it after the drill take (`--udp-port 0` never touches the rig). Uses: building the dashboard before the coach brain exists, and a **labelled** fallback at the demo table.
 
+**It starts in free play**, like the real coach: Riff is drowsy and silent, and recording or playing a loop does not make it speak. A long pedal press (the `Y` key here), or talking to it (hold `V`), wakes it and starts a practice round. `--coach-round` skips that and starts a round at once (for demos and `tools/layout_check.py`, which need the coach to run a session by itself).
+
 ## Manual test mode (`?manual=1`)
 
 `--demo` presses the pedal and sweeps the pinch by itself, which makes it hard to tell what is a bug and what is the script. Add `&manual=1` to the dashboard URL (served by this simulator) and nothing runs by itself:

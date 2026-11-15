@@ -259,8 +259,8 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     const pad = 12, bw = 6, gap = 2;
-    // the waveform is the tape: it starts at the edge of the wheel (tape.js) and feeds into it
-    const x0 = window.OmniTape ? OmniTape.layout(h).x0 : pad;
+    // the waveform is the tape: it leaves the rim of the wheel (tape.js), which is half under the record box
+    const x0 = window.OmniTape ? OmniTape.layout().x0 : pad;
     if (x0 !== waveLeft) { waveLeft = x0; waveEl.style.setProperty('--wave-left', x0 + 'px'); }
     const cols = Math.max(1, Math.floor((w - pad - x0) / (bw + gap)));
     const mid = h / 2, maxH = h / 2 - pad;
@@ -297,7 +297,7 @@
       ctx.fillStyle = color('--text');
       ctx.fillRect(Math.round(x0 + pos * span), 0, 4, h);
     }
-    if (window.OmniTape) OmniTape.paint(ctx, { w, h, now, state: loop.state, seconds: loop.seconds, max: loop.max, playStart: loop.playStart });
+    if (window.OmniTape) OmniTape.paint({ now, state: loop.state, seconds: loop.seconds, max: loop.max, playStart: loop.playStart });
   }
 
   // ---------- hand view ----------
