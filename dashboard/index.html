@@ -57,9 +57,16 @@
       </div>
     </section>
 
-    <!-- TONE: two values and the power button Riff can press -->
+    <!-- TONE: three boxes (Filter, Reverb, Actual Webcam) and FX switch moved to the side -->
     <section class="mod tone" aria-labelledby="h-tone">
-      <h2 class="label" id="h-tone"><i data-icon="tone"></i>TONE</h2>
+      <div class="tone-head-bar">
+        <h2 class="label" id="h-tone"><i data-icon="tone"></i>TONE</h2>
+        <button type="button" class="fx-power side-fx" id="fxPower" data-reach="left" data-riff-name="FX" aria-pressed="true" title="Effects on/off (B)">
+          <span class="fx-led" aria-hidden="true"></span>
+          <span class="fx-toggle" aria-hidden="true"><i class="fx-nut"></i><i class="fx-lever"></i></span>
+          <b>FX</b><span class="fx-word">ON</span>
+        </button>
+      </div>
       <div class="tone-row">
         <div class="fx-zone">
           <div class="cards" id="cards">
@@ -73,33 +80,20 @@
               <div class="readout"><span class="pct" id="pct-reverb">--</span><span class="sub" id="sub-reverb"></span></div>
               <div class="blocks" id="blocks-reverb"></div>
             </article>
-          </div>
-          <div class="engaged" id="engaged" aria-live="polite">
-            <div class="engaged-text">
-              <span class="engaged-name" id="engName">REVERB</span>
-              <span class="engaged-pct" id="engPct">0%</span>
-            </div>
-            <div class="tower" id="tower"></div>
+            <article class="card card-camera" id="card-camera" data-cam="off" data-riff-name="CAMERA">
+              <header><h3>CAMERA</h3><span class="tag live-cam-tag" id="camTag">OFF</span></header>
+              <div class="cam-viewport" id="camViewport">
+                <video id="cameraVideo" autoplay playsinline muted></video>
+                <div class="empty cam-empty" id="camEmpty">
+                  <i data-icon="cam" class="x4"></i>
+                  <b id="camEmptyWord">NO CAMERA</b>
+                  <span id="camEmptyHint">Start camera in Rig</span>
+                </div>
+              </div>
+            </article>
           </div>
           <div class="bypass-stamp" aria-hidden="true"><b>FX OFF</b><span>Dry signal.</span></div>
         </div>
-        <!-- HAND: takes the FX button's slot while you are adjusting an effect -->
-        <section class="hand-inset" aria-labelledby="h-hand">
-          <div class="panel hand" id="handPanel" data-hand="off" data-perch="bl" data-riff-name="your hand">
-            <h2 class="label hand-head" id="h-hand"><i data-icon="hand"></i>HAND<span class="grow"></span><span class="label-r hand-state" id="handState" role="status">NO CAMERA</span></h2>
-            <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
-            <div class="empty hand-empty"><i data-icon="cam" class="x4 if-off"></i><i data-icon="hand" class="x4 if-none"></i><b id="handEmptyWord">NO CAMERA</b><span id="handEmptyHint">Start vision to see your hand.</span></div>
-            <div class="swap-toast" id="swapToast" aria-live="assertive" hidden>
-              <span class="swap-toast-dot"></span>
-              <b id="swapToastText">SWAPPED TO REVERB</b>
-            </div>
-          </div>
-        </section>
-        <button type="button" class="fx-power" id="fxPower" data-reach="left" data-riff-name="FX" aria-pressed="true" title="Effects on/off (B)">
-          <span class="fx-led" aria-hidden="true"></span>
-          <span class="fx-toggle" aria-hidden="true"><i class="fx-nut"></i><i class="fx-lever"></i></span>
-          <b>FX</b><span class="fx-word">ON</span>
-        </button>
       </div>
     </section>
 
@@ -114,6 +108,17 @@
         <b>YOU</b><span id="youText" aria-live="polite"></span>
         <input id="youInput" type="text" maxlength="240" autocomplete="off" placeholder="Type it, Enter to send" hidden>
       </div>
+
+      <!-- FOURTH BOX: Hand tracking panel visible at all times -->
+      <section class="panel hand-box" id="handPanel" data-hand="off" data-perch="bl" data-riff-name="your hand">
+        <h2 class="label hand-head" id="h-hand"><i data-icon="hand"></i>DETECTED HAND<span class="grow"></span><span class="label-r hand-state" id="handState" role="status">NO CAMERA</span></h2>
+        <canvas id="handCanvas" aria-label="Live hand view: tracked hand joints, mirrored"></canvas>
+        <div class="swap-toast" id="swapToast" aria-live="assertive" hidden>
+          <span class="swap-toast-dot"></span>
+          <b id="swapToastText">SWAPPED TO REVERB</b>
+        </div>
+      </section>
+
       <!-- ONE checklist: where you are (goal, drills, done) and what Riff is doing about it, in the same rows.
            Every row is: mark | label | what | result. The row you are on opens to show detail:
            your number against its target, or Riff's live steps. coach.js builds it from the feed. -->

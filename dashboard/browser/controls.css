@@ -46,7 +46,8 @@ body[data-browser] input[type="range"] { min-height: 44px; }
   body[data-browser] .loop-state { --ready-w: 112px; padding: 12px; width: 148px; }
   body[data-browser] .loop-word { font-size: 26px; gap: 8px; }
   body[data-browser] .loop-len { font-size: 24px; }
-  body[data-browser] .tone-row { grid-template-columns: minmax(0, 1fr) 120px; gap: 12px; }
+  body[data-browser] .tone-row { display: flex; flex-direction: column; gap: 12px; }
+  body[data-browser] .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
   body[data-browser] .card { padding: 12px; }
   body[data-browser] .engaged { padding: 12px; gap: 8px; }
   body[data-browser] .booth { grid-template-columns: 80px minmax(0, 1fr); min-height: 90px; }
@@ -75,8 +76,7 @@ body[data-browser] #pedalNext[hidden] { display: none !important; }
   body[data-browser] .wave { min-height: 0; }
 }
 @media (max-width: 900px) {
-  body[data-browser] .hand-inset { min-width: 0; overflow: hidden; }
-  body[data-browser] .hand-inset .hand { min-width: 0; width: 100%; max-width: 100%; flex: 1 1 0; aspect-ratio: auto; overflow: hidden; }
+  body[data-browser] .hand-box { min-width: 0; overflow: hidden; width: 100%; }
 }
 
 .panel.hand {

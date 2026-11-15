@@ -95,7 +95,8 @@ export class LiveHandTracker {
     await this.initialize();
     if (generation !== this.generation) { videoStream.getTracks().forEach(t => t.stop()); return; }
     this.stream = videoStream;
-    const video = document.createElement('video');
+    const domVideo = typeof document !== 'undefined' && typeof document.getElementById === 'function' ? (document.getElementById('cameraVideo') as HTMLVideoElement | null) : null;
+    const video = domVideo || (typeof document !== 'undefined' && typeof document.createElement === 'function' ? document.createElement('video') : ({} as any));
     this.videoEl = video;
     video.autoplay = true;
     video.playsInline = true;
@@ -125,6 +126,12 @@ export class LiveHandTracker {
     await video.play();
     if (generation !== this.generation) return;
     this.isRunning = true;
+    if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+      const card = document.getElementById('card-camera');
+      const tag = document.getElementById('camTag');
+      if (card) card.dataset.cam = 'live';
+      if (tag) { tag.textContent = 'LIVE'; tag.classList.add('live'); }
+    }
     this.consecutiveMisses = 0;
     this.lastWrist = null;
     this.lastInferenceTimeMs = 0;
@@ -315,6 +322,12 @@ export class LiveHandTracker {
     this.isRunning = false;
     this.resetObservation();
     this.isProcessing = false;
+    if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+      const card = document.getElementById('card-camera');
+      const tag = document.getElementById('camTag');
+      if (card) card.dataset.cam = 'off';
+      if (tag) { tag.textContent = 'OFF'; tag.classList.remove('live'); }
+    }
     if (this.stream) {
       this.stream.getTracks().forEach((t) => t.stop());
       this.stream = null;
@@ -322,7 +335,9 @@ export class LiveHandTracker {
     if (this.videoEl) {
       this.videoEl.pause();
       this.videoEl.srcObject = null;
-      this.videoEl = null;
+      if (this.videoEl.id !== 'cameraVideo') {
+        this.videoEl = null;
+      }
     }
     this.lastWrist = null;
     this.consecutiveMisses = 0;

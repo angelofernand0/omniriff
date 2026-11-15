@@ -29,6 +29,7 @@
   // ---------- build repeated elements ----------
   function fill(el, n, cls) {
     const out = [];
+    if (!el) return out;
     for (let i = 0; i < n; i++) { const b = document.createElement('i'); if (cls) b.className = cls(i); b.style.setProperty('--i', i); el.appendChild(b); out.push(b); }
     return out;
   }
@@ -207,8 +208,8 @@
 
       if (engaged) {
         const v = s[target].value;
-        $('engName').textContent = target.toUpperCase();
-        $('engPct').textContent = Math.round(v * 100) + '%';
+        if ($('engName')) $('engName').textContent = target.toUpperCase();
+        if ($('engPct')) $('engPct').textContent = Math.round(v * 100) + '%';
         const lit = Math.round(v * TOWER);
         tower.forEach((b, i) => { b.className = i < lit - 1 ? 'on' : i === lit - 1 ? 'top' : ''; });
       }
@@ -321,6 +322,70 @@
   const hctx = handCanvas.getContext('2d');
   let lastHandControl = null;
   let swapBanner = null;
+
+  function drawGhostHand(ctx, w, h, now) {
+    const size = Math.min(w, h) * 0.50;
+    const cx = w / 2;
+    const cy = h / 2 - 10;
+    const pulse = 0.75 + 0.25 * Math.sin(now * 0.0035);
+
+    const strokeCol = `rgba(0, 229, 255, ${0.45 * pulse})`;
+    const glowCol = `rgba(0, 229, 255, ${0.85 * pulse})`;
+
+    const pts = [
+      [0, 0.40 * size],              // 0: wrist
+      [-0.18 * size, 0.24 * size],   // 1: thumb CMC
+      [-0.30 * size, 0.14 * size],   // 2: thumb MCP
+      [-0.38 * size, 0.03 * size],   // 3: thumb IP
+      [-0.44 * size, -0.09 * size],  // 4: thumb tip
+      [-0.16 * size, -0.06 * size],  // 5: index MCP
+      [-0.19 * size, -0.22 * size],  // 6: index PIP
+      [-0.20 * size, -0.34 * size],  // 7: index DIP
+      [-0.21 * size, -0.46 * size],  // 8: index tip
+      [-0.01 * size, -0.08 * size],  // 9: middle MCP
+      [-0.01 * size, -0.25 * size],  // 10: middle PIP
+      [-0.01 * size, -0.38 * size],  // 11: middle DIP
+      [-0.01 * size, -0.52 * size],  // 12: middle tip
+      [0.15 * size, -0.06 * size],   // 13: ring MCP
+      [0.17 * size, -0.22 * size],   // 14: ring PIP
+      [0.18 * size, -0.34 * size],   // 15: ring DIP
+      [0.19 * size, -0.46 * size],   // 16: ring tip
+      [0.28 * size, -0.02 * size],   // 17: pinky MCP
+      [0.32 * size, -0.15 * size],   // 18: pinky PIP
+      [0.34 * size, -0.26 * size],   // 19: pinky DIP
+      [0.36 * size, -0.38 * size],   // 20: pinky tip
+    ];
+
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = strokeCol;
+    ctx.setLineDash([4, 4]);
+
+    ctx.beginPath();
+    for (const [a, b] of BONES) {
+      ctx.moveTo(cx + pts[a][0], cy + pts[a][1]);
+      ctx.lineTo(cx + pts[b][0], cy + pts[b][1]);
+    }
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    ctx.fillStyle = glowCol;
+    for (const [px, py] of pts) {
+      ctx.fillRect(Math.round(cx + px) - 2, Math.round(cy + py) - 2, 4, 4);
+    }
+    for (const i of [4, 8, 12, 16, 20]) {
+      ctx.strokeStyle = glowCol;
+      ctx.strokeRect(Math.round(cx + pts[i][0]) - 5, Math.round(cy + pts[i][1]) - 5, 10, 10);
+    }
+
+    ctx.font = 'bold 10px monospace';
+    ctx.fillStyle = glowCol;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('NO HAND DETECTED', cx, cy + 0.48 * size + 20);
+    ctx.restore();
+  }
+
   function drawHand(now) {
     const fresh = hand.frame && now - hand.at < HAND_STALE_MS;
     if (!fresh) hand.frame = null;  // stale or disconnected: never keep an old hand on screen
@@ -341,10 +406,25 @@
       mode = 'seen';
       label = (swapBanner && now < swapBanner.until) ? `✦ ${f.control ? f.control.toUpperCase() : 'SWAPPED'}` : (f.control ? f.control.toUpperCase() : 'SEEN');
     }
-    $('handPanel').dataset.hand = mode;
-    $('handState').textContent = label;
-    $('handEmptyWord').textContent = mode === 'none' ? 'NO HAND' : HAND_URL ? 'NO CAMERA' : 'HAND VIEW OFF';
-    $('handEmptyHint').textContent = mode === 'none' ? 'Show one hand to the camera.' : HAND_URL ? 'Start vision to see your hand.' : 'Remove ?hand=off to turn it on.';
+    const handPanel = $('handPanel');
+    if (handPanel) handPanel.dataset.hand = mode;
+    const handState = $('handState');
+    if (handState) handState.textContent = label;
+    const handEmptyWord = $('handEmptyWord');
+    if (handEmptyWord) handEmptyWord.textContent = mode === 'none' ? 'NO HAND' : HAND_URL ? 'NO CAMERA' : 'HAND VIEW OFF';
+    const handEmptyHint = $('handEmptyHint');
+    if (handEmptyHint) handEmptyHint.textContent = mode === 'none' ? 'Show one hand to the camera.' : HAND_URL ? 'Start vision to see your hand.' : 'Remove ?hand=off to turn it on.';
+
+    const swapToast = $('swapToast');
+    const swapToastText = $('swapToastText');
+    if (swapToast && swapToastText) {
+      if (swapBanner && now < swapBanner.until) {
+        swapToast.hidden = false;
+        swapToastText.textContent = `SWAPPED TO ${(swapBanner.control || 'REVERB').toUpperCase()}`;
+      } else {
+        swapToast.hidden = true;
+      }
+    }
 
     const dpr = window.devicePixelRatio || 1;
     const w = handCanvas.clientWidth, h = handCanvas.clientHeight;
@@ -363,7 +443,10 @@
       hctx.fillStyle = color('--off'); hctx.fillRect(w - 10, 4, 6, h - 8);
       hctx.fillStyle = color('--accent'); hctx.fillRect(w - 10, h - 4 - rh, 6, rh);
     }
-    if (!f || !f.present || f.landmarks.length !== 21) return;
+    if (!f || !f.present || f.landmarks.length !== 21) {
+      drawGhostHand(hctx, w, h, now);
+      return;
+    }
 
     // mirrored like a mirror, then follow-zoomed so the hand fills the panel; the rail shows the value
     const Q = f.landmarks.map(([x, y]) => [(1 - x) * CAM_ASPECT, y]);

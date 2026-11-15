@@ -35,8 +35,9 @@
 .loop-len { font-size: var(--p3); font-family: var(--font-pixel); font-weight: 400; margin-left: -0.125em; }   /* the pixel font has side bearing: pull the ink onto the dot's axis */
 .loop-state .hint { margin-left: -1px; }
 
-/* tone: two big readouts and the power button */
-.tone-row { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 296px; min-height: 0; }
+/* tone: three cards (filter, reverb, camera) and the side power button */
+.tone-row { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.tone-head-bar { display: flex; align-items: center; justify-content: space-between; height: 32px; margin-bottom: var(--s2); }
 .card .tag { display: none; }
 .card h3 { font-size: var(--p2); color: var(--muted); }
 .card.target h3, .card.live h3 { color: var(--accent); }
@@ -163,10 +164,9 @@
   .spot-ba b { font-size: var(--p1); }
   .spot-ba span { font-size: 12px; }
 }
-}
 
-/* the pinch readout replaces the cards completely, FX on or off */
-.app[data-fx="engaged"] .cards { opacity: 0 !important; }
+/* cards remain visible at all times */
+.cards { opacity: 1 !important; visibility: visible !important; }
 
 /* ---------- sizing that can't overflow (measured review, SM 2026-11-14) ----------
    Every big readout sizes itself to its own box (container query units), so a 3-digit value or a
@@ -228,7 +228,6 @@
 .coach-col[data-ask="true"] .plan, .coach-col:has(#coachBA:not([hidden])) .plan { display: none; }
 .coach-col { overflow: hidden; }
 @media (max-height: 820px) { .booth .riff-socket { width: 88px; height: 88px; } .steps li { padding: 2px var(--s1); } }
-.app[data-fx="engaged"] .cards { visibility: hidden; transition: none; }
 
 /* session map + mode (ROADMAP §1 "How you use it") */
 .steps-head { display: flex; justify-content: flex-end; }
@@ -261,21 +260,60 @@
 .app[data-fx="engaged"] .engaged { border: var(--stroke) solid var(--accent); box-shadow: none; }
 .spot-target { outline: var(--stroke) solid var(--accent); outline-offset: calc(var(--stroke) * -1); }
 
-/* tone row: the effects fill the width; one fixed slot on the right holds the FX button, or the hand while you adjust */
-.fx-zone { grid-column: 1; }
-.fx-power, .hand-inset { grid-column: 2; grid-row: 1; }
-.fx-power { box-shadow: inset 0 -6px 0 var(--shadow); }
-.fx-power:active, .fx-power.pressed { transform: none; box-shadow: inset 0 -2px 0 var(--shadow); }
-.fx-led, .fx-power[data-on="true"] .fx-led { box-shadow: none; }
-.hand-inset { display: none; width: auto; min-height: 0; }
-.app[data-fx="engaged"] .hand-inset { display: flex; animation: none; }
-.app[data-fx="engaged"] .fx-power { display: none; }
-.hand-inset .hand { flex: 1; min-height: 0; }
-.hand-head { position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 32px; padding: 0 var(--s3); box-sizing: border-box; background: var(--panel); border-bottom: var(--stroke) solid var(--line-2); }
-.hand-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hand canvas { top: 32px; height: calc(100% - 32px); }
-.hand-empty { top: 32px; }
-@media (max-height: 820px) { .tone-row { grid-template-columns: minmax(0, 1fr) 264px; } }
+/* tone row: three equal cards (Filter, Reverb, Camera) and side FX power button */
+.tone-row { width: 100%; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.fx-zone { width: 100%; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.cards { width: 100%; height: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gutter); min-height: 0; }
+
+.side-fx {
+  height: 32px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border: var(--stroke) solid var(--line-2);
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--shadow);
+  color: var(--text);
+  font-family: var(--font-pixel);
+  font-size: 11px;
+}
+.side-fx:hover { border-color: var(--accent); }
+.side-fx .fx-led { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex: none; }
+.side-fx[data-on="true"] .fx-led { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.side-fx .fx-toggle { display: flex; align-items: center; width: 26px; height: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; position: relative; }
+.side-fx .fx-lever { position: absolute; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--dim); transition: transform 0.15s ease; }
+.side-fx[data-on="true"] .fx-lever { transform: translateX(12px); background: var(--accent); }
+.side-fx b { font-size: 11px; font-family: var(--font-pixel); }
+.side-fx .fx-word { font-size: 11px; color: var(--accent); font-family: var(--font-pixel); }
+.side-fx[data-on="false"] .fx-word { color: var(--dim); }
+
+/* Camera Card (actual webcam view) */
+.card-camera { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); background: var(--panel); border: var(--stroke) solid var(--line-2); box-shadow: 4px 4px 0 var(--shadow); overflow: hidden; min-height: 0; }
+.card-camera header { display: flex; justify-content: space-between; align-items: center; }
+.card-camera header h3 { font: var(--p3)/1 var(--font-pixel); color: var(--muted); }
+.live-cam-tag { font: var(--p1)/1 var(--font-pixel); color: var(--text); background: var(--bg); border: 1px solid var(--line); padding: 2px 6px; visibility: visible; }
+.card-camera[data-cam="live"] .live-cam-tag { color: var(--accent-ink); background: var(--ok); border-color: var(--ok); }
+.cam-viewport { position: relative; flex: 1; width: 100%; min-height: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.cam-viewport video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); border-radius: 3px; display: block; }
+.card-camera[data-cam="off"] .cam-viewport video { display: none; }
+.cam-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: var(--bg); color: var(--dim); }
+.card-camera[data-cam="live"] .cam-empty { display: none; }
+
+/* Fourth box: Detected Hand in coach-col */
+.coach-col .hand-box { flex: 1; min-height: 200px; display: flex; flex-direction: column; background: var(--panel); border: var(--stroke) solid var(--line-2); position: relative; overflow: hidden; }
+.coach-col .hand-box .hand-head { height: 32px; padding: 0 var(--s3); display: flex; align-items: center; background: var(--panel); border-bottom: var(--stroke) solid var(--line-2); flex: none; font-size: 11px; font-family: var(--font-pixel); }
+.coach-col .hand-box canvas { flex: 1; width: 100%; height: calc(100% - 32px); display: block; background: var(--bg); min-height: 0; }
+.hand-state { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.steps:empty { display: none; }
+
+/* Coach AI slightly smaller in top */
+.coach-col .talk { display: flex; flex-direction: row; align-items: center; gap: var(--s3); flex: none; padding-bottom: var(--s2); }
+.coach-col .talk .riff-socket { width: 64px; height: 64px; flex: none; }
+.coach-col .bubble { flex: 1; font-size: 15px; line-height: 1.35; padding: 8px 12px; }
+.coach-col .bubble::before { left: -8px; top: 50%; transform: translateY(-50%) rotate(45deg); border-left: var(--stroke) solid var(--accent); border-bottom: var(--stroke) solid var(--accent); border-top: none; }
 
 /* tone cards: the sub-label always sits under the number, on the left edge */
 .readout { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; gap: var(--s2); }
