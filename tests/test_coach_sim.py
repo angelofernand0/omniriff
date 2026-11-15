@@ -195,6 +195,15 @@ class ScriptedCoachTests(unittest.TestCase):
     def test_dashboard_approves(self):
         self.check(*self.run_session('dashboard'))
 
+    def test_riff_works_long_enough_to_watch(self):
+        # SM review 4: the deep agent's steps stay up long enough to read (diagnosis ~10 s at pace 1)
+        import inspect
+        import re
+        from tools.sim.coach import ScriptedSession
+        waits = [float(x) for x in re.findall(r'self\.wait\(([\d.]+)\)', inspect.getsource(ScriptedSession.diagnose))]
+        self.assertGreaterEqual(sum(waits), 9.0)
+        self.assertGreaterEqual(len(waits), 5)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -293,15 +293,21 @@ class ScriptedSession:
     async def diagnose(self) -> None:
         """Step 1-2: the first take sets the goal; drill 1 is proposed."""
         f = self.feed
+        # Riff's work is paced to be watched (SM review 4): ~10 s, longer than one loop playback
         self.say(state='thinking', mood='curious', target='loop', cue=None, before_after=None, drill_card=None,
                  todos=_todos(0), activity=[dict(who='ears', what='get_take_report', status='running')])
-        await self.wait(1.4)
+        await self.wait(2.6)
         self.say(target='hand', mood='concentrating', todos=_todos(1),
                  activity=_act(f, 'ears', 'get_take_report', 'done') + [dict(who='eyes', what='get_hand_report', status='running')])
-        await self.wait(1.6)
+        await self.wait(2.6)
+        self.say(target='loop', mood='curious',
+                 activity=_act(f, 'eyes', 'get_hand_report', 'done') + [dict(who='coach', what='read_file /memories/player.md', status='running')])
+        await self.wait(1.8)
         self.say(mood='aha', todos=_todos(2),
-                 activity=_act(f, 'eyes', 'get_hand_report', 'done') + [dict(who='coach', what=f'open skill {SKILL}', status='running')])
-        await self.wait(0.9)
+                 activity=_act(f, 'coach', 'read_file /memories/player.md', 'done') + [dict(who='coach', what=f'open skill {SKILL}', status='running')])
+        await self.wait(2.0)
+        self.say(activity=_act(f, 'coach', f'open skill {SKILL}', 'done') + [dict(who='coach', what='write_drill_card', status='running')])
+        await self.wait(1.2)
         card = dict(skill=SKILL, title='Keep the hand moving', passage='G to C change, bars 2-3', reps=4,
                     pass_rule='longest gap under 150 ms', rig=dict(bypass=True),
                     journal_path=f'/journal/scripted/{self.take_id()}.md')
@@ -311,7 +317,7 @@ class ScriptedSession:
         mark = dict(start_s=round(secs * MARK_AT[0], 2), end_s=round(secs * MARK_AT[1], 2), label='430 ms gap')
         self.say(state='pointing', mood='concerned', target='loop', mark=mark, cue=TAKE_CUE, drill_card=card, todos=_todos(3),
                  session=self.session(0),
-                 activity=_act(f, 'coach', f'open skill {SKILL}', 'done') + [dict(who='coach', what='write_drill_card', status='done')])
+                 activity=_act(f, 'coach', 'write_drill_card', 'done'))
         await self.until_quiet()
         self.awaiting, self.awaiting_kind = f'a{self.takes}', 'drill'
         self.say(state='pointing', mood='encouraging', target='bypass', cue=APPROVE_CUE, mark=None,
@@ -342,8 +348,10 @@ class ScriptedSession:
         await self.until_quiet()
         self.say(state='thinking', mood='curious', target='loop', cue=None,
                  todos=_todos(4, [dict(text=label, status='in_progress')]),
-                 activity=_act(self.feed, 'coach', 'compare_takes', 'running'))
-        await self.wait(1.5)
+                 activity=_act(self.feed, 'ears', 'get_take_report', 'running'))
+        await self.wait(2.4)
+        self.say(activity=_act(self.feed, 'ears', 'get_take_report', 'done') + [dict(who='coach', what='compare_takes', status='running')])
+        await self.wait(2.2)
         if self.we_bypassed and self.sender is not None:
             self.sender.send('bypass')             # give the player their sound back
             self.we_bypassed = False

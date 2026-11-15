@@ -150,9 +150,9 @@
 .fx-power[data-on="true"].snap .fx-lever { animation: leveron 240ms steps(4); }
 .fx-power[data-on="false"].snap .fx-lever { animation: leveroff 240ms steps(4); }
 @keyframes fxsnap {
-  0% { transform: translateY(6px); box-shadow: 0 2px 0 var(--shadow); }
-  20% { transform: translateY(-3px) rotate(-1.6deg); }
-  40% { transform: translateY(1px) rotate(1.2deg); }
+  0% { transform: translateY(-4px); box-shadow: 0 2px 0 var(--shadow); }   /* kicks up, never down past the panel's edge */
+  20% { transform: translateY(-2px) rotate(-0.8deg); }
+  40% { transform: rotate(0.6deg); }
   60% { transform: rotate(-0.7deg); }
   80% { transform: rotate(0.3deg); }
   100% { transform: none; }
@@ -255,3 +255,49 @@
 .coach-col .pedal > b { padding-top: 6px; }
 .pedal .acts { flex: 1; min-width: 0; }
 .coach-col[data-voice="locked"] .pedal .acts::after { flex-basis: 100%; }
+
+/* ======== SM review 4: progress you can feel. Green means "done / you made it", only ======== */
+/* the map: a finished step turns green with a pixel check; the one you just finished fills in */
+.map li { position: relative; overflow: visible; }
+.map[data-step="2"] li[data-n="1"],
+.map[data-step="3"] li[data-n="1"], .map[data-step="3"] li[data-n="2"],
+.map[data-step="4"] li[data-n="1"], .map[data-step="4"] li[data-n="2"], .map[data-step="4"] li[data-n="3"],
+.map[data-done="true"] li { color: var(--ok); border-color: var(--ok); }
+.map[data-step="2"] li[data-n="1"]::before,
+.map[data-step="3"] li[data-n="1"]::before, .map[data-step="3"] li[data-n="2"]::before,
+.map[data-step="4"] li[data-n="1"]::before, .map[data-step="4"] li[data-n="2"]::before, .map[data-step="4"] li[data-n="3"]::before,
+.map[data-done="true"] li::before {
+  content: ''; display: inline-block; width: 9px; height: 7px; margin-right: 5px; vertical-align: 1px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 7' shape-rendering='crispEdges'%3E%3Cpath d='M7 0h2v2H7zM5 2h2v2H5zM3 4h2v2H3zM1 3h2v2H1zM0 2h1v1H0z'/%3E%3C/svg%3E") no-repeat center / contain;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 7' shape-rendering='crispEdges'%3E%3Cpath d='M7 0h2v2H7zM5 2h2v2H5zM3 4h2v2H3zM1 3h2v2H1zM0 2h1v1H0z'/%3E%3C/svg%3E") no-repeat center / contain; }
+.map li[data-just="true"]::after { content: ''; position: absolute; left: 0; bottom: -4px; height: 4px; width: 100%;
+  background: var(--ok); animation: mapfill 480ms steps(8) both; }
+.map li[data-just="true"]::before { animation: popin 360ms steps(3) 380ms both; }
+@keyframes mapfill { from { width: 0; } to { width: 100%; } }
+
+/* GAP: the green zone is where you're headed, the block is this take, the tick is where you started */
+.gap .val small[data-pass="true"] { color: var(--ok); font-weight: 600; }
+.gap-bar { height: 12px; background: var(--off); }
+.gap-bar::before, .gap-bar::after { content: none; }
+.gap-bar i { position: absolute; display: block; }
+.gap-bar .zone { left: 0; top: 0; bottom: 0; width: var(--goal, 0%); background: rgba(143, 227, 166, 0.30); border-right: 2px solid var(--ok); box-sizing: border-box; }
+.gap-bar .was { left: var(--was, 0%); top: 2px; bottom: 2px; width: 2px; margin-left: -1px; background: var(--muted); }
+.gap-bar .trail { left: var(--now, 0%); width: calc(var(--was, 0%) - var(--now, 0%)); top: 5px; height: 2px; background: var(--muted); opacity: 0.6; }
+.gap-bar[data-moved="false"] .was, .gap-bar[data-moved="false"] .trail { display: none; }
+.gap-bar .now { left: var(--now, 0%); top: -3px; bottom: -3px; width: 8px; margin-left: -4px; background: var(--warn); }
+.gap[data-pass="true"] .gap-bar .now { background: var(--ok); }
+.gap[data-flash="true"] { animation: gapwin 900ms steps(6); }
+@keyframes gapwin { 0% { background: rgba(143, 227, 166, 0.22); } 100% { background: transparent; } }
+
+/* the stall in your loop: a dark veil with pink edges, so Riff, the band and the bars don't all shout pink */
+.wave-mark { background: linear-gradient(rgba(255, 92, 203, 0.10), rgba(255, 92, 203, 0.10)), rgba(11, 11, 16, 0.55); }
+
+/* agent steps: a finished step gets a green tick */
+.agent li[data-s="done"] em { color: var(--ok); }
+
+/* pop-ups: a drill you passed is green */
+.riff-toast[data-kind="ok"] { border-color: var(--ok); }
+.riff-toast[data-kind="ok"] b { color: var(--ok); }
+@media (prefers-reduced-motion: reduce) {
+  .map li[data-just="true"]::after, .map li[data-just="true"]::before, .gap[data-flash="true"] { animation: none; }
+}

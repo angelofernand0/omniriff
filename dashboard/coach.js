@@ -33,7 +33,7 @@
   const DOING = [
     [/^get_take_report/, 'Listening back to your timing'], [/^get_hand_report/, 'Watching your strumming hand'],
     [/^open skill/, 'Picking a drill'], [/^write_drill_card/, 'Setting up the drill'], [/^compare_takes/, 'Comparing with your last take'],
-    [/memories/, 'Remembering this for next time'], [/^rig_control/, 'Getting the rig ready'],
+    [/^read.*memories/, 'Checking your last session'], [/memories/, 'Remembering this for next time'], [/^rig_control/, 'Getting the rig ready'],
   ];
   const doing = (w) => { for (const [re, s] of DOING) if (re.test(w)) return s; return 'Thinking'; };
 
@@ -79,11 +79,12 @@
     if (marked) marked.classList.add('spot-target');
   }
   let held = null, waitTimer = 0, lineShown = '';
-  function show(f, secs) {                   // apply a frame to Riff and the bubble
+  function show(f, secs, quiet) {            // apply a frame to Riff and the bubble; its pop-ups land with it
     const target = targetOf(f);
     const hearingYou = ['listening', 'stopping', 'typing'].includes(talk.mode);   // Riff keeps listening to you
     if (!hearingYou) window.OmniRiff.coach.set({ state: f.state, target, cue: f.cue || '', mood: f.mood, stage: false });
     mark(target);
+    renderRows(f); renderAgent(f); toasts(f, !!quiet); renderMap();
     if (dock) dock.dataset.state = f.state;
     if (f.cue && f.cue !== lineShown) { lineShown = f.cue; type(f.cue, secs); }
     else if (!f.cue) thinkingText(f);
@@ -111,9 +112,10 @@
     const prevCue = frame && frame.cue;
     frame = f;
     setLed(f.scripted ? 'scripted' : 'live', f.state === 'asleep' ? 'OFF' : f.scripted ? 'SCRIPTED' : 'LIVE');
-    renderMark(f); renderRows(f); renderAgent(f); toasts(f, joined); renderMap();
-    if (joined) { joined = false; spoken = f.cue || ''; show(f, 0); return; }   // joined mid-line: no voice, no typing
     const newLine = !!f.cue && f.cue !== prevCue;
+    renderMark(f); renderMap();
+    if (!newLine || joined) { renderRows(f); renderAgent(f); }   // a new line changes the rows and steps when it starts (show)
+    if (joined) { joined = false; spoken = f.cue || ''; show(f, 0, true); return; }   // joined mid-line: no voice, no typing
     if (newLine && talk.mode === 'sent') { clearTimeout(talk.hide); talk.hide = setTimeout(hideYou, 6000); talk.mode = 'idle'; }
     if (newLine) {
       held = f;                               // Riff waits for this line's voice, then everything starts at once
@@ -135,6 +137,7 @@
   }
 
   // ---------- the rows: GOAL / NOW / GAP / NEXT (or DONE) ----------
+  let gapKey = null;
   function renderRows(f) {
     const ses = f && f.session, card = f && f.drill_card;
     const goal = (ses && ses.goal) || (card && card.passage) || null;
@@ -154,11 +157,20 @@
       ui.gapName.textContent = m.name === 'longest gap' ? 'GAP' : m.name.toUpperCase();
       ui.gap.textContent = `${Math.round(last)} ${m.unit}`;
       ui.gapRow.dataset.pass = String(pass);
-      ui.target.textContent = `target ${m.lower_is_better ? 'under' : 'over'} ${Math.round(m.target)}`;
-      const top = Math.max(m.target * 3, ...m.history);
-      ui.bar.style.setProperty('--now', `${Math.min(100, (last / top) * 100).toFixed(1)}%`);
-      ui.bar.style.setProperty('--goal', `${((m.target / top) * 100).toFixed(1)}%`);
-    }
+      const word = m.lower_is_better ? 'under' : 'over';
+      ui.target.textContent = pass ? `\u2713 ${word} ${Math.round(m.target)}` : `target ${word} ${Math.round(m.target)}`;
+      ui.target.dataset.pass = String(pass);
+      const first = m.history[0], top = Math.max(first, last, m.target) * 1.15;
+      const pc = (v) => `${Math.min(100, (v / top) * 100).toFixed(1)}%`;
+      ui.bar.style.setProperty('--now', pc(last));
+      ui.bar.style.setProperty('--goal', pc(m.target));
+      ui.bar.style.setProperty('--was', pc(first));
+      ui.bar.dataset.moved = String(m.history.length > 1);
+      // a new take that lands in the zone: the row itself lights up (feedback on the thing that changed)
+      const key = `${m.history.length}|${pass}`;
+      if (pass && gapKey !== null && key !== gapKey) { ui.gapRow.dataset.flash = 'false'; void ui.gapRow.offsetWidth; ui.gapRow.dataset.flash = 'true'; }
+      gapKey = key;
+    } else gapKey = null;
     // DONE uses the same rows (SM: the rows were clearer than a card): DONE replaces NOW, the GAP
     // row keeps its bar with where you started, NEXT TIME replaces NEXT
     const summary = ses && ses.summary;
@@ -170,7 +182,7 @@
       ui.nowRow.hidden = !(drills || takes);
       ui.drill.textContent = `✓ ${drills} drill${drills === 1 ? '' : 's'}`;
       ui.attempt.textContent = takes ? `${takes} takes` : '';
-      if (last !== null && m.history.length > 1) ui.target.textContent = `was ${Math.round(m.history[0])} · target ${m.lower_is_better ? 'under' : 'over'} ${Math.round(m.target)}`;
+      if (last !== null && m.history.length > 1) ui.target.textContent = `was ${Math.round(m.history[0])}`;
     }
     ui.nowRow.dataset.done = String(done);
     let next = ses && ses.next;
@@ -193,6 +205,7 @@
     if (a.who === 'ears') return ['EARS', 'Listening back to your take'];
     if (a.who === 'eyes') return ['EYES', 'Watching your strumming hand'];
     if ((m = /^open skill (.+)/.exec(w))) return ['RIFF', `Picking a drill: ${human(m[1])}`];
+    if (/^read/.test(w) && /memor/.test(w)) return ['RIFF', 'Checking what you played last time'];
     if (/memor/.test(w)) return ['RIFF', 'Remembering this for next time'];
     if (/^write_todos/.test(w)) return ['RIFF', 'Making a plan'];
     if (/^write_drill_card/.test(w)) return ['RIFF', 'Writing your drill card'];
@@ -233,18 +246,27 @@
   toastEl.className = 'riff-toast'; toastEl.hidden = true; toastEl.setAttribute('role', 'status');
   toastEl.innerHTML = '<b></b><span></span>';
   document.body.appendChild(toastEl);
-  let toastSeen = null, toastQ = [], toastBusy = false;
+  let toastSeen = null, toastQ = [], toastBusy = false, drillsDone = null;
   function toasts(f, quiet) {
     const done = new Set(((f && f.activity) || []).filter((a) => a.status === 'done').map((a) => `${a.who}|${a.what}`));
     const fresh = toastSeen === null || quiet ? [] : [...done].filter((k) => !toastSeen.has(k));
     toastSeen = done;
     const ses = f && f.session, m = ses && ses.metric;
+    // a drill you just passed: the win, in green, before anything else
+    const plan = (ses && ses.plan) || [];
+    const passed = plan.filter((d) => d.status === 'done').length;
+    if (drillsDone !== null && !quiet && passed > drillsDone && plan.length) {
+      const h = m ? m.history : [];
+      const line = h.length > 1 ? `${human(m.name)} ${Math.round(h[h.length - 2])} \u2192 ${Math.round(h[h.length - 1])} ${m.unit}` : plan[passed - 1].title;
+      toastQ.push([`DRILL ${passed} PASSED`, line, 'ok']);
+    }
+    drillsDone = ses ? passed : null;
     for (const k of fresh) {
       const what = k.split('|')[1];
-      if (/memor/.test(what)) {
+      if (/memor/.test(what) && !/^read/.test(what)) {
         const line = m && m.history.length > 1 ? `${ses.goal || 'Today'}: ${Math.round(m.history[0])} → ${Math.round(m.history[m.history.length - 1])} ${m.unit}`
           : 'Riff will remember this next time';
-        toastQ.push(['SAVED TO MEMORY', line]);
+        toastQ.push(['SAVED TO MEMORY', line, 'memory']);
       } else if (/^write_drill_card/.test(what) && f.drill_card) toastQ.push(['DRILL READY', f.drill_card.title]);
       else if (/goal/.test(what) && ses && ses.goal) toastQ.push(['GOAL NOTED', ses.goal]);
     }
@@ -255,14 +277,40 @@
     if (!t) { toastBusy = false; return; }
     toastBusy = true;
     toastEl.children[0].textContent = t[0]; toastEl.children[1].textContent = t[1];
-    toastEl.hidden = false; toastEl.dataset.on = 'false';
+    toastEl.dataset.kind = t[2] || '';
+    toastEl.hidden = false; toastEl.dataset.on = 'false'; toastEl.dataset.leaving = 'false';
     toastEl.style.width = Math.min(340, innerWidth - 32) + 'px';
     placeToast();
     requestAnimationFrame(() => { toastEl.dataset.on = 'true'; });
     if (window.OmniRiff.coach.nod) window.OmniRiff.coach.nod();
-    const follow = () => { if (!toastEl.hidden) { placeToast(); requestAnimationFrame(follow); } };   // it travels with Riff
+    const follow = () => { if (!toastEl.hidden && toastEl.dataset.leaving !== 'true') { placeToast(); requestAnimationFrame(follow); } };   // it travels with Riff
     requestAnimationFrame(follow);
-    setTimeout(() => { toastEl.hidden = true; setTimeout(nextToast, 400); }, 3200);
+    setTimeout(() => leave(t[2]), 3600);
+  }
+  // how a pop-up leaves: a memory is filed into Riff (it shrinks into Riff's head, Riff takes it with
+  // a nod); anything else lifts away. Stepped like the pixel art, under half a second.
+  function leave(kind) {
+    toastEl.dataset.leaving = 'true';
+    const done = () => { toastEl.hidden = true; toastEl.style.transform = ''; setTimeout(nextToast, 300); };
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !toastEl.animate) { done(); return; }
+    let frames, ms;
+    const r = document.querySelector('.riff:not(.riff-still)');
+    if (kind === 'memory' && r) {
+      const a = toastEl.getBoundingClientRect(), k = r.getBoundingClientRect();
+      const dx = k.left + k.width / 2 - (a.left + a.width / 2), dy = k.top + k.height * 0.35 - (a.top + a.height / 2);
+      frames = [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-6px) scale(1.04)', opacity: 1, offset: 0.2 },
+        { transform: `translate(${dx}px, ${dy}px) scale(0.06)`, opacity: 0.6 }];
+      ms = 520;
+    } else {
+      frames = [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-10px)', opacity: 0 }];
+      ms = 260;
+    }
+    const anim = toastEl.animate(frames, { duration: ms, easing: `steps(${kind === 'memory' ? 8 : 3})`, fill: 'forwards' });
+    anim.onfinish = () => {
+      if (kind === 'memory' && window.OmniRiff.coach.nod) window.OmniRiff.coach.nod();   // Riff takes it in
+      anim.cancel(); done();
+    };
   }
   function placeToast() {                     // beside Riff's drawn body, never over it or the top bar
     const r = document.querySelector('.riff:not(.riff-still)');
@@ -294,6 +342,9 @@
     const key = `${mk.start_s}|${mk.end_s}|${loopSecs}|${mk.label || ''}`;
     if (key === lastMark) return;
     lastMark = key;
+    if (f === frame && !held && f.cue && lineShown === f.cue && f.target === 'loop' && !['listening', 'stopping', 'typing'].includes(talk.mode)) {
+      window.OmniRiff.coach.set({ target: '#waveMark' }); mark('#waveMark');   // stand over the spot, now that it's there
+    }
     const a = Math.max(0, mk.start_s / loopSecs), b = Math.min(1, Math.max(mk.end_s, mk.start_s + 0.05) / loopSecs);
     ui.mark.style.left = `calc(12px + (100% - 24px) * ${a.toFixed(4)})`;
     ui.mark.style.width = `calc((100% - 24px) * ${(b - a).toFixed(4)})`;
@@ -308,12 +359,21 @@
   }
 
   // ---------- the map and the pedal: where you are, and what one tap does now ----------
+  let mapTimer = 0;
   function renderMap() {
     const f = frame, ses = f && f.session, loop = app ? app.dataset.loop : 'idle';
     const play = !f || f.state === 'asleep' || (ses && ses.mode === 'play');
     let step = 1;
     if (ses && ses.plan && ses.plan.length) { const i = ses.plan.findIndex((d) => d.status === 'now'); step = i >= 0 ? i + 2 : 4; }
-    if (ui.map) { ui.map.dataset.step = String(step); ui.map.dataset.mode = play ? 'play' : 'practice'; }
+    if (ui.map) {
+      const was = Number(ui.map.dataset.step);
+      if (!play && step > was && f) {         // you just finished step `was`: it fills in green
+        ui.map.querySelectorAll('li').forEach((li) => { li.dataset.just = String(Number(li.dataset.n) === was); });
+        clearTimeout(mapTimer); mapTimer = setTimeout(() => ui.map.querySelectorAll('li').forEach((li) => { li.dataset.just = 'false'; }), 1200);
+      }
+      ui.map.dataset.step = String(step); ui.map.dataset.mode = play ? 'play' : 'practice';
+      ui.map.dataset.done = String(!!(ses && ses.summary));
+    }
     // what one press does right now, as keycaps: TAP / HOLD, or WAIT while Riff has the floor
     let acts;
     const awake = f && f.state !== 'asleep';
@@ -323,7 +383,7 @@
     } else if (loop === 'recording') acts = [['TAP', 'stop, Riff listens']];
     else if (f && f.awaiting_approval) acts = [['TAP', 'yes, start the drill', 'Y'], ['', 'no', 'N']];
     else if (f && f.state === 'thinking') acts = [['WAIT', 'Riff is working on it']];
-    else if (f && ['speaking', 'pointing'].includes(f.state)) acts = [['WAIT', 'Riff is talking']];
+    else if (f && (busy() || (held && held === f && held.cue))) acts = [['WAIT', 'Riff is talking']];   // the real voice, not the frame's state: when Riff is done, you can tap
     else if (step === 4) acts = [['WAIT', 'Riff is wrapping up']];
     else if (step === 1) acts = [['TAP', 'play what you\u2019re working on']];
     else acts = [['TAP', 'record the drill take']];
@@ -344,14 +404,17 @@
       }
     }
     if (ui.talkBtn) {                          // talk: any time Riff is awake and you're not recording
-      ui.talkBtn.hidden = !awake || loop === 'recording' || (f && f.state === 'thinking');
+      ui.talkBtn.hidden = !awake || loop === 'recording' || (f && f.state === 'thinking') || !ui.agent.hidden;
       const ask = !play && step === 1 && !(ses && ses.goal);
       ui.talkBtn.dataset.ask = String(ask);   // Riff is asking what you're working on: the button leads
     }
     if (ui.line) ui.line.dataset.empty = play ? (awake ? 'Free play. I\u2019ll stay quiet.' : 'Coach off. The rig plays without it.')
       : step === 1 ? 'Play me what you\u2019re working on.' : '';
   }
-  if (app) new MutationObserver(renderMap).observe(app, { attributes: true, attributeFilter: ['data-loop'] });
+  if (app) new MutationObserver(() => {
+    renderMap();
+    if (app.dataset.loop !== 'recording' && lastMark) { lastMark = null; renderMark(frame); }   // the tag was measured while hidden
+  }).observe(app, { attributes: true, attributeFilter: ['data-loop'] });
 
   // ---------- voice: never cut off, never late ----------
   let actx = null, analyser = null, audioEl = null, spoken = '', hasCoachVoice = false, queued = null, locked = null, routed = false;
@@ -429,6 +492,7 @@
   // syllable rhythm is generated for as long as the voice is actually playing.
   function talking(on, browser) {
     cancelAnimationFrame(talkRaf);
+    renderMap();                              // the pedal hint follows the voice: WAIT while talking, TAP when done
     if (!on) { window.dispatchEvent(new CustomEvent('omniriff:voice', { detail: { level: 0 } })); return; }
     const measured = !browser && analyser && routed;
     let t0 = performance.now(), quietFor = 0, sylAt = t0, sylLen = 190, amp = 0.8, n = 0;
