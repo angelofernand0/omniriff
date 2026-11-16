@@ -219,6 +219,16 @@ def model(workspace, state):
     settings = profile / '.gemini/settings.json'
     atomic_json(settings, {
         'model': {'name': MODEL, 'maxSessionTurns': 8},
+        # Board triage does not need the CLI's default HIGH-thinking profile.
+        # Keep the same model while reducing 60s first-byte timeout risk.
+        # 3.8 supports LOW/MEDIUM/HIGH; MINIMAL is not a supported API value.
+        'modelConfigs': {'customAliases': {MODEL: {
+            'extends': 'chat-base-3',
+            'modelConfig': {'model': MODEL, 'generateContentConfig': {
+                'maxOutputTokens': 2048,
+                'thinkingConfig': {'thinkingLevel': 'LOW', 'includeThoughts': False},
+            }},
+        }}},
         'security': {'auth': {'selectedType': 'gemini-api-key'}},
         'context': {'fileName': ['AGENTS.md', 'GEMINI.md']},
         'tools': {'core': ['read_file', 'list_directory', 'glob', 'grep_search']},

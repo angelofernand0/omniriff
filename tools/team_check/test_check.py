@@ -163,6 +163,11 @@ class CloudCheckTests(unittest.TestCase):
         self.assertEqual(env['GEMINI_CLI_NO_RELAUNCH'], '1')
         self.assertEqual(env['GEMINI_API_KEY'], 'model-key')
         settings = json.loads((self.state / 'profile/.gemini/settings.json').read_text())
+        configured = settings['modelConfigs']['customAliases'][check.MODEL]['modelConfig']
+        self.assertEqual(configured['model'], check.MODEL)
+        self.assertEqual(configured['generateContentConfig']['maxOutputTokens'], 2048)
+        self.assertEqual(configured['generateContentConfig']['thinkingConfig'],
+                         {'thinkingLevel': 'LOW', 'includeThoughts': False})
         self.assertFalse(settings['general']['plan']['modelRouting'])
         self.assertEqual(settings['general']['maxAttempts'], 1)
         self.assertFalse(settings['general']['retryFetchErrors'])
