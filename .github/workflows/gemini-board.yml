@@ -1,0 +1,96 @@
+name: Gemini CLI hourly board review
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Post meaningful findings to the team board (false is a dry run)
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - '.github/workflows/gemini-board.yml'
+      - 'tools/team_check/**'
+      - 'docs/GEMINI-CLI.md'
+  push:
+    paths:
+      - '.github/workflows/gemini-board.yml'
+      - 'tools/team_check/**'
+      - 'docs/GEMINI-CLI.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cadence-board-${{ github.event_name == 'pull_request' && github.ref || 'scheduled' }}
+  cancel-in-progress: false
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Offline runner regressions (no keys or provider calls)
+        run: python -m unittest discover -s tools/team_check -p 'test_*.py' -v
+
+  review:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: offline-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+      statuses: read
+      issues: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Install the pinned terminal CLI
+        run: npm install --global @google/gemini-cli@0.68.0
+      - name: Restore nonsecret checkpoint only
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/cadence-board/checkpoint.json
+          key: cadence-board-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: cadence-board-v1-
+      - name: Collect board and PR checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/team_check/check.py collect --workspace . --state-dir "$RUNNER_TEMP/cadence-board"
+      - name: Read-only Gemini review (no GitHub credential)
+        env:
+          GEMINI_API_KEY: ${{ secrets.CADENCE_GEMINI_API_KEY }}
+        run: python tools/team_check/check.py model --workspace . --state-dir "$RUNNER_TEMP/cadence-board"
+      - name: Publish validated findings or dry run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH: ${{ github.event_name == 'schedule' || inputs.publish == true }}
+        run: |
+          if [ "$PUBLISH" = 'true' ]; then
+            python tools/team_check/check.py publish --workspace . --state-dir "$RUNNER_TEMP/cadence-board" --publish
+          else
+            python tools/team_check/check.py publish --workspace . --state-dir "$RUNNER_TEMP/cadence-board"
+          fi
+      - name: Save successful nonsecret checkpoint only
+        if: success() && (github.event_name == 'schedule' || inputs.publish == true)
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ runner.temp }}/cadence-board/checkpoint.json
+          key: cadence-board-v1-${{ github.run_id }}-${{ github.run_attempt }}
