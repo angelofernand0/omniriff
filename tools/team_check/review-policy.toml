@@ -1,0 +1,4 @@
+[[rule]]
+toolName = ["run_shell_command", "write_file", "replace", "save_memory", "web_fetch", "google_web_search", "enter_plan_mode", "exit_plan_mode"]
+decision = "deny"
+priority = 100
