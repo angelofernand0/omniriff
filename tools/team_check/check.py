@@ -82,6 +82,8 @@ def verify_workspace(workspace):
             raise RuntimeError('Refusing a different GitHub repository.')
         if os.environ.get('GITHUB_EVENT_NAME') not in ('schedule', 'workflow_dispatch'):
             raise RuntimeError('Only schedule/manual-dispatch cloud runs are supported.')
+        if os.environ.get('GITHUB_REF') != 'refs/heads/main':
+            raise RuntimeError('Cloud reviews require the reviewed main branch.')
     return workspace
 
 

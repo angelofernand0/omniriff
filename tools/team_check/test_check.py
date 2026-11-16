@@ -129,6 +129,16 @@ class CloudCheckTests(unittest.TestCase):
         with patch.dict(os.environ, {'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': 'other/repo', 'GITHUB_EVENT_NAME': 'schedule'}):
             with self.assertRaisesRegex(RuntimeError, 'different'):
                 check.verify_workspace(self.workspace)
+
+    def test_cloud_rejects_unreviewed_dispatch_branch(self):
+        env = {'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': check.REPO,
+               'GITHUB_EVENT_NAME': 'workflow_dispatch', 'GITHUB_REF': 'refs/heads/feature'}
+        with patch.dict(os.environ, env):
+            with self.assertRaisesRegex(RuntimeError, 'reviewed main'):
+                check.verify_workspace(self.workspace)
+        env['GITHUB_REF'] = 'refs/heads/main'
+        with patch.dict(os.environ, env):
+            self.assertEqual(check.verify_workspace(self.workspace), self.workspace.resolve())
         with patch.dict(os.environ, {'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': check.REPO, 'GITHUB_EVENT_NAME': 'pull_request'}):
             with self.assertRaisesRegex(RuntimeError, 'schedule/manual'):
                 check.verify_workspace(self.workspace)

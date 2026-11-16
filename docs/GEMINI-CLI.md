@@ -11,7 +11,7 @@ Angelo reviews/merges this shared workflow. Before that, cloud scheduling is **n
 ## Private setup and first run
 
 1. Create repository Actions secret **`CADENCE_GEMINI_API_KEY`** containing John's configured Gemini Developer API key. Do not put it in Git, board comments, workflow inputs or logs. It is mapped only to `GEMINI_API_KEY` in the model step; `GITHUB_TOKEN` is supplied separately to data collection and publication.
-2. Merge the reviewed workflow through Angelo. Normal push/PR checks only run offline tests and never access the model key.
+2. Merge the reviewed workflow with Angelo's approval. Normal push/PR checks only run offline tests and never access the model key. The cloud job and runner both reject manual dispatches from a branch other than reviewed `main`.
 3. Manually dispatch **Gemini CLI hourly board review** with `publish=false`. Verify the model step succeeds using **`gemini-3.8-flash`** and the dry run posts nothing. Google overload/quota/network failures are blockers, not successful onboarding.
 4. Dispatch once with `publish=true`. Only meaningful actionable findings are posted to issue #1. Confirm the bot's body prefix and distinct name, then repeat unchanged to verify no extra model call/post. The scheduled event uses live publication thereafter.
 
