@@ -163,6 +163,11 @@ class CloudCheckTests(unittest.TestCase):
         self.assertEqual(env['GEMINI_CLI_NO_RELAUNCH'], '1')
         self.assertEqual(env['GEMINI_API_KEY'], 'model-key')
         settings = json.loads((self.state / 'profile/.gemini/settings.json').read_text())
+        configured = settings['modelConfigs']['customAliases'][check.MODEL]['modelConfig']
+        self.assertEqual(configured['model'], check.MODEL)
+        self.assertEqual(configured['generateContentConfig']['maxOutputTokens'], 2048)
+        self.assertEqual(configured['generateContentConfig']['thinkingConfig'],
+                         {'thinkingLevel': 'LOW', 'includeThoughts': False})
         self.assertFalse(settings['general']['plan']['modelRouting'])
         self.assertEqual(settings['general']['maxAttempts'], 1)
         self.assertFalse(settings['general']['retryFetchErrors'])
@@ -281,6 +286,22 @@ class CloudCheckTests(unittest.TestCase):
         with patch.object(check.subprocess, 'Popen', return_value=process), self.assertRaisesRegex(RuntimeError, '503') as caught:
             check.command(['gemini'], self.workspace)
         self.assertNotIn('KEY_SHOULD_NOT_PRINT', str(caught.exception))
+
+    def test_structured_provider_error_reports_code_and_redacts_key(self):
+        payload = json.dumps({'error': {'code': 403, 'message': 'Denied secret-value at https://example.test/?key=secret-value'}})
+        with patch.dict(os.environ, {'GEMINI_API_KEY': 'secret-value'}):
+            summary = check.cli_error_summary(payload, 'RAW PRIVATE TRACE')
+        self.assertIn('403', summary)
+        self.assertNotIn('secret-value', summary)
+        self.assertNotIn('https://', summary)
+        self.assertNotIn('PRIVATE TRACE', summary)
+
+    def test_structured_error_can_be_at_end_of_stderr(self):
+        payload = 'Private trace omitted\n' + json.dumps({'error': {'code': 1, 'message': 'fetch failed'}})
+        self.assertEqual(check.cli_error_summary('', payload), 'Gemini CLI error 1: fetch failed')
+
+    def test_unstructured_diagnostics_are_withheld(self):
+        self.assertEqual(check.cli_error_summary('', 'Private request details'), '')
 
     def test_policy_denies_writes_shell_and_web(self):
         policy = Path(check.__file__).with_name('review-policy.toml').read_text()
