@@ -125,12 +125,12 @@ def main(argv=None) -> int:
     r.add_argument('--coach-port', type=int, default=47803)
     r.add_argument('--coach-round', action='store_true',
                    help='with --coach-sim: start a practice round at once (default: free play, Riff quiet until a long press / Y or you talk to it)')
-    r.add_argument('--no-voice', action='store_true', help="with --coach-sim: browser voice only, no ElevenLabs")
+    r.add_argument('--no-voice', action='store_true', help="legacy option; server TTS is always disabled")
     c = sub.add_parser('coach', help='SCRIPTED coach session against a running engine (no AI; labelled on screen)')
     c.add_argument('--port', type=int, default=47803)
     c.add_argument('--engine-ws', default='ws://127.0.0.1:47801')
     c.add_argument('--udp-port', type=int, default=47800, help='where approved bypass goes (0: never touch the rig)')
-    c.add_argument('--no-voice', action='store_true', help="don't render cues with ElevenLabs (browser voice only)")
+    c.add_argument('--no-voice', action='store_true', help="legacy option; server TTS is always disabled")
     s = sub.add_parser('send', help='send one control event over UDP')
     s.add_argument('control', choices=['loop', 'bypass', 'filter', 'reverb'])
     s.add_argument('value', type=float, nargs='?')
@@ -152,7 +152,7 @@ def _voice(a):
         return None
     from coach.voice import Voice
     v = Voice.from_env()
-    print('[sim] coach voice: ' + ('ElevenLabs (cached)' if v.api_key else 'no ELEVENLABS_API_KEY, browser voice only'))
+    print('[sim] coach voice: browser-local speech or captions; no server TTS')
     return v
 
 

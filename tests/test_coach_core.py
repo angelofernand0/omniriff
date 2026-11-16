@@ -8,7 +8,7 @@ import tempfile
 import threading
 import time
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -150,14 +150,12 @@ class CoachToolTests(unittest.TestCase):
             self.assertEqual(feed.frame["session"]["metric"]["history"], [400.0, 120.0])
             self.assertEqual(feed.frame["session"]["metric"]["target"], 700.0)
             with patch("coach.voice.Voice.from_env") as make_voice:
-                audio = {"version": 1, "type": "coach.audio", "timestamp_ms": 123,
-                         "text": "The gap is 620 ms. Keep the arm moving.",
-                         "mime": "audio/mpeg", "audio_b64": "AAAA"}
-                make_voice.return_value.render = AsyncMock(return_value=audio)
                 with patch.object(feed, "broadcast_audio") as broadcast:
                     self.assertEqual(tools.say("The gap is 620 ms. Keep the arm moving."),
                                      "The gap is 620 ms. Keep the arm moving.")
-                    broadcast.assert_called_once_with(audio)
+                    make_voice.assert_not_called()
+                    broadcast.assert_not_called()
+                    self.assertEqual(feed.frame["cue"], "The gap is 620 ms. Keep the arm moving.")
             with self.assertRaises(ValueError):
                 tools.get_take_report("../private")
 
@@ -381,7 +379,7 @@ class CoachRunnerTests(unittest.TestCase):
             guard = BudgetGuard(Path(folder) / "usage.jsonl")
             self.assertTrue(guard.allow_new_run())
             estimate = estimate_upper_bound_usd({"model": {"input_tokens": 1_000_000, "output_tokens": 0}})
-            self.assertEqual(estimate, 2.0)   # real Sonnet 5.5 input rate, $2 per million (see coach/budget.py)
+            self.assertEqual(estimate, 2.0)   # conservative accounting rate, not a provider price
             guard.record("synthetic-test", {"model": {"input_tokens": 4_000_000, "output_tokens": 0}}, 1.0)   # $8 = the cap
             self.assertFalse(guard.allow_new_run())
 
@@ -392,7 +390,7 @@ class CoachAgentTests(unittest.TestCase):
         from coach.agent import build_agent
         from coach.smoke import tool_names
 
-        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {"ANTHROPIC_API_KEY": "offline-test-key"}):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {"GOOGLE_API_KEY": "offline-test-key"}):
             root = Path(folder)
             (root / "AGENTS.md").write_text("Offline test workspace.\n")
             feed = CoachFeed("session-test")

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .tools import CoachTools, build_langchain_tools
 from .model_gate import ModelCallGate
+from .models import make_model
 
 
 COACH_PROMPT = """You are Riff, a kind guitar teacher who lives in the player's signal chain.
@@ -72,7 +73,6 @@ def build_agent(service: CoachTools, *, budget=None):
     from deepagents.middleware.summarization import create_summarization_middleware
     from deepagents.middleware.filesystem import FilesystemMiddleware
     from langchain.agents.middleware import AgentMiddleware, TodoListMiddleware
-    from langchain_anthropic import ChatAnthropic
     from langchain_core.messages import HumanMessage, SystemMessage
     from langchain_core.runnables import RunnableLambda
     from langgraph.checkpoint.memory import MemorySaver
@@ -89,8 +89,8 @@ def build_agent(service: CoachTools, *, budget=None):
             return gate.call(lambda: handler(request))
 
     budget_middleware = [BudgetMiddleware()] if gate is not None else []
-    main_model = ChatAnthropic(model="claude-sonnet-5-5", max_tokens=4096, max_retries=0)
-    fast_model = ChatAnthropic(model="claude-haiku-5-5", max_tokens=2048, max_retries=0)
+    main_model = make_model(max_tokens=4096)
+    fast_model = make_model(max_tokens=2048)
 
     def _summary_middleware(model):
         if gate is None:

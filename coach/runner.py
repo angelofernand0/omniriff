@@ -212,21 +212,8 @@ class CoachRunner:
         self._last_recording_count = state.recording_counter()
 
     def _speak(self, text: str) -> None:
-        """Voice a runner-written cue (live rig only) without ever blocking the take loop."""
-        if not self.quiet_until_asked or not text:
-            return
-
-        def work() -> None:
-            try:
-                import asyncio
-                from .voice import Voice
-                audio = asyncio.run(Voice.from_env().render(text))
-                if audio is not None:
-                    self.feed.broadcast_audio(audio)
-            except Exception as exc:  # voice is optional
-                LOG.warning("coach voice for a short cue failed: %s: %s", type(exc).__name__, exc)
-
-        threading.Thread(target=work, name="omniriff-cue-voice", daemon=True).start()
+        """Cue frames are spoken locally by the browser, never by a server TTS API."""
+        return None
 
     def _poll_player_input(self) -> None:
         """Consume bounded player words outside recording and keep them as data."""

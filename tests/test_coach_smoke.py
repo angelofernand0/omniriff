@@ -13,7 +13,7 @@ class CoachSmokeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             make_workspace(root)
-            self.assertEqual(EXPECTED - tool_names(make_agent(root)), set())
+            self.assertEqual(EXPECTED - tool_names(make_agent(root, offline=True)), set())
             self.assertTrue((root / "skills" / "smoke-read" / "SKILL.md").is_file())
             self.assertIn(MARKER, (root / "memories" / "player.md").read_text())
 

@@ -1,7 +1,7 @@
 """One-call verification of the pinned Deep Agents harness and workspace paths.
 
 This intentionally uses a disposable workspace. It never reads player data or
-modifies the rig. The only network call is the explicit Anthropic model invoke.
+modifies the rig. The only network call is the explicit Gemini model invoke.
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import time
 from deepagents import create_deep_agent
 from deepagents.backends import FilesystemBackend
 from langchain.agents.middleware import TodoListMiddleware
-from langchain_anthropic import ChatAnthropic
+from .models import api_key, make_model
 from langchain_core.tools import StructuredTool
 from dotenv import load_dotenv
 
@@ -28,8 +28,7 @@ def load_key() -> None:
     """Load either ignored key location without printing its contents."""
     load_dotenv(ROOT / ".env", override=False)
     load_dotenv(Path.home() / ".config" / "omniriff" / ".env", override=False)
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise RuntimeError("ANTHROPIC_API_KEY is missing from the local environment")
+    api_key()
 
 
 def make_workspace(root: Path) -> None:
@@ -44,11 +43,11 @@ def make_workspace(root: Path) -> None:
     (memory / "player.md").write_text(f"Synthetic player marker: {MARKER}\n", encoding="utf-8")
 
 
-def make_agent(root: Path):
+def make_agent(root: Path, *, offline: bool = False):
     """Build the specified model and expose the full default harness."""
     dummy = StructuredTool.from_function(
         func=lambda: "pong", name="smoke_ping", description="Return pong for a harness smoke test.")
-    model = ChatAnthropic(model="claude-sonnet-5-5", max_tokens=4096, timeout=40, max_retries=0)
+    model = make_model(max_tokens=4096, offline=offline)
     return create_deep_agent(
         model=model,
         tools=[dummy],
@@ -74,14 +73,14 @@ def usage(result: dict) -> dict[str, int]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Verify Deep Agents tools and virtual workspace with one paid model call")
+    parser = argparse.ArgumentParser(description="Verify Deep Agents tools and workspace; a model invocation uses your Gemini quota")
     parser.add_argument("--tools-only", action="store_true", help="inspect harness without a model call or key")
     args = parser.parse_args(argv)
     if not args.tools_only:
         load_key()
     with tempfile.TemporaryDirectory(prefix="omniriff-coach-smoke-") as folder:
         make_workspace(Path(folder))
-        agent = make_agent(Path(folder))
+        agent = make_agent(Path(folder), offline=args.tools_only)
         names = tool_names(agent)
         print("tools:", ", ".join(sorted(names)))
         missing = EXPECTED - names
