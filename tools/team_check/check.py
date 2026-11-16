@@ -45,6 +45,31 @@ def redact(text):
     return text
 
 
+def cli_error_summary(stdout, stderr):
+    """Expose only the CLI's structured error, never raw request/debug reports."""
+    for stream in (stdout, stderr):
+        for match in re.finditer(r'(?m)^\s*\{', stream):
+            try:
+                envelope = json.loads(stream[match.start():])
+            except ValueError:
+                continue
+            error = envelope.get('error') if isinstance(envelope, dict) else None
+            if not isinstance(error, dict):
+                continue
+            message = error.get('message')
+            code = error.get('code')
+            if not isinstance(message, str):
+                continue
+            safe = redact(message)
+            safe = re.sub(r'https?://\S+', '[request URL omitted]', safe)
+            safe = ''.join(c for c in safe if c.isprintable())[:400]
+            label = str(code) if isinstance(code, (int, float)) else 'unknown'
+            return f'Gemini CLI error {label}: {safe}'
+    if 'high demand' in stderr or '"code": 503' in stderr:
+        return 'Google returned 503 (model overloaded); no retry or fallback.'
+    return ''
+
+
 def command(args, workspace, *, env=None, stdin=None, timeout=45):
     process = subprocess.Popen(args, cwd=workspace, env=env, stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -60,8 +85,10 @@ def command(args, workspace, *, env=None, stdin=None, timeout=45):
         process.communicate()
         raise RuntimeError('Command timed out; no retry or checkpoint advance.') from None
     if process.returncode:
-        if 'high demand' in stderr or '"code": 503' in stderr:
-            raise RuntimeError('Google returned 503 (model overloaded); no retry or fallback.')
+        if Path(args[0]).name == 'gemini':
+            summary = cli_error_summary(stdout, stderr)
+            if summary:
+                raise RuntimeError(summary)
         raise RuntimeError(f'{Path(args[0]).name} failed (exit {process.returncode}); diagnostics withheld to protect secrets.')
     return stdout
 

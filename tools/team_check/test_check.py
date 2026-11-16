@@ -282,6 +282,22 @@ class CloudCheckTests(unittest.TestCase):
             check.command(['gemini'], self.workspace)
         self.assertNotIn('KEY_SHOULD_NOT_PRINT', str(caught.exception))
 
+    def test_structured_provider_error_reports_code_and_redacts_key(self):
+        payload = json.dumps({'error': {'code': 403, 'message': 'Denied secret-value at https://example.test/?key=secret-value'}})
+        with patch.dict(os.environ, {'GEMINI_API_KEY': 'secret-value'}):
+            summary = check.cli_error_summary(payload, 'RAW PRIVATE TRACE')
+        self.assertIn('403', summary)
+        self.assertNotIn('secret-value', summary)
+        self.assertNotIn('https://', summary)
+        self.assertNotIn('PRIVATE TRACE', summary)
+
+    def test_structured_error_can_be_at_end_of_stderr(self):
+        payload = 'Private trace omitted\n' + json.dumps({'error': {'code': 1, 'message': 'fetch failed'}})
+        self.assertEqual(check.cli_error_summary('', payload), 'Gemini CLI error 1: fetch failed')
+
+    def test_unstructured_diagnostics_are_withheld(self):
+        self.assertEqual(check.cli_error_summary('', 'Private request details'), '')
+
     def test_policy_denies_writes_shell_and_web(self):
         policy = Path(check.__file__).with_name('review-policy.toml').read_text()
         for tool in ('run_shell_command', 'write_file', 'replace', 'save_memory', 'web_fetch'):
