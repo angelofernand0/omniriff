@@ -6,8 +6,8 @@
 // that types out in step with the voice), the deep agent at work (plan, subagents, skills, files,
 // memory: only what the brain reports in todos/activity), then GOAL / NOW / GAP / NEXT (or the
 // session result at DONE), then what the pedal does right now, as keycaps.
-// Riff, the bubble and the voice start together: a new line waits (up to 2.5 s) for its audio,
-// and Riff never moves or starts a new line while the current one is still being said.
+// Live and demo cues use an installed, local browser voice, or text when none is available.
+// Historical replay clips can still play; live speech never waits for a paid voice service.
 // Keys exist only because the simulator has no pedal: Y / N answer Riff, M mutes.
 'use strict';
 
@@ -63,6 +63,7 @@
 
   function offline() {
     frame = null; held = null; clearTimeout(waitTimer);
+    stopVoice();
     if (showcaseTag) showcaseTag.hidden = true;
     window.OmniRiff.coach.set({ state: 'asleep', target: null, cue: '', mood: 'sleepy', stage: false });
     mark(null); type('', 0); setLed('off', 'OFF');
@@ -133,6 +134,7 @@
       f.state === 'asleep' ? 'OFF' : replay ? 'REPLAY' : f.scripted ? 'SCRIPTED' : 'LIVE');
     if (isShowcase(f)) {
       clearTimeout(waitTimer);
+      stopVoice();
       held = null;
       show(f, 0, true); // silent, visual-only: no browser speech or voice clip
       renderMark(f);
@@ -145,17 +147,14 @@
     if (newLine && talk.mode === 'sent') { clearTimeout(talk.hide); talk.hide = setTimeout(hideYou, 6000); talk.mode = 'idle'; }
     if (newLine) {
       held = f;                               // Riff waits for this line's voice, then everything starts at once
-      const ready = pendingAudio.get(f.cue);
+      const ready = replay && pendingAudio.get(f.cue);
       if (ready && !muted) { pendingAudio.delete(f.cue); enqueue(ready); return; }
       clearTimeout(waitTimer);
-      const isDemo = f && typeof f.session_id === 'string' && f.session_id.startsWith('demo-');
-      const delay = (hasCoachVoice && !f.scripted && !isDemo) ? 1200 : 150;
-      waitTimer = setTimeout(() => {          // no audio in time: say it with the browser (or just type it)
+      waitTimer = setTimeout(() => {          // historical replay audio may arrive next; live speech stays local
         if (frame !== f || spoken === f.cue) return;
-        // the Dev demo has Riff's recorded voice for every line: never a robot voice there, just the text
-        if (!muted && !isDemo && 'speechSynthesis' in window) enqueue({ text: f.cue, browser: true });
+        if (!muted) enqueue({ text: f.cue, browser: true });
         else if (!busy()) { held = null; show(f, f.cue.split(' ').length / 2.6); }
-      }, muted ? 0 : delay);
+      }, muted ? 0 : 150);
       return;
     }
     if (busy()) held = f; else show(f, 0);   // never move mid-sentence
@@ -493,9 +492,10 @@
   }).observe(app, { attributes: true, attributeFilter: ['data-loop'] });
 
   // ---------- voice: never cut off, never late ----------
-  let actx = null, analyser = null, audioEl = null, spoken = '', hasCoachVoice = false, queued = null, locked = null, routed = false;
+  let actx = null, analyser = null, audioEl = null, spoken = '', queued = null, locked = null, routed = false;
+  let utterance = null, voiceEpoch = 0;
   const pendingAudio = new Map();
-  const busy = () => (audioEl && !audioEl.paused && !audioEl.ended) || ('speechSynthesis' in window && speechSynthesis.speaking);
+  const busy = () => !!utterance || (audioEl && !audioEl.paused && !audioEl.ended) || ('speechSynthesis' in window && speechSynthesis.speaking);
   function unlock() {
     if (!actx) {
       try { actx = new (window.AudioContext || window.webkitAudioContext)(); analyser = actx.createAnalyser(); analyser.fftSize = 512; analyser.connect(actx.destination); }
@@ -510,7 +510,9 @@
   window.addEventListener('keydown', unlock);
 
   function onAudio(m) {
-    hasCoachVoice = true;
+    // Only explicitly labeled historical replays may play embedded audio. Old servers
+    // sending ElevenLabs clips cannot replace the live/demo local browser voice.
+    if (!isReplay(frame)) return;
     if (muted) return;
     if (!frame || frame.cue !== m.text) {    // early: keep it for when its line lands
       pendingAudio.set(m.text, m);
@@ -521,12 +523,20 @@
     clearTimeout(waitTimer);
     enqueue(m);
   }
-  function enqueue(item) { if (busy()) queued = item; else start(item); }
-  function start(item) { if (item.browser) speakBrowser(item.text); else playAudio(item); }
+  function enqueue(item) { if (muted || isShowcase(frame)) return; if (busy()) queued = item; else start(item); }
+  function start(item) {
+    if (muted || isShowcase(frame) || !frame || frame.cue !== item.text) return;
+    if (item.browser) speakBrowser(item.text); else playAudio(item);
+  }
   function finished() {
+    utterance = null;
     talking(false);
     const q = queued; queued = null;
-    if (q && frame && frame.cue === q.text) { setTimeout(() => (busy() ? (queued = q) : start(q)), 250); return; }
+    if (q && frame && frame.cue === q.text) {
+      const epoch = voiceEpoch;
+      setTimeout(() => { if (epoch === voiceEpoch && !muted) { if (busy()) queued = q; else start(q); } }, 250);
+      return;
+    }
     if (held && held.cue === spoken) held = null;
     if (held) release('', 0);                 // the line is done: Riff catches up
   }
@@ -549,14 +559,33 @@
   }
   function speakBrowser(text) {
     spoken = text;
-    const u = new SpeechSynthesisUtterance(text);
+    const synth = window.speechSynthesis;
+    // localService excludes hosted voices whose network/provider behavior we cannot control.
+    // Browser voices load asynchronously on some devices: that cue remains readable as text.
+    let voices = [];
+    try { if (synth && typeof synth.getVoices === 'function') voices = synth.getVoices().filter((v) => v.localService === true); }
+    catch (e) { /* restricted speech API: keep the cue readable as text */ }
+    const voice = voices.find((v) => /^en(?:-|$)/i.test(v.lang) && v.default)
+      || voices.find((v) => /^en(?:-|$)/i.test(v.lang)) || voices.find((v) => v.default) || voices[0];
+    if (!voice || !window.SpeechSynthesisUtterance) {
+      release(text, 0);
+      finished();
+      return;
+    }
+    const epoch = voiceEpoch;
+    const u = new window.SpeechSynthesisUtterance(text);
+    utterance = u;
+    u.voice = voice; u.lang = voice.lang;
     u.rate = 1.02; u.pitch = 1.15;
-    u.onstart = () => { talking(true, true); release(text, text.split(' ').length / 2.6); };
-    u.onend = finished;
-    speechSynthesis.speak(u);
+    u.onstart = () => { if (epoch !== voiceEpoch) return; talking(true, true); release(text, text.split(' ').length / 2.6); };
+    u.onend = () => { if (epoch === voiceEpoch) finished(); };
+    u.onerror = () => { if (epoch !== voiceEpoch) return; release(text, 0); finished(); };
+    try { synth.speak(u); }
+    catch (e) { release(text, 0); finished(); }
   }
   function stopVoice() {
-    queued = null;
+    queued = null; locked = null; utterance = null; voiceEpoch += 1;
+    pendingAudio.clear();
     if (audioEl) { try { audioEl.pause(); } catch (e) { /* gone */ } audioEl = null; }
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     talking(false);

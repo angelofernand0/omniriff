@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DemoCoach, generateCoachReply } from '../../dashboard/browser/coach/demo-coach';
 
 describe('generateCoachReply', () => {
@@ -30,6 +30,23 @@ describe('DemoCoach conversational goal updates', () => {
       },
       sendControl: vi.fn(),
     };
+  });
+
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('keeps scripted cues as text without fetching or emitting prerecorded speech', async () => {
+    const fetchVoice = vi.fn(() => Promise.reject(new Error('Voice clips must not be fetched')));
+    vi.stubGlobal('fetch', fetchVoice);
+    const coach = new DemoCoach(mockManager, true);
+    const delivered: any[] = [];
+    const socket = coach.socketFactory() as any;
+    socket.onmessage = (ev: { data: string }) => delivered.push(JSON.parse(ev.data));
+    await new Promise(resolve => setTimeout(resolve, 10));
+    coach.fromPlayer({ type: 'coach.say', text: 'Practice chord transitions' });
+    coach.fromPlayer({ type: 'coach.say', text: 'Keep the rhythm steady' });
+    expect(fetchVoice).not.toHaveBeenCalled();
+    expect(delivered.some(m => typeof m.cue === 'string' && m.cue.length > 0)).toBe(true);
+    expect(delivered.every(m => m.type === 'coach.frame')).toBe(true);
   });
 
   it('sets initial goal and transitions to take1 on first voice input', async () => {
