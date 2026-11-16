@@ -11,7 +11,7 @@
 
 Presets set three things; any can be overridden: --source hardware|virtual|silent, --coach live|scripted|replay|off,
 --vision auto|on|off. Switching coach mode is deliberate: stop (Ctrl-C) and start another preset. The LIVE coach
-spends API credit and can ask to change the rig, so it is never run alongside the others.
+uses Gemini API quota and can ask to change the rig, so it is never run alongside the others.
 """
 from __future__ import annotations
 
@@ -40,8 +40,8 @@ PRESETS = {
     'quiet':    dict(source='virtual',  coach='off',      vision='auto'),
 }
 BLURB = {
-    'demo': 'simulated guitar + real engine + hand tracking + LIVE AI coach (spends API credit when you practice)',
-    'rig': 'real guitar/interface + hand tracking + LIVE AI coach (spends API credit when you practice)',
+    'demo': 'simulated guitar + real engine + hand tracking + LIVE Gemini coach (uses API quota)',
+    'rig': 'real guitar/interface + hand tracking + LIVE Gemini coach (uses API quota)',
     'fallback': 'simulated guitar + SCRIPTED coach (canned, free, no keys)',
     'replay': 'simulated guitar + a recorded REAL coach session (free, no keys)',
     'quiet': 'just the instrument: simulated guitar, no coach',
@@ -76,7 +76,7 @@ def can_import(python: str, *modules: str) -> bool:
         return False
 
 
-WANTED = ('websockets', 'numpy', 'sounddevice', 'mediapipe', 'cv2', 'anthropic', 'deepagents')
+WANTED = ('websockets', 'numpy', 'sounddevice', 'mediapipe', 'cv2', 'langchain_google_genai', 'deepagents')
 
 
 def capabilities(python: str) -> set[str]:
@@ -122,6 +122,10 @@ def env_has_key(name: str) -> bool:
         except OSError:
             pass
     return False
+
+
+def env_has_coach_key() -> bool:
+    return env_has_key('GOOGLE_API_KEY') or env_has_key('GEMINI_API_KEY')
 
 
 def free_ports() -> tuple[int, int, int, int, int]:
@@ -261,14 +265,13 @@ def build_plan(a, python: str, ports: tuple, camera: int | None) -> Plan:
 def preflight_notes(a, python: str) -> list[str]:
     notes = []
     if a.coach == 'live':
-        if not can_import(python, 'anthropic', 'deepagents'):
+        if not can_import(python, 'langchain_google_genai', 'deepagents'):
             raise SystemExit('The live coach needs its packages: python -m pip install -r coach/requirements.txt '
                              '(or use: fallback / replay, which need no keys).')
-        if not env_has_key('ANTHROPIC_API_KEY'):
-            raise SystemExit('The live coach needs ANTHROPIC_API_KEY in .env (see coach/README.md). '
+        if not env_has_coach_key():
+            raise SystemExit('The live coach needs GOOGLE_API_KEY or GEMINI_API_KEY in .env (see coach/README.md). '
                              'No key? Use: python -m tools.launch fallback')
-        if not env_has_key('ELEVENLABS_API_KEY'):
-            notes.append('no ELEVENLABS_API_KEY: Riff will use the browser voice')
+        notes.append('Riff uses local browser speech when available, with captions otherwise; no voice API key is needed.')
     if a.source == 'hardware' and not can_import(python, 'sounddevice'):
         raise SystemExit('A real guitar needs sounddevice: python -m pip install -r engine/requirements.txt')
     return notes
@@ -295,7 +298,8 @@ def run(a) -> int:
     for n in plan.notes:
         print(n, file=sys.stderr if n.startswith('WARNING') else sys.stdout)
     if plan.coach == 'live':
-        print('LIVE coach: spends API credit while you practice and can ask to change your rig (you approve).')
+        print('LIVE coach: uses Gemini API quota and can ask to change your rig (you approve). '
+              'Use a free-tier project without billing to avoid provider charges; quota exhaustion stops requests.')
     if plan.coach == 'replay':
         print(f'REPLAY of {plan.replay_file.name}: a recorded session, not live.')
     print(f'dashboard: {plan.url}')
@@ -329,7 +333,7 @@ def check() -> int:
     print(f'engine python: {py or "NOT FOUND (run: python -m tools.launch setup)"}')
     if py:
         for group, mods in (('engine', ('websockets', 'numpy', 'scipy', 'jsonschema')), ('audio', ('sounddevice',)),
-                            ('vision', ('mediapipe', 'cv2')), ('coach', ('anthropic', 'deepagents', 'langchain_anthropic'))):
+                            ('vision', ('mediapipe', 'cv2')), ('coach', ('deepagents', 'langchain_google_genai'))):
             for m in mods:
                 print(f'  {group:<7} {m:<20} {"ok" if can_import(py, m) else "missing"}')
         try:
@@ -340,8 +344,8 @@ def check() -> int:
             pass
     model = (ROOT / MODEL).is_file() or any((d / MODEL).is_file() for d in sibling_checkouts())
     print(f'hand model: {"found" if model else "MISSING (see vision/README.md)"}')
-    print(f'ANTHROPIC_API_KEY: {"set" if env_has_key("ANTHROPIC_API_KEY") else "missing (live coach unavailable)"}')
-    print(f'ELEVENLABS_API_KEY: {"set" if env_has_key("ELEVENLABS_API_KEY") else "missing (browser voice only)"}')
+    print(f'Gemini API key (GOOGLE_API_KEY or GEMINI_API_KEY): {"set" if env_has_coach_key() else "missing (live coach unavailable)"}')
+    print('Riff voice: local browser speech when available, captions otherwise (no voice API key)')
     recs = sorted(p.name for p in REPLAYS.glob('*.jsonl')) if REPLAYS.is_dir() else []
     print(f'recorded sessions: {", ".join(recs) or "none"}')
     print(f'ports free from: {free_ports()[0]} (dashboard)')
@@ -370,7 +374,8 @@ def setup() -> int:
         (ROOT / MODEL).parent.mkdir(parents=True, exist_ok=True)
         print('downloading the hand model...')
         urllib.request.urlretrieve(MODEL_URL, ROOT / MODEL)
-    print('Done. Put ANTHROPIC_API_KEY (and optionally ELEVENLABS_API_KEY) in .env for the live coach, then: python -m tools.launch check')
+    print('Done. Put GOOGLE_API_KEY (or GEMINI_API_KEY) from a free-tier Gemini API project without billing '
+          'in .env for the live coach, then: python -m tools.launch check. No separate voice key is needed.')
     return 0
 
 

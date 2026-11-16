@@ -92,16 +92,17 @@ Built with LangChain's `deepagents` (0.7.38, needs Python 3.11+, `pip install de
 | `write_drill_card` | Tells the live layer and dashboard what the drill is | New |
 | `say` | One short cue to the dashboard (and voice) | New |
 
-### Model
+### Current model (post-hackathon provider migration)
 
 | Role | Model | Why |
 |---|---|---|
-| Main coach | `anthropic:claude-sonnet-5-5` | Built for fast agent work with tools. $2 in / $10 out per million tokens. |
-| Ears and Eyes subagents | `anthropic:claude-haiku-5-5` | Narrow reading jobs where speed matters most. $0.10 / $0.50. |
+| Main coach | Gemini Developer API, `gemini-2.5-flash-lite` | Tool-calling coach using the existing measured reports and player approvals. |
+| Ears, Eyes, memory and summaries | Gemini Developer API, `gemini-2.5-flash-lite` | Narrow report and memory jobs; the same usage guard covers every model call. |
 
-- A session should cost well under a few dollars. That's an estimate; nothing has been measured.
-- SM is providing the Anthropic API key for now. It goes in a local `.env` as `ANTHROPIC_API_KEY`, never in a commit or on the board.
-- Things to check on the first run, because Sonnet 5.5 is strict about them: it rejects a custom `temperature`, it rejects forced tool choice (LangChain's structured output can use that), and thinking can't be switched off (lower the effort setting instead, start at low or medium for speed).
+- Use `GOOGLE_API_KEY` or `GEMINI_API_KEY` in a gitignored `.env` or the server's secret variables, never in a commit, public browser variable or board post.
+- Use a free-tier Gemini API project without billing to avoid model charges. An API key cannot prove its project's billing tier. Quota exhaustion fails rather than falling back to a paid provider or Vertex AI; hosting costs are separate.
+- Thinking is disabled, provider retries are disabled, and the existing conservative budget guard remains. Its rates are accounting estimates, not Gemini price quotes or a provider billing cap. See [coach setup](../coach/README.md) and [Google's current pricing](https://ai.google.dev/gemini-api/docs/pricing).
+- Riff speaks with a local browser voice when available, with captions otherwise; no ElevenLabs request, recording or voice API key is used.
 
 ## 5. The coach on screen
 

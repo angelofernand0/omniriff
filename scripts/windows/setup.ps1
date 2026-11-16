@@ -37,7 +37,7 @@ try {
     if ($Coach) {
         & $venvPython -m pip install -r coach/requirements.txt
         if ($LASTEXITCODE -ne 0) { throw 'Coach dependency installation failed; fix the pip error above and rerun.' }
-        Write-Host 'Coach dependencies installed. Put ANTHROPIC_API_KEY in a gitignored .env (see coach/README.md).'
+        Write-Host 'Coach dependencies installed. Put GOOGLE_API_KEY or GEMINI_API_KEY in a gitignored .env (see coach/README.md). Use a free-tier Gemini API project without billing to avoid provider charges; no voice API key is needed.'
     }
 
     Write-Host 'Dependencies installed. Running device, model and port preflight (no audio stream).'

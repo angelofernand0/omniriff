@@ -3,7 +3,7 @@
 # macOS demo launcher: real engine + real camera hand tracking (+ optional coach) + dashboard.
 # Run from Terminal.app (macOS only grants the camera to apps launched from Terminal):
 #   bash scripts/mac/start-demo.sh                 # silence in, hand tracking, no coach
-#   bash scripts/mac/start-demo.sh --coach         # also start the practice coach (needs ANTHROPIC_API_KEY in .env)
+#   bash scripts/mac/start-demo.sh --coach         # also start the practice coach (needs GOOGLE_API_KEY or GEMINI_API_KEY)
 #   bash scripts/mac/start-demo.sh --camera 1      # force a camera index (default: first one that is not black)
 #   bash scripts/mac/start-demo.sh --audio "--in Focusrite --out Focusrite --input-channel 2"
 #   bash scripts/mac/start-demo.sh --virtual-guitar --coach   # SIMULATED looping guitar (audible) through the real engine
@@ -42,7 +42,7 @@ if [ -z "$PYBIN" ]; then
   CANDS+=(python3.12 python3)
   for c in "${CANDS[@]}"; do
     p="$(command -v "$c" 2>/dev/null || true)"
-    [ -n "$p" ] && "$p" -c 'import websockets, anthropic' 2>/dev/null && PYBIN="$p" && break
+    [ -n "$p" ] && "$p" -c 'import websockets, langchain_google_genai' 2>/dev/null && PYBIN="$p" && break
   done
 fi
 [ -n "$PYBIN" ] || { echo "No Python with the engine requirements found. Run: python3.12 -m venv .venv && .venv/bin/python -m pip install -r engine/requirements.txt -r vision/requirements.txt -r coach/requirements.txt  (or pass --python PATH)" >&2; exit 1; }
@@ -119,8 +119,8 @@ CMD=("$PYBIN" -m engine.demo --http-port "$HTTP" --udp-port "$UDP" --ws-port "$W
 if [ -n "$AUDIO" ]; then read -r -a AUDIO_ARR <<<"$AUDIO"; CMD+=("${AUDIO_ARR[@]}"); else CMD+=(--headless); fi
 [ "$VISION" = 1 ] && CMD+=(--hand-log "$HANDLOG" --vision --vision-args "--model $MODEL --camera $CAMERA --port $UDP --hand-view-port $HAND --relative")
 if [ "$COACH" = 1 ]; then
-  if [ ! -f .env ] && [ ! -f "$HOME/.config/omniriff/.env" ]; then
-    echo "WARNING: no .env with ANTHROPIC_API_KEY found; the coach will not start. See coach/README.md." >&2
+  if [ -z "${GOOGLE_API_KEY:-}${GEMINI_API_KEY:-}" ] && [ ! -f .env ] && [ ! -f "$HOME/.config/omniriff/.env" ]; then
+    echo "WARNING: set GOOGLE_API_KEY or GEMINI_API_KEY in the environment or a gitignored .env for the coach. See coach/README.md." >&2
   fi
   CMD+=(--coach --coach-args "--state-port $WS --control-port $UDP --feed-port $COACHP")
 fi
