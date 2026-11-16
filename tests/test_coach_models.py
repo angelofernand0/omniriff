@@ -2,6 +2,7 @@
 import os
 import sys
 import unittest
+from importlib.util import find_spec
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -29,11 +30,12 @@ class GeminiModelTests(unittest.TestCase):
         self.assertEqual(constructor.call_count, 1)
         options = constructor.call_args.kwargs
         self.assertEqual(options["model"], MODEL)
-        self.assertEqual(MODEL, "gemini-2.5-flash-lite")
+        self.assertEqual(MODEL, "gemini-3.5-flash-lite")
         self.assertFalse(options["vertexai"])
         self.assertEqual(options["api_key"], "gemini-test-key")
         self.assertEqual(options["max_retries"], 0)
-        self.assertEqual(options["thinking_budget"], 0)
+        self.assertEqual(options["thinking_level"], "minimal")
+        self.assertNotIn("thinking_budget", options)
         self.assertEqual(options["max_output_tokens"], 2048)
         self.assertNotIn("project", options)
         self.assertNotIn("tools", options)
@@ -53,6 +55,27 @@ class GeminiModelTests(unittest.TestCase):
             make_model(offline=True)
         self.assertEqual(constructor.call_args.kwargs["api_key"], "offline-harness-only-not-a-real-key")
         constructor.return_value.invoke.assert_not_called()
+
+    @unittest.skipUnless(find_spec("langchain_google_genai"), "coach SDK is optional in core CI")
+    def test_real_adapter_serializes_minimal_thinking_and_tools_without_network(self):
+        from langchain_core.messages import HumanMessage
+        from langchain_core.tools import StructuredTool
+
+        with patch("socket.socket.connect", side_effect=AssertionError("No provider connection")):
+            model = make_model(offline=True)
+            tool = StructuredTool.from_function(
+                func=lambda take_id: "fixture", name="get_take_report",
+                description="Read timing for one take.")
+            bound = model.bind_tools([tool])
+            payload = model._prepare_request(
+                [HumanMessage(content="Read take fixture-one")], tools=bound.kwargs["tools"])
+        self.assertEqual(payload["model"], MODEL)
+        thinking = payload["config"].thinking_config
+        self.assertEqual(thinking.thinking_level.value, "MINIMAL")
+        self.assertIsNone(thinking.thinking_budget)
+        declarations = [item.name for tool in payload["config"].tools
+                        for item in (tool.function_declarations or [])]
+        self.assertEqual(declarations, ["get_take_report"])
 
 
 if __name__ == "__main__":

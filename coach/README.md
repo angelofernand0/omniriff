@@ -9,8 +9,8 @@ Install the optional dependencies with `python -m pip install -r
 coach/requirements.txt` (requires Python 3.11+, e.g. `py -3.12` on Windows). Put
 `GOOGLE_API_KEY` (or `GEMINI_API_KEY`) in a gitignored repo `.env` or
 `~/.config/omniriff/.env`; never copy it into the browser or repository. Riff
-uses the Gemini Developer API with `gemini-2.5-flash-lite` for the coach,
-specialists and summaries, with thinking disabled and no automatic provider
+uses the Gemini Developer API with `gemini-3.5-flash-lite` for the coach,
+specialists and summaries, with thinking set to minimal and no automatic provider
 fallback. Existing Anthropic and ElevenLabs keys are not used.
 
 ## Free-tier setup and speech

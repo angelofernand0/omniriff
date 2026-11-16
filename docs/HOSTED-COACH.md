@@ -24,8 +24,8 @@ browser (Vercel)                                   coach server (any container h
 3. Type or say what you're working on (hold V), or press **Y**. Record a loop (Record loop / L),
    play 10+ seconds, Finish. Riff listens, thinks (plan on screen) and answers. Y approves a drill.
 
-The current coach uses `gemini-2.5-flash-lite` through the Gemini Developer API,
-with thinking disabled and no automatic paid-provider fallback. To avoid model
+The current coach uses `gemini-3.5-flash-lite` through the Gemini Developer API,
+with thinking set to minimal and no automatic paid-provider fallback. To avoid model
 charges, the operator must use a free-tier Gemini API project **without billing
 enabled**. An API key cannot prove its project's billing tier. Check
 [Google's current pricing and limits](https://ai.google.dev/gemini-api/docs/pricing).

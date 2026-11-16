@@ -96,8 +96,8 @@ Built with LangChain's `deepagents` (0.7.38, needs Python 3.11+, `pip install de
 
 | Role | Model | Why |
 |---|---|---|
-| Main coach | Gemini Developer API, `gemini-2.5-flash-lite` | Tool-calling coach using the existing measured reports and player approvals. |
-| Ears, Eyes, memory and summaries | Gemini Developer API, `gemini-2.5-flash-lite` | Narrow report and memory jobs; the same usage guard covers every model call. |
+| Main coach | Gemini Developer API, `gemini-3.5-flash-lite` | Tool-calling coach using the existing measured reports and player approvals. |
+| Ears, Eyes, memory and summaries | Gemini Developer API, `gemini-3.5-flash-lite` | Narrow report and memory jobs; the same usage guard covers every model call. |
 
 - Use `GOOGLE_API_KEY` or `GEMINI_API_KEY` in a gitignored `.env` or the server's secret variables, never in a commit, public browser variable or board post.
 - Use a free-tier Gemini API project without billing to avoid model charges. An API key cannot prove its project's billing tier. Quota exhaustion fails rather than falling back to a paid provider or Vertex AI; hosting costs are separate.

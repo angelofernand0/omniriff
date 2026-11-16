@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 
 
-MODEL = "gemini-2.5-flash-lite"
+MODEL = "gemini-3.5-flash-lite"
 KEY_NAMES = ("GOOGLE_API_KEY", "GEMINI_API_KEY")
 
 
@@ -38,7 +38,7 @@ def make_model(*, max_tokens: int = 4096, offline: bool = False):
         api_key="offline-harness-only-not-a-real-key" if offline else api_key(),
         vertexai=False,
         max_output_tokens=max_tokens,
-        thinking_budget=0,
+        thinking_level="minimal",
         max_retries=0,
         timeout=40,
     )
