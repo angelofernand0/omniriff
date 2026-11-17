@@ -7,8 +7,26 @@ only after a player approval. Stopping it does not stop the audio engine.
 
 Install the optional dependencies with `python -m pip install -r
 coach/requirements.txt` (requires Python 3.11+, e.g. `py -3.12` on Windows). Put
-`ANTHROPIC_API_KEY` in a gitignored repo `.env` or `~/.config/omniriff/.env`;
-never copy it into the browser or repository.
+`GOOGLE_API_KEY` (or `GEMINI_API_KEY`) in a gitignored repo `.env` or
+`~/.config/omniriff/.env`; never copy it into the browser or repository. Riff
+uses the Gemini Developer API with `gemini-3.5-flash-lite` for the coach,
+specialists and summaries, with thinking set to minimal and no automatic provider
+fallback. Existing Anthropic and ElevenLabs keys are not used.
+
+## Free-tier setup and speech
+
+To avoid model charges, use a Gemini API project on the free tier **without
+billing enabled**. An API key does not tell OmniRiff whether the project is on
+a paid tier. [Google's pricing](https://ai.google.dev/gemini-api/docs/pricing)
+lists free-tier availability and account-dependent limits; Gemini is not
+unconditionally free. When provider quota is exhausted, requests fail rather
+than switching to a paid model, Vertex AI or another provider. Hosting costs
+are separate from model usage.
+
+Riff's speech uses a local browser voice when one is available, with the same
+cue shown as captions when it is not. No voice API key, remote TTS request or
+ElevenLabs recording is needed. Browser voice availability varies by device;
+click or tap the page once to allow spoken playback.
 
 The hardware-free path is `python -m coach --fixtures`. It generates three
 explicitly synthetic guitar/hand takes and waits for dashboard approval. It
@@ -16,7 +34,7 @@ does not connect to an engine. For a noninteractive **synthetic
 fixture only** check, use `python -m coach --fixtures
 --auto-approve-fixtures`. This flag never works with a live rig. Use
 `--fixture-limit 1` to bound a first run. Note that `--fixtures` still requires
-`ANTHROPIC_API_KEY` and calls the paid model (synthetic takes, real model); the
+the Gemini API key and makes real model calls (synthetic takes, real model); the
 genuine zero-key, zero-cost offline check is `python -m coach.smoke --tools-only`. The
 local guard refuses new runs when its conservative estimated usage is near $8.
 `coach/workspace/usage.jsonl` stores counts and an upper-bound estimate, not
@@ -39,7 +57,8 @@ audio timing only.
 
 Tests without a model key: `python -m unittest discover -s tests -p
 test_coach_core.py -v`. The API smoke harness is `python -m coach.smoke
---tools-only`; omitting `--tools-only` makes one paid model call.
+--tools-only`; omitting `--tools-only` makes one real Gemini model call and
+uses that project's quota and billing tier.
 
 In a live session, Riff asks for a goal before the first take. The dashboard
 TALK/typed input reaches the runner as `coach.say`; after the first take it is
@@ -50,4 +69,6 @@ The pedal's accepted `practice_count` starts or pauses a round; a new spoken
 goal can also start one from PLAY. The engine remains independent of the coach.
 The budget guard checks each parent, Ears, Eyes and summarization model call;
 the `$8` ceiling is a conservative local estimate, **not** a provider billing
-cap. No paid-model quality claim is made by the offline tests.
+cap. Its conservative accounting rates are safety estimates, not Gemini's
+prices or proof that the API project is free. No model-quality claim is made
+by the offline tests.

@@ -1,8 +1,10 @@
 # The hosted coach (coach/server.py). Build from the repository root:
 #   docker build -f coach/Dockerfile -t omniriff-coach .
-#   docker run -p 8787:8787 -e ANTHROPIC_API_KEY=... -e ELEVENLABS_API_KEY=... \
+#   docker run -p 8787:8787 -e GOOGLE_API_KEY=... \
 #     -e OMNIRIFF_COACH_PASSCODE=... -v omniriff-coach:/data omniriff-coach
 # Hosts mount persistent storage at /data (player memory, usage ledger); Railway rejects a VOLUME line.
+# GEMINI_API_KEY is also accepted. Use a free-tier Gemini API project without billing to avoid
+# model charges; an API key alone does not prove the project's billing tier. No voice API is used.
 FROM python:3.12-slim
 
 WORKDIR /app

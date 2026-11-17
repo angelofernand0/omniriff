@@ -12,9 +12,10 @@ LIMIT_USD = 8.0
 # Headroom held per in-flight model call. A real call costs a few cents; this only has to cover one
 # worst-case call, and the coach runs up to three in parallel (lead + two specialists).
 RUN_RESERVE_USD = 0.25
-# Claude Sonnet 5.5 list price (claude-sonnet-5-5: $2 in / $10 out / $0.10 cache read per million tokens;
-# checked 2026-11-14). The coach also uses Haiku 5.5, which is cheaper, so charging every model at the
-# Sonnet rate stays an upper bound. Update these if the coach moves to a pricier model.
+# Retain the existing conservative accounting rates across the provider change
+# so historical ledger entries and admission behavior stay compatible. These
+# deliberately nonzero rates are NOT Gemini prices or proof of a free-tier
+# project. Google controls billing and quota; use a project without billing.
 INPUT_USD_PER_M = 2.0
 OUTPUT_USD_PER_M = 10.0
 CACHE_READ_USD_PER_M = 0.10

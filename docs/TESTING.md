@@ -18,7 +18,7 @@ Terminal-launched processes).
 
 | Run | What it is | Needs | Costs | Look for on screen |
 |---|---|---|---|---|
-| `demo` | Simulated guitar through the real engine + hand tracking + the **LIVE** AI coach | `.env` with `ANTHROPIC_API_KEY` (`ELEVENLABS_API_KEY` for Riff's voice), camera | API credit while you practice (a take is a few cents) | coach light **LIVE**, pill says **SIM GUITAR** |
+| `demo` | Simulated guitar through the real engine + hand tracking + the **LIVE** Gemini coach | `.env` with `GOOGLE_API_KEY` or `GEMINI_API_KEY`, camera | Gemini quota; use a free-tier project without billing to avoid model charges | coach light **LIVE**, pill says **SIM GUITAR** |
 | `rig` | A real guitar/interface + hand tracking + the **LIVE** coach | same + an interface (Windows defaults to a Focusrite on WASAPI ch. 2; override with `--audio "..."`) | same | coach light **LIVE**, no SIM label |
 | `fallback` | Simulated guitar + the **SCRIPTED** coach (canned, follows the live flow) | nothing | free | coach light and pill say **SCRIPTED** |
 | `replay [file]` | Simulated guitar + a recorded **real** coach session played back | a recording in `dashboard/replays/` (or pass a file) | free | banner **REPLAY · a recorded session, not live**, pill says **REPLAY COACH** |
@@ -29,9 +29,14 @@ Overrides: `--source hardware|virtual|silent`, `--coach live|scripted|replay|off
 
 ### Switching modes is a restart, on purpose
 Press Ctrl-C and start another preset (`python -m tools.launch fallback`). There is no hot-swap because the LIVE
-coach costs money and can ask to change the rig: it is never run alongside the others, so a tester looking at the
+coach uses API quota and can ask to change the rig: it is never run alongside the others, so a tester looking at the
 scripted coach can't wake it with a pedal press. Every mode says what it is on screen; if the screen and the
 command disagree, that is a bug, report it.
+
+Riff uses local browser speech when available, with captions otherwise; no
+voice API key is required. Gemini free-tier availability and limits depend on
+the API project. Existing local budget accounting is a conservative guard,
+not a guarantee of zero provider charges; see [coach setup](../coach/README.md).
 
 ## The hosted browser simulator (Vercel)
 A zero-install page for anyone: a simulated guitar and hand in the browser, no keys, no coach. It is the

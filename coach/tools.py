@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 
-import asyncio
 import json
 import re
 from pathlib import Path
@@ -178,22 +177,8 @@ class CoachTools:
         self.feed.publish(state="speaking", mood=self._cue_mood(bool(extra)),
                           target="loop" if extra else "player", cue=text, **extra)
         self.feed.publish_activity("coach", "say", "done")
-        try:
-            from .voice import Voice  # supplied by R4; browser speech is the fallback until then
-        except ImportError:
-            return text
-        try:
-            voice = Voice.from_env()
-            audio = asyncio.run(voice.render(text))
-            if audio is None:
-                LOG.warning("coach voice: no audio rendered (%s); the dashboard falls back to the browser voice",
-                            getattr(voice, "last_error", None) or "no key or empty response")
-            else:
-                sent = self.feed.broadcast_audio(audio)
-                LOG.info("coach voice: %d bytes of MP3 %s", len(audio.get("audio_b64", "")) * 3 // 4,
-                         "sent to the dashboard" if sent else "REJECTED by the feed schema")
-        except Exception as exc:  # voice is optional: the dashboard retains its browser fallback
-            LOG.warning("coach voice failed: %s: %s", type(exc).__name__, exc)
+        # The cue frame is the speech source. The dashboard uses an installed
+        # local voice or captions; the coach never synthesizes server audio.
         return text
 
     def rig_control(self, control: str, value: float | None = None) -> str:

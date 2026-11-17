@@ -5,8 +5,8 @@
  * voice, plan, loop marker, drill card, approval and before/after render exactly as live.
  * It moves on real events only: what the player says or types to Riff, a finished loop
  * recording (real guitar or simulator), and Y / a held thumbs-up to approve. The words and
- * numbers are written in advance (docs/PITCH.md, "Demo coach"); the voice clips are Riff's
- * ElevenLabs voice, pre-rendered by tools/showcase/demo_voice.py.
+ * numbers are written in advance (docs/PITCH.md, "Demo coach"). coach.js uses a local
+ * installed browser voice, or text when local speech is unavailable; no voice clips are loaded.
  *
  *   "Welcome back, last time..." (memory) -> "I can't get my timing right" -> record -> listen + plan -> "third phrase: swing it,
  *   even attacks" (marked on the loop) -> approve effects off -> fresh take -> before/after ->
@@ -21,7 +21,7 @@ import type { TrackedHand } from '../vision/hand-tracker';
 import { isThumbsUp, ThumbsUpHold } from '../vision/thumbs-up';
 import { DEMO_MEMORY, LINES, SEED_MEMORY, type LineId } from './demo-script';
 
-/** Which recorded reply fits what you said (every reply has a clip, so Riff keeps its voice). */
+/** Which scripted reply fits what you said. Speech is handled locally by coach.js. */
 export function replyFor(text: string): LineId {
   const lower = text.toLowerCase();
   if (/speed|fast|tempo|bpm|quick|slow|accelerat/.test(lower)) return 'replySpeed';
@@ -37,7 +37,6 @@ export function generateCoachReply(text: string): string { return LINES[replyFor
 
 type Msg = Record<string, unknown>;
 const MEMORY_KEY = 'omniriff.demo.lastTime';
-const voiceFiles = import.meta.glob('./demo-voice/*.mp3', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 
 function remember(value?: string | null): string {
   try {
@@ -74,7 +73,6 @@ export class DemoCoach {
   private loopState = 'idle';
   private loopSeconds = 0;
   private takeN = 0;
-  private audio = new Map<LineId, string>();
   private thumb = new ThumbsUpHold(600);
   private readonly sessionId = 'demo-' + Date.now().toString(36);
 
@@ -97,7 +95,6 @@ export class DemoCoach {
         if (this.step === 'play') this.startPractice();   // with an approval pending, coach.js sends coach.approve
       });
     }
-    void this.loadVoice();
   }
 
   /** coach.js calls this instead of `new WebSocket(...)`. */
@@ -296,24 +293,10 @@ export class DemoCoach {
   private say(id: LineId, frame: Msg): void {
     const text = LINES[id].text;
     this.publish({ ...frame, cue: text });
-    const b64 = this.audio.get(id);
-    if (b64) this.socket?.deliver({ version: 1, type: 'coach.audio', timestamp_ms: Date.now(), text, mime: 'audio/mpeg', audio_b64: b64 });
   }
 
   private lineMs(id: LineId): number { return LINES[id].ms; }
 
   private later(ms: number, fn: () => void): void { this.timers.push(Number(setTimeout(fn, ms))); }
 
-  private async loadVoice(): Promise<void> {
-    await Promise.all((Object.keys(LINES) as LineId[]).map(async id => {
-      const url = voiceFiles[`./demo-voice/${id}.mp3`];
-      if (!url) return;   // no clip: coach.js falls back to the browser voice
-      try {
-        const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
-        let text = '';
-        for (let i = 0; i < bytes.length; i += 0x8000) text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-        this.audio.set(id, btoa(text));
-      } catch { /* offline: browser voice */ }
-    }));
-  }
 }

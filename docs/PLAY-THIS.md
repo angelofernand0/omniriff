@@ -4,6 +4,12 @@ For Aditya (or anyone with a guitar). About 10 minutes. The goal is to check tha
 camera, names the **actual cause** of a late chord change (which finger, when the hand moves)
 instead of "keep strumming through it".
 
+Connect to a coach server running the Gemini configuration in
+[HOSTED-COACH.md](HOSTED-COACH.md) before testing. The server needs available
+Gemini API quota; a free-tier project without billing avoids model charges.
+Speech uses a local browser voice when available, with captions otherwise,
+so a missing spoken cue alone does not mean the coach failed.
+
 ## 1. Frame the camera first (this matters most)
 - **Both hands in the picture:** the fretting hand on the neck *and* the strumming hand.
 - Camera about 1 m away at chest height, a little to the side of the fretboard so the fingertips on the

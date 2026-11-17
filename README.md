@@ -70,7 +70,7 @@ flowchart LR
 ### 2. 🤖 Conversational AI Coach ("Riff")
 * **LangChain Deep Agent Engine:** Stateful agent analyzing take recordings and persistent practice memory across sessions.
 * **Push-to-Talk Voice Interaction:** Speak directly to Riff using the `V` key or by holding down the physical USB foot pedal.
-* **Dynamic Speech Synthesis:** Riff speaks conversational coaching replies aloud via `speechSynthesis` or ElevenLabs neural TTS.
+* **Local Speech Synthesis:** Riff speaks coaching replies through a local browser voice when available, with captions otherwise. No voice API key is needed. The AI coach uses Gemini; use a free-tier API project without billing to avoid model charges. See [coach setup](coach/README.md).
 * **Safety Isolation:** The AI coach works **between takes**, never inside the real-time audio callback. Audio continues uninterrupted even if network drops or the coach process closes.
 
 ### 3. 👁️ Optical Strum Guard & Vision Gestures

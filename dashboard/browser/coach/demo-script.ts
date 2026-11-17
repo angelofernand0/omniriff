@@ -1,7 +1,7 @@
 /**
  * Riff's lines for the demo coach (docs/PITCH.md, "Demo coach"). Two sentences each, Riff's voice
- * (BRAND_SPEC.md §7). `ms` is the spoken length of the pre-rendered clip
- * (tools/showcase/demo_voice.py writes it), used to wait for Riff to finish before the next beat.
+ * (BRAND_SPEC.md §7). `ms` preserves the scripted pacing between beats; local browser
+ * voice duration varies by installed voice. No prerecorded provider clip is loaded.
  */
 export const SEED_MEMORY = 'Your chord changes were dragging; leading with the ring finger fixed them.';
 export const DEMO_MEMORY = 'Phrase 3 was straight with uneven attacks; swinging it evened your timing.';
@@ -19,7 +19,7 @@ export const LINES = {
   keepSound: { text: "No problem, we'll keep your sound. Loop the third phrase with that swing, and tap when you're ready.", ms: 6290 },
   result: { text: "Nice, that's the swing. Your attacks are way more even, and the third phrase sits in the pocket now.", ms: 6760 },
   handBack: { text: "Effects are back on, pinch the reverb in and make it yours. I'll remember the third phrase for next time.", ms: 6660 },
-  // replies when you talk to Riff after the script (demo-coach.ts replyFor), recorded too so Riff never falls back to a robot voice
+  // Replies when you talk to Riff after the script (demo-coach.ts replyFor), spoken locally or shown as captions.
   replySpeed: { text: "Got it, shifting focus to speed and tempo. Keep your fretting hand relaxed and let's push the pace on your next take.", ms: 8150 },
   replyTiming: { text: 'Understood, locked in on timing and rhythm. Focus on tight, even attacks right on the beat.', ms: 6200 },
   replyChords: { text: 'Heard loud and clear. Focus on clean finger placement and smooth transitions between chords.', ms: 6010 },

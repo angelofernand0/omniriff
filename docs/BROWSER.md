@@ -10,6 +10,13 @@ The browser build shares the existing dashboard renderer. It adds an explicit St
 
 Browser simulator and live input are instruments, not AI coaching sessions by themselves. In **Riff, the AI coach**, enter the privately shared team passcode and choose **Connect Riff** to send recorded takes and relevant hand/state data to the hosted coach server; the guitar audio path stays in the browser. Python bridge remains available for a local engine and coach. Browser telemetry does not measure native engine performance or physical round-trip latency. A synthetic-loop coaching test on the hosted site does not establish real-guitar or camera coaching quality.
 
+Riff's coach uses Gemini. The server operator should configure a free-tier
+Gemini API project without billing to avoid model charges; quota and hosting
+limits still apply. Players never need the server's model key. Riff speaks
+through a local browser voice when available, with captions otherwise, and
+does not request ElevenLabs audio. See [coach setup](../coach/README.md) for
+provider requirements and [hosted setup](HOSTED-COACH.md) for redeployment.
+
 ## Develop and build
 
 Requires Node 22.12 or later. From the repository root:

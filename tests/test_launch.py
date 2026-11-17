@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tools import launch
-from tools.launch.__main__ import PRESETS, build_plan, parse, resolve_replay
+from tools.launch.__main__ import PRESETS, build_plan, parse, preflight_notes, resolve_replay
 
 PORTS = (8080, 47800, 47801, 47802, 47803)
 
@@ -95,6 +95,27 @@ class ReplayFileTests(unittest.TestCase):
                 self.assertTrue((Path(d) / 'replays' / 'mine.jsonl').is_file())
                 with self.assertRaises(SystemExit):
                     resolve_replay(str(Path(src) / 'nope.jsonl'))
+
+
+class GeminiPreflightTests(unittest.TestCase):
+    def test_either_gemini_key_name_enables_live_coach(self):
+        for key in ('GOOGLE_API_KEY', 'GEMINI_API_KEY'):
+            with self.subTest(key=key), \
+                    patch('tools.launch.__main__.can_import', return_value=True), \
+                    patch('tools.launch.__main__.env_has_key', side_effect=lambda name: name == key):
+                preflight_notes(parse(['demo', '--vision', 'off']), sys.executable)
+
+    def test_retired_provider_keys_cannot_enable_live_coach(self):
+        retired = {'ANTHROPIC_API_KEY', 'ELEVENLABS_API_KEY'}
+        with patch('tools.launch.__main__.can_import', return_value=True), \
+                patch('tools.launch.__main__.env_has_key', side_effect=lambda name: name in retired):
+            with self.assertRaisesRegex(SystemExit, 'GOOGLE_API_KEY or GEMINI_API_KEY'):
+                preflight_notes(parse(['demo', '--vision', 'off']), sys.executable)
+
+    def test_scripted_fallback_needs_no_model_packages_or_credentials(self):
+        with patch('tools.launch.__main__.can_import', side_effect=AssertionError('model import requested')), \
+                patch('tools.launch.__main__.env_has_key', side_effect=AssertionError('key requested')):
+            self.assertEqual(preflight_notes(parse(['fallback', '--vision', 'off']), sys.executable), [])
 
 
 if __name__ == '__main__':

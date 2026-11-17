@@ -200,14 +200,14 @@ Logo files: `dashboard/brand/` (`logo.svg`, `mark.svg`, `wordmark.svg`, `logo-on
 - When it leaves its dock, the dock shows an empty dashed socket and repeats the cue as text, so the screen works with the sound off.
 - Clicking Riff while asleep makes it peek and settle. That is the only thing it does unprompted.
 
-**Riff's voice** (what it *says*, spoken by ElevenLabs and printed as the cue). The machine's label rules in §4 apply to labels, not to Riff. Riff is a laid-back session player who happens to be a great teacher: warm, unhurried, a little playful, never hyped. A friend next to you with a guitar, not an app.
+**Riff's voice** (what it *says*, spoken by an installed local browser voice and printed as the cue). The machine's label rules in §4 apply to labels, not to Riff. Riff is a laid-back session player who happens to be a great teacher: warm, unhurried, a little playful, never hyped. A friend next to you with a guitar, not an app.
 - Two sentences at most, about 25 words: what happened, then one thing to try.
 - About one line in three opens with a small reaction: "Ooh, close." "Okay." "Nice."
 - Musician words: the change, swing, lock in, easy, no rush. A light coastal ease, never "dude" or "bro".
 - Numbers said like a person ("about half a second"); the screen shows the exact ms.
 - Praise only with evidence, and small. Mistakes are normal. Hand control back: "Tap the pedal when you're ready."
 - Never exclamation marks, "Great job", apologies, lectures, or more than one fix.
-- Voice: ElevenLabs `rHWSYoq8UlV0YIBKMryp` (SM's pick), `eleven_flash_v2_5`, stability 0.4, style 0.25. The live coach loads the same rules from `coach/workspace/AGENTS.md`.
+- Voice: use an installed local browser voice; when none is available, keep the cue as text. No paid TTS provider or prerecorded provider clips in live/demo sessions. The live coach loads the same writing rules from `coach/workspace/AGENTS.md`.
 
 **Honesty rules**
 - Riff is asleep unless a coach process is driving it.
