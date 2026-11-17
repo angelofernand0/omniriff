@@ -46,11 +46,11 @@ npm run build && npm run preview                   # http://127.0.0.1:4173/?coac
 python -m tools.showcase.realrun --out runs/showcase/check   # or drive a whole session from a script
 ```
 
-**Existing Railway endpoint (SM's account):** `wss://coach-production-73284aee.up.railway.app/coach`.
-The passcode is shared privately by SM, never on the board. A health response
-does not establish which model is deployed. The original service was deployed
-with the Railway CLI rather than a Git connection, so the provider migration
-requires a redeploy from the reviewed, merged code and a Gemini key on the service:
+**Railway endpoint (Angelo's account, Gemini):** `wss://coach-production-9a978997.up.railway.app/coach`.
+Project `omniriff-coach`, service `coach`, deployed from main at 3438f29 (#225) with the Railway CLI
+(no Git connection), so redeploy by hand after coach changes merge. The passcode is shared privately
+by Angelo, never on the board. The old endpoint on SM's account (`coach-production-73284aee`) runs
+the retired Anthropic/ElevenLabs build and should be paused; do not point clients at it.
 
 ```sh
 npx @railway/cli@latest login            # once
